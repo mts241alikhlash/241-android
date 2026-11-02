@@ -6,6 +6,7 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.AudioRecordingConfiguration
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.Display
@@ -89,21 +90,39 @@ class AudioAndDisplayGuard(context: Context) {
 
     private fun requestExclusiveAudioFocus() {
         val manager = audio ?: return
-        val attributes = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .build()
-        val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
-            .setAudioAttributes(attributes)
-            .setOnAudioFocusChangeListener { }
-            .build()
-        focusRequest = request
-        runCatching { manager.requestAudioFocus(request) }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val attributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+            val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
+                .setAudioAttributes(attributes)
+                .setOnAudioFocusChangeListener { }
+                .build()
+            focusRequest = request
+            runCatching { manager.requestAudioFocus(request) }
+            return
+        }
+        runCatching {
+            @Suppress("DEPRECATION")
+            manager.requestAudioFocus(
+                { },
+                AudioManager.STREAM_SYSTEM,
+                AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE,
+            )
+        }
     }
 
     private fun abandonAudioFocus() {
         val manager = audio ?: return
-        focusRequest?.let { runCatching { manager.abandonAudioFocusRequest(it) } }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            focusRequest?.let { runCatching { manager.abandonAudioFocusRequest(it) } }
+        } else {
+            runCatching {
+                @Suppress("DEPRECATION")
+                manager.abandonAudioFocus { }
+            }
+        }
         focusRequest = null
     }
 

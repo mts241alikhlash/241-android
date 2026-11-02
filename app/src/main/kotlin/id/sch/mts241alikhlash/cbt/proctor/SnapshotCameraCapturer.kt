@@ -9,6 +9,7 @@ import android.os.SystemClock
 import android.util.Range
 import android.util.Size
 import androidx.camera.camera2.interop.Camera2Interop
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -35,6 +36,7 @@ class SnapshotCameraCapturer(private val context: Context) {
     @Volatile
     private var provider: ProcessCameraProvider? = null
 
+    @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
     fun start(owner: LifecycleOwner, onBlocked: (String) -> Unit = {}) {
         val future = ProcessCameraProvider.getInstance(context)
         future.addListener({
