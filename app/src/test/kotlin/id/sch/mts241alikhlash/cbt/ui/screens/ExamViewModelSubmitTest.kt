@@ -1,28 +1,30 @@
 package id.sch.mts241alikhlash.cbt.ui.screens
 
-import id.sch.mts241alikhlash.cbt.choices
-import id.sch.mts241alikhlash.cbt.ackFor
+import id.sch.mts241alikhlash.cbt.EmptyQuestionDao
+import id.sch.mts241alikhlash.cbt.InMemoryAnswerDao
 import id.sch.mts241alikhlash.cbt.MainDispatcherRule
-import id.sch.mts241alikhlash.cbt.data.local.AnswerDao
-import id.sch.mts241alikhlash.cbt.data.local.CachedAnswerEntity
-import id.sch.mts241alikhlash.cbt.data.local.CachedQuestionEntity
-import id.sch.mts241alikhlash.cbt.data.local.QuestionDao
-import id.sch.mts241alikhlash.cbt.data.model.SavedAnswerAckDto
+import id.sch.mts241alikhlash.cbt.PaperExamApi
+import id.sch.mts241alikhlash.cbt.StubExamApi
+import id.sch.mts241alikhlash.cbt.batchAck
+import id.sch.mts241alikhlash.cbt.choices
+import id.sch.mts241alikhlash.cbt.data.local.AnswerSyncState
+import id.sch.mts241alikhlash.cbt.data.model.PaperQuestionDto
+import id.sch.mts241alikhlash.cbt.data.model.SaveAnswersBatchRequest
+import id.sch.mts241alikhlash.cbt.data.model.SaveAnswersBatchResultDto
+import id.sch.mts241alikhlash.cbt.data.model.SessionPaperDto
 import id.sch.mts241alikhlash.cbt.data.model.SavedAnswerDto
 import id.sch.mts241alikhlash.cbt.data.model.SubmitRequest
 import id.sch.mts241alikhlash.cbt.data.model.SubmittedSessionDto
 import id.sch.mts241alikhlash.cbt.data.model.ViolationCountDto
 import id.sch.mts241alikhlash.cbt.data.model.ViolationReport
-import id.sch.mts241alikhlash.cbt.data.model.PaperQuestionDto
-import id.sch.mts241alikhlash.cbt.data.model.SaveAnswerRequest
 import id.sch.mts241alikhlash.cbt.data.remote.ExamApiService
 import id.sch.mts241alikhlash.cbt.data.repository.ExamRepository
+import id.sch.mts241alikhlash.cbt.paperOf
+import id.sch.mts241alikhlash.cbt.pendingAnswer
+import id.sch.mts241alikhlash.cbt.testClock
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -41,113 +43,86 @@ class ExamViewModelSubmitTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @Test
-    fun `submit blocked when answers still pending`() = runTest {
-        val vm = viewModel(repoWithPending(1))
-        advanceUntilIdle()
+    fun `submit goes through in one trip with the pending answers`() = runTest {
+        val api = PaperExamApi()
+        val vm = viewModel(repo(dao = InMemoryAnswerDao(*Array(46) { pendingAnswer("q$it") }), api = api))
+        runCurrent()
 
         vm.submitExam()
-        advanceUntilIdle()
+        runCurrent()
 
-        assertFalse(vm.uiState.value.isSubmitted)
-        assertEquals("1 jawaban belum terkirim. Coba lagi.", vm.uiState.value.submitError)
+        assertTrue(vm.uiState.value.isSubmitted)
+        assertNull(vm.uiState.value.submitError)
+        val request = api.submits.single()
+        assertEquals(46, request.pendingAnswers?.size)
+        assertEquals(46, request.expectedAnswerCount)
     }
 
     @Test
-    fun `submit succeeds when all synced`() = runTest {
-        val vm = viewModel(repoWithPending(0))
-        advanceUntilIdle()
+    fun `submit succeeds when nothing is pending`() = runTest {
+        val vm = viewModel(repo(api = PaperExamApi()))
+        runCurrent()
 
         vm.submitExam()
-        advanceUntilIdle()
+        runCurrent()
 
         assertTrue(vm.uiState.value.isSubmitted)
         assertNull(vm.uiState.value.submitError)
     }
 
-    /** Cheap-test-quality fix: uploads that all succeed must submit even with a queue. */
     @Test
-    fun `submit succeeds when every pending answer uploads`() = runTest {
-        val vm = viewModel(repoWithPending(pending = 2, failUploads = false))
-        advanceUntilIdle()
-
-        vm.submitExam()
-        advanceUntilIdle()
-
-        assertTrue("all uploads succeeded, submit must go through", vm.uiState.value.isSubmitted)
-        assertNull(vm.uiState.value.submitError)
-    }
-
-    /** C2: gate must re-query the queue, not trust the pre-sync snapshot. */
-    @Test
-    fun `submit blocked when an answer is still pending after sync`() = runTest {
-        // The API accepts the upload but the DAO refuses to mark it (a newer revision
-        // arrived), so the post-sync count is non-zero even though nothing threw.
-        // Counting exceptions instead of re-reading the queue would wrongly submit here.
-        val vm = viewModel(repoWithPending(1, failUploads = false, markSucceeds = false))
-        advanceUntilIdle()
-
-        vm.submitExam()
-        advanceUntilIdle()
-
-        assertFalse("unsynced row must block submit", vm.uiState.value.isSubmitted)
-        assertEquals("1 jawaban belum terkirim. Coba lagi.", vm.uiState.value.submitError)
-    }
-
-    /** I6: while the sync runs, the UI must be locked and no second submit allowed. */
-    @Test
-    fun `submitting flag is set while the sync is in flight`() = runTest {
+    fun `submitting flag is set while the submit is in flight`() = runTest {
         val api = BlockingSubmitApi()
-        val vm = viewModel(repoWithPending(1, api = api))
-        advanceUntilIdle()
+        val vm = viewModel(repo(dao = InMemoryAnswerDao(pendingAnswer("q1")), api = api))
+        runCurrent()
 
         vm.submitExam()
-        api.awaitUploadStarted()
+        api.awaitSubmitStarted()
 
         assertTrue("isSubmitting must be true during submit", vm.uiState.value.isSubmitting)
         assertFalse(vm.uiState.value.isSubmitted)
         assertFalse("inputs must be disabled while submitting", vm.uiState.value.canAnswer)
         assertFalse("submit must be disabled while submitting", vm.uiState.value.canSubmit)
 
-        api.completeUpload()
-        advanceUntilIdle()
+        api.completeSubmit()
+        runCurrent()
         assertFalse(vm.uiState.value.isSubmitting)
     }
 
     @Test
-    fun `concurrent submit taps only run one sync`() = runTest {
+    fun `concurrent submit taps only run one submit`() = runTest {
         val api = BlockingSubmitApi()
-        val vm = viewModel(repoWithPending(1, api = api))
-        advanceUntilIdle()
+        val vm = viewModel(repo(dao = InMemoryAnswerDao(pendingAnswer("q1")), api = api))
+        runCurrent()
 
         vm.submitExam()
-        api.awaitUploadStarted()
-        vm.submitExam() // second tap while the first is still running
+        api.awaitSubmitStarted()
+        vm.submitExam()
         vm.submitExam()
 
-        api.completeUpload()
-        advanceUntilIdle()
+        api.completeSubmit()
+        runCurrent()
 
-        assertEquals("only one upload may be in flight", 1, api.uploadCount)
+        assertEquals("only one submit may be in flight", 1, api.submitCalls)
     }
 
     @Test
     fun `submit failure surfaces a message instead of crashing`() = runTest {
-        val vm = viewModel(repoWithPending(1, syncThrows = true))
-        advanceUntilIdle()
+        val vm = viewModel(repo(api = FailingApi()))
+        runCurrent()
 
         vm.submitExam()
-        advanceUntilIdle()
+        runCurrent()
 
         assertFalse(vm.uiState.value.isSubmitted)
         assertFalse(vm.uiState.value.isSubmitting)
-        assertEquals(ExamViewModel.SUBMIT_ERROR_MESSAGE, vm.uiState.value.submitError)
+        assertEquals("Tidak dapat terhubung ke server.", vm.uiState.value.submitError)
     }
 
-    /** C1: submitting must be impossible before the paper has loaded. */
     @Test
     fun `submit is rejected while the paper is still loading`() = runTest {
         val api = BlockingQuestionsApi()
-        val vm = viewModel(repoWithQuestions(api = api))
+        val vm = viewModel(repo(api = api))
 
         assertTrue(vm.uiState.value.isLoading)
         assertFalse("submit must be disabled before load", vm.uiState.value.canSubmit)
@@ -156,12 +131,12 @@ class ExamViewModelSubmitTest {
         runCurrent()
 
         assertFalse(vm.uiState.value.isSubmitted)
-        assertEquals(0, api.uploadCount)
+        assertEquals(0, api.submitCalls)
     }
 
     @Test
     fun `submit is rejected when the paper failed to load`() = runTest {
-        val vm = viewModel(repoWithQuestions(api = FailingQuestionsApi(failFirst = true)))
+        val vm = viewModel(repo(api = FailingQuestionsApi()))
         runCurrent()
 
         assertNotNull(vm.uiState.value.errorMessage)
@@ -173,11 +148,10 @@ class ExamViewModelSubmitTest {
         assertFalse(vm.uiState.value.isSubmitted)
     }
 
-    /** C1: empty payload for an active session is an error, not a blank paper. */
     @Test
     fun `empty paper becomes an error state with retry available`() = runTest {
-        val vm = viewModel(repoWithQuestions())
-        advanceUntilIdle()
+        val vm = viewModel(repo())
+        runCurrent()
 
         val state = vm.uiState.value
         assertFalse(state.isLoading)
@@ -186,11 +160,10 @@ class ExamViewModelSubmitTest {
         assertTrue(state.questions.isEmpty())
     }
 
-    /** C1: retry forces a network fetch and clears the error when it succeeds. */
     @Test
     fun `retry reloads with forceRefresh and recovers`() = runTest {
-        val api = FailingQuestionsApi(failFirst = true)
-        val vm = viewModel(repoWithQuestions(api = api))
+        val api = FailingQuestionsApi()
+        val vm = viewModel(repo(api = api))
         runCurrent()
 
         assertNotNull(vm.uiState.value.errorMessage)
@@ -206,10 +179,9 @@ class ExamViewModelSubmitTest {
         assertEquals("retry must bypass the cache and hit the network", 2, api.questionCalls)
     }
 
-    /** C3: a restored session resumes from its stored deadline, not from 90:00. */
     @Test
     fun `resumed session starts from the persisted deadline`() = runTest {
-        val vm = viewModel(repoWithPending(0), deadline = 30L * 60L * 1000L)
+        val vm = viewModel(repo(), deadline = 30L * 60L * 1000L)
         runCurrent()
 
         assertEquals(1800L, vm.uiState.value.remainingSeconds)
@@ -218,23 +190,17 @@ class ExamViewModelSubmitTest {
 
     @Test
     fun `fresh session is not flagged as resumed`() = runTest {
-        val vm = viewModel(repoWithPending(0), deadline = 90L * 60L * 1000L)
+        val vm = viewModel(repo(), deadline = 90L * 60L * 1000L)
         runCurrent()
 
         assertEquals(5400L, vm.uiState.value.remainingSeconds)
         assertFalse(vm.uiState.value.isResumed)
     }
 
-    /**
-     * R2: the deadline is written at start, read back from DataStore, then handed to the
-     * ViewModel — so the ViewModel always observes a few ms of latency. A brand-new exam
-     * must still read 90:00 and must not show the "Ujian dilanjutkan" banner.
-     */
     @Test
     fun `startup latency does not turn a fresh exam into a resumed one`() = runTest {
-        val deadline = 90L * 60L * 1000L
-        testScheduler.advanceTimeBy(50L) // process start-up cost
-        val vm = viewModel(repoWithPending(0), deadline = deadline)
+        testScheduler.advanceTimeBy(50L)
+        val vm = viewModel(repo(), deadline = 90L * 60L * 1000L)
         runCurrent()
 
         assertEquals("must open at 90:00, not 89:59", 5400L, vm.uiState.value.remainingSeconds)
@@ -243,9 +209,8 @@ class ExamViewModelSubmitTest {
 
     @Test
     fun `a genuinely resumed exam still shows the banner`() = runTest {
-        val deadline = 90L * 60L * 1000L
-        testScheduler.advanceTimeBy(10L * 60L * 1000L) // app away for ten minutes
-        val vm = viewModel(repoWithPending(0), deadline = deadline)
+        testScheduler.advanceTimeBy(10L * 60L * 1000L)
+        val vm = viewModel(repo(), deadline = 90L * 60L * 1000L)
         runCurrent()
 
         assertEquals(4800L, vm.uiState.value.remainingSeconds)
@@ -254,7 +219,7 @@ class ExamViewModelSubmitTest {
 
     @Test
     fun `expired deadline clamps to zero`() = runTest {
-        val vm = viewModel(repoWithPending(0), deadline = -60_000L)
+        val vm = viewModel(repo(), deadline = -60_000L)
         runCurrent()
 
         assertEquals(0L, vm.uiState.value.remainingSeconds)
@@ -262,7 +227,7 @@ class ExamViewModelSubmitTest {
 
     @Test
     fun `timer counts down from the deadline`() = runTest {
-        val vm = viewModel(repoWithPending(0), deadline = 90L * 60L * 1000L)
+        val vm = viewModel(repo(), deadline = 90L * 60L * 1000L)
         runCurrent()
         assertEquals(5400L, vm.uiState.value.remainingSeconds)
 
@@ -271,25 +236,10 @@ class ExamViewModelSubmitTest {
         assertEquals(5370L, vm.uiState.value.remainingSeconds)
     }
 
-    /**
-     * Builds the ViewModel against the test scheduler's clock so the deadline-based
-     * countdown terminates under virtual time instead of spinning on a frozen clock.
-     */
-    private fun TestScope.viewModel(
-        repository: ExamRepository,
-        sessionId: String = "s1",
-        deadline: Long? = null
-    ) = ExamViewModel(
-        repository = repository,
-        sessionId = sessionId,
-        deadline = deadline,
-        now = { testScheduler.currentTime }
-    )
-
     @Test
     fun `more than three violations hand the exam in with the count`() = runTest {
-        val api = ViolationCapturingApi()
-        val vm = viewModel(repoWithPending(0, api = api))
+        val api = PaperExamApi()
+        val vm = viewModel(repo(api = api))
         runCurrent()
 
         vm.recordViolations(3)
@@ -301,13 +251,30 @@ class ExamViewModelSubmitTest {
 
         assertTrue(vm.uiState.value.isSubmitted)
         assertTrue(vm.uiState.value.violationExit)
-        assertEquals(4, api.violations)
+        assertEquals(4, api.submits.single().violations)
+    }
+
+    @Test
+    fun `a repeated merged count does not grow the violation total`() = runTest {
+        val api = ViolationReportingApi()
+        val vm = viewModel(repo(api = api))
+        runCurrent()
+
+        vm.recordViolations(2)
+        runCurrent()
+        vm.recordViolations(2)
+        runCurrent()
+        vm.recordViolations(2)
+        runCurrent()
+
+        assertEquals(listOf(2), api.reported)
+        assertFalse(vm.uiState.value.isSubmitted)
     }
 
     @Test
     fun `each new violation is reported to the server at once`() = runTest {
         val api = ViolationReportingApi()
-        val vm = viewModel(repoWithPending(0, api = api))
+        val vm = viewModel(repo(api = api))
         runCurrent()
 
         vm.recordViolations(1)
@@ -323,7 +290,7 @@ class ExamViewModelSubmitTest {
     @Test
     fun `the count the server holds comes back into the state`() = runTest {
         val api = ViolationReportingApi(serverCount = 3)
-        val vm = viewModel(repoWithPending(0, api = api))
+        val vm = viewModel(repo(api = api))
         runCurrent()
 
         vm.recordViolations(0)
@@ -335,7 +302,7 @@ class ExamViewModelSubmitTest {
     @Test
     fun `a report that failed is sent again with the next violation`() = runTest {
         val api = ViolationReportingApi(failFirst = 1)
-        val vm = viewModel(repoWithPending(0, api = api))
+        val vm = viewModel(repo(api = api))
         runCurrent()
 
         vm.recordViolations(1)
@@ -350,8 +317,8 @@ class ExamViewModelSubmitTest {
 
     @Test
     fun `a normal hand-in still tells the server how often the student left`() = runTest {
-        val api = ViolationCapturingApi()
-        val vm = viewModel(repoWithPending(0, api = api))
+        val api = PaperExamApi()
+        val vm = viewModel(repo(api = api))
         runCurrent()
 
         vm.recordViolations(2)
@@ -360,13 +327,13 @@ class ExamViewModelSubmitTest {
 
         assertTrue(vm.uiState.value.isSubmitted)
         assertFalse(vm.uiState.value.violationExit)
-        assertEquals(2, api.violations)
+        assertEquals(2, api.submits.single().violations)
     }
 
     @Test
     fun `a failed forced hand-in keeps trying until it goes through`() = runTest {
-        val api = ViolationCapturingApi(failFirst = 2)
-        val vm = viewModel(repoWithPending(0, api = api))
+        val api = FlakySubmitApi(failFirst = 2)
+        val vm = viewModel(repo(api = api))
         runCurrent()
 
         vm.recordViolations(4)
@@ -377,251 +344,113 @@ class ExamViewModelSubmitTest {
         assertEquals(3, api.submitCalls)
     }
 
+    @Test
+    fun `the ui summary counts confirmed and pending rows`() = runTest {
+        val dao = InMemoryAnswerDao(
+            pendingAnswer("q1").copy(
+                syncState = AnswerSyncState.SERVER_CONFIRMED,
+                confirmedAtMillis = 1_000L
+            ),
+            pendingAnswer("q2")
+        )
+        val vm = viewModel(repo(dao = dao))
+        runCurrent()
+
+        val summary = vm.uiState.value.sync
+        assertEquals(2, summary.totalAnswered)
+        assertEquals(1, summary.confirmedCount)
+        assertEquals(1, summary.pendingCount)
+        assertFalse(summary.allConfirmed)
+    }
+
+    private fun TestScope.viewModel(
+        repository: ExamRepository,
+        sessionId: String = "s1",
+        deadline: Long? = null
+    ) = ExamViewModel(
+        repository = repository,
+        sessionId = sessionId,
+        deadline = deadline,
+        clock = testClock(testScheduler)
+    )
+
+    private fun repo(
+        dao: InMemoryAnswerDao = InMemoryAnswerDao(),
+        api: ExamApiService = StubExamApi()
+    ) = ExamRepository(api, dao, QuestionDaoStub(), now = { 5_000L })
+
     private fun TestScope.advanceTimeBySeconds(seconds: Long) {
         testScheduler.advanceTimeBy(seconds * 1000L)
         testScheduler.runCurrent()
     }
 }
 
-private fun repoWithPending(
-    pending: Int,
-    failUploads: Boolean = true,
-    markSucceeds: Boolean = true,
-    api: ExamApiService? = null,
-    syncThrows: Boolean = false
-): ExamRepository {
-    val answers = (1..pending).map { index ->
-        CachedAnswerEntity(
-            questionId = "q$index",
-            sessionId = "s1",
-            answer = "answer-$index",
-            isSynced = false,
-            updatedAt = 1000L + index
-        )
-    }
-    val effectiveApi = api ?: if (failUploads) SubmitFakeApi() else RecordingSubmitApi()
-    return ExamRepository(
-        api = effectiveApi,
-        dao = SubmitFakeAnswerDao(answers, markSucceeds = markSucceeds, syncThrows = syncThrows),
-        // A loaded paper: submit is only reachable once questions are on screen.
-        questionDao = SubmitFakeQuestionDao(listOf(dto("q1")))
-    )
-}
+private class QuestionDaoStub : id.sch.mts241alikhlash.cbt.data.local.QuestionDao {
+    private var stored: List<id.sch.mts241alikhlash.cbt.data.local.CachedQuestionEntity> = emptyList()
 
-private fun repoWithQuestions(
-    questions: List<PaperQuestionDto> = emptyList(),
-    api: ExamApiService = RecordingQuestionsApi(questions)
-): ExamRepository = ExamRepository(
-    api = api,
-    dao = SubmitFakeAnswerDao(emptyList()),
-    questionDao = SubmitFakeQuestionDao(emptyList())
-)
+    override suspend fun getForSession(sessionId: String) = stored
 
-private fun dto(id: String) = PaperQuestionDto(
-    id = id,
-    number = 1,
-    type = "multiple_choice",
-    bodyHtml = "<p>Soal $id</p>",
-    points = 1.0,
-    choices = choices("A", "B")
-)
-
-private class SubmitFakeAnswerDao(
-    unsynced: List<CachedAnswerEntity>,
-    private val markSucceeds: Boolean = true,
-    private val syncThrows: Boolean = false
-) : AnswerDao {
-    private val rows = unsynced.associateBy { it.questionId }.toMutableMap()
-
-    override fun observeAnswers(sessionId: String): Flow<List<CachedAnswerEntity>> =
-        flowOf(rows.values.filter { it.sessionId == sessionId })
-
-    override suspend fun getAnswer(sessionId: String, questionId: String): CachedAnswerEntity? =
-        rows[questionId]?.takeIf { it.sessionId == sessionId }
-
-    override suspend fun insertIfAbsent(answer: CachedAnswerEntity): Long = 1L
-
-    override suspend fun getUnsyncedAnswers(sessionId: String): List<CachedAnswerEntity> {
-        if (syncThrows) throw IllegalStateException("database closed")
-        return rows.values.filter { it.sessionId == sessionId && !it.isSynced }
+    override suspend fun insertAll(items: List<id.sch.mts241alikhlash.cbt.data.local.CachedQuestionEntity>) {
+        stored = items
     }
 
-    override suspend fun countUnsyncedAnswers(sessionId: String): Int {
-        if (syncThrows) throw IllegalStateException("database closed")
-        return rows.values.count { it.sessionId == sessionId && !it.isSynced }
+    override suspend fun deleteForSession(sessionId: String) {
+        stored = emptyList()
     }
-
-    override suspend fun saveAnswer(answer: CachedAnswerEntity) {
-        rows[answer.questionId] = answer
-    }
-
-    override suspend fun markSynced(
-        sessionId: String,
-        questionId: String,
-        answer: String,
-        updatedAt: Long
-    ): Int {
-        if (!markSucceeds) return 0
-        val row = rows[questionId] ?: return 0
-        if (row.sessionId != sessionId || row.answer != answer ||
-            row.updatedAt != updatedAt || row.isSynced
-        ) {
-            return 0
-        }
-        rows[questionId] = row.copy(isSynced = true)
-        return 1
-    }
-}
-
-private class SubmitFakeQuestionDao(
-    preloaded: List<PaperQuestionDto> = emptyList()
-) : QuestionDao {
-    private val store = preloaded.toMutableList()
-
-    override suspend fun getForSession(sessionId: String): List<CachedQuestionEntity> =
-        store.map {
-            CachedQuestionEntity(
-                sessionId = sessionId,
-                id = it.id,
-                number = it.number,
-                type = it.type,
-                bodyHtml = it.bodyHtml,
-                points = it.points,
-                choicesJson = null,
-                cachedAt = 0L
-            )
-        }
-
-    override suspend fun insertAll(items: List<CachedQuestionEntity>) = Unit
-
-    override suspend fun deleteForSession(sessionId: String) = Unit
-}
-
-/** Every answer upload fails, so any pending answer is reported as failed. */
-private class SubmitFakeApi : ExamApiService {
-    override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
-
-    override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto = SubmittedSessionDto("SUBMITTED")
-
-    override suspend fun getQuestions(sessionId: String): List<PaperQuestionDto> = emptyList()
-
-    override suspend fun saveAnswer(
-        sessionId: String,
-        request: SaveAnswerRequest
-    ): SavedAnswerAckDto = throw IOException("offline")
-}
-
-/** Every answer upload succeeds. */
-private class RecordingSubmitApi : ExamApiService {
-    override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
-
-    override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto = SubmittedSessionDto("SUBMITTED")
-
-    override suspend fun getQuestions(sessionId: String): List<PaperQuestionDto> = emptyList()
-
-    override suspend fun saveAnswer(
-        sessionId: String,
-        request: SaveAnswerRequest
-    ): SavedAnswerAckDto = answerDto(sessionId, request)
 }
 
 private class BlockingSubmitApi : ExamApiService {
-    override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
-
-    override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto = SubmittedSessionDto("SUBMITTED")
-
     private val started = CompletableDeferred<Unit>()
     private val release = CompletableDeferred<Unit>()
-    var uploadCount = 0
+    var submitCalls = 0
         private set
 
-    suspend fun awaitUploadStarted() = started.await()
-    fun completeUpload() = release.complete(Unit)
+    suspend fun awaitSubmitStarted() = started.await()
+    fun completeSubmit() = release.complete(Unit)
 
-    override suspend fun getQuestions(sessionId: String): List<PaperQuestionDto> = emptyList()
+    override suspend fun getQuestions(sessionId: String) = paperOf(listOf(question("q1")))
 
-    override suspend fun saveAnswer(
+    override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
+
+    override suspend fun saveAnswersBatch(
         sessionId: String,
-        request: SaveAnswerRequest
-    ): SavedAnswerAckDto {
-        uploadCount++
+        request: SaveAnswersBatchRequest
+    ): SaveAnswersBatchResultDto = batchAck(request)
+
+    override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto {
+        submitCalls++
         started.complete(Unit)
         release.await()
-        return answerDto(sessionId, request)
+        return SubmittedSessionDto("SUBMITTED")
     }
 }
 
-private class RecordingQuestionsApi(
-    private val questions: List<PaperQuestionDto> = emptyList()
-) : ExamApiService {
+private class FailingApi : ExamApiService {
+    override suspend fun getQuestions(sessionId: String) = paperOf(listOf(question("q1")))
+
     override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
 
-    override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto = SubmittedSessionDto("SUBMITTED")
-
-    var uploadCount = 0
-        private set
-
-    override suspend fun getQuestions(sessionId: String): List<PaperQuestionDto> = questions
-
-    override suspend fun saveAnswer(
+    override suspend fun saveAnswersBatch(
         sessionId: String,
-        request: SaveAnswerRequest
-    ): SavedAnswerAckDto {
-        uploadCount++
-        return answerDto(sessionId, request)
-    }
+        request: SaveAnswersBatchRequest
+    ): SaveAnswersBatchResultDto = throw IOException("offline")
+
+    override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto =
+        throw IOException("offline")
 }
 
-private class BlockingQuestionsApi : ExamApiService {
-    override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
-
-    override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto = SubmittedSessionDto("SUBMITTED")
-
-    private val never = CompletableDeferred<Unit>()
-    var uploadCount = 0
-        private set
-
-    override suspend fun getQuestions(sessionId: String): List<PaperQuestionDto> {
-        never.await()
-        return listOf(dto("q1"))
-    }
-
-    override suspend fun saveAnswer(
-        sessionId: String,
-        request: SaveAnswerRequest
-    ): SavedAnswerAckDto {
-        uploadCount++
-        return answerDto(sessionId, request)
-    }
-}
-
-private class FailingQuestionsApi(private val failFirst: Boolean = false) : ExamApiService {
-    override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
-
-    override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto = SubmittedSessionDto("SUBMITTED")
-
-    var questionCalls = 0
-        private set
-
-    override suspend fun getQuestions(sessionId: String): List<PaperQuestionDto> {
-        questionCalls++
-        if (failFirst && questionCalls == 1) throw IOException("offline")
-        return listOf(dto("q1"))
-    }
-
-    override suspend fun saveAnswer(
-        sessionId: String,
-        request: SaveAnswerRequest
-    ): SavedAnswerAckDto = throw IOException("offline")
-}
-
-private fun answerDto(sessionId: String, request: SaveAnswerRequest) = ackFor(request)
-
-private class ViolationCapturingApi(private var failFirst: Int = 0) : ExamApiService {
-    var violations = -1
+private class FlakySubmitApi(private var failFirst: Int) : ExamApiService {
     var submitCalls = 0
+        private set
+
+    override suspend fun getQuestions(sessionId: String) = paperOf(listOf(question("q1")))
 
     override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
+
+    override suspend fun saveAnswersBatch(
+        sessionId: String,
+        request: SaveAnswersBatchRequest
+    ): SaveAnswersBatchResultDto = batchAck(request)
 
     override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto {
         submitCalls++
@@ -629,16 +458,52 @@ private class ViolationCapturingApi(private var failFirst: Int = 0) : ExamApiSer
             failFirst--
             throw IOException("offline")
         }
-        violations = request.violations
         return SubmittedSessionDto("SUBMITTED")
     }
+}
 
-    override suspend fun getQuestions(sessionId: String): List<PaperQuestionDto> = emptyList()
+private class FailingQuestionsApi : ExamApiService {
+    var questionCalls = 0
+        private set
 
-    override suspend fun saveAnswer(
+    override suspend fun getQuestions(sessionId: String): SessionPaperDto {
+        questionCalls++
+        if (questionCalls == 1) throw IOException("offline")
+        return paperOf(listOf(question("q1")))
+    }
+
+    override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
+
+    override suspend fun saveAnswersBatch(
         sessionId: String,
-        request: SaveAnswerRequest
-    ): SavedAnswerAckDto = answerDto(sessionId, request)
+        request: SaveAnswersBatchRequest
+    ): SaveAnswersBatchResultDto = batchAck(request)
+
+    override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto =
+        SubmittedSessionDto("SUBMITTED")
+}
+
+private class BlockingQuestionsApi : ExamApiService {
+    private val never = CompletableDeferred<Unit>()
+    var submitCalls = 0
+        private set
+
+    override suspend fun getQuestions(sessionId: String): SessionPaperDto {
+        never.await()
+        return paperOf(listOf(question("q1")))
+    }
+
+    override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
+
+    override suspend fun saveAnswersBatch(
+        sessionId: String,
+        request: SaveAnswersBatchRequest
+    ): SaveAnswersBatchResultDto = batchAck(request)
+
+    override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto {
+        submitCalls++
+        return SubmittedSessionDto("SUBMITTED")
+    }
 }
 
 private class ViolationReportingApi(
@@ -647,17 +512,17 @@ private class ViolationReportingApi(
 ) : ExamApiService {
     val reported = mutableListOf<Int>()
 
+    override suspend fun getQuestions(sessionId: String) = paperOf(listOf(question("q1")))
+
     override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
+
+    override suspend fun saveAnswersBatch(
+        sessionId: String,
+        request: SaveAnswersBatchRequest
+    ): SaveAnswersBatchResultDto = batchAck(request)
 
     override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto =
         SubmittedSessionDto("SUBMITTED")
-
-    override suspend fun getQuestions(sessionId: String): List<PaperQuestionDto> = emptyList()
-
-    override suspend fun saveAnswer(
-        sessionId: String,
-        request: SaveAnswerRequest
-    ): SavedAnswerAckDto = answerDto(sessionId, request)
 
     override suspend fun reportViolations(
         sessionId: String,
@@ -671,3 +536,12 @@ private class ViolationReportingApi(
         return ViolationCountDto(maxOf(serverCount, request.count))
     }
 }
+
+private fun question(id: String) = PaperQuestionDto(
+    id = id,
+    number = 1,
+    type = "MULTIPLE_CHOICE",
+    bodyHtml = "<p>Soal $id</p>",
+    points = 1.0,
+    choices = choices("A", "B")
+)

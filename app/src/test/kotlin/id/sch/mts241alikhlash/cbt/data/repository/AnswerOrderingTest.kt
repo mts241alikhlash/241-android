@@ -1,30 +1,22 @@
 package id.sch.mts241alikhlash.cbt.data.repository
 
-import id.sch.mts241alikhlash.cbt.ackFor
-import id.sch.mts241alikhlash.cbt.data.local.AnswerDao
-import id.sch.mts241alikhlash.cbt.data.local.CachedAnswerEntity
-import id.sch.mts241alikhlash.cbt.data.local.CachedQuestionEntity
-import id.sch.mts241alikhlash.cbt.data.local.QuestionDao
+import id.sch.mts241alikhlash.cbt.EmptyQuestionDao
+import id.sch.mts241alikhlash.cbt.InMemoryAnswerDao
+import id.sch.mts241alikhlash.cbt.batchAck
+import id.sch.mts241alikhlash.cbt.paperOf
+import id.sch.mts241alikhlash.cbt.data.local.AnswerSyncState
 import id.sch.mts241alikhlash.cbt.data.model.AnswerPayload
-import id.sch.mts241alikhlash.cbt.data.model.PaperQuestionDto
-import id.sch.mts241alikhlash.cbt.data.model.SaveAnswerRequest
-import id.sch.mts241alikhlash.cbt.data.model.SavedAnswerAckDto
+import id.sch.mts241alikhlash.cbt.data.model.SaveAnswersBatchRequest
+import id.sch.mts241alikhlash.cbt.data.model.SaveAnswersBatchResultDto
 import id.sch.mts241alikhlash.cbt.data.model.SavedAnswerDto
 import id.sch.mts241alikhlash.cbt.data.model.SubmitRequest
 import id.sch.mts241alikhlash.cbt.data.model.SubmittedSessionDto
 import id.sch.mts241alikhlash.cbt.data.remote.ExamApiService
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.JsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -42,136 +34,107 @@ class AnswerOrderingTest {
         )
     )
 
+    private fun repo(api: ExamApiService, dao: InMemoryAnswerDao, now: () -> Long = { 1_000L }) =
+        ExamRepository(api, dao, EmptyQuestionDao(), now = now)
+
     @Test
-    fun `a retry of an old revision never overtakes a newer one`() = runTest {
-        val dao = OrderDao()
-        val api = OrderApi()
+    fun `a newer edit of the same answer is the one that lands`() = runTest {
         var clock = 1_000L
-        val repo = ExamRepository(api, dao, OrderQuestionDao(), now = { clock })
-        val gate = CompletableDeferred<Unit>()
-        api.gate = gate
-        api.failFirst = true
+        val dao = InMemoryAnswerDao()
+        val repository = repo(OrderApi(), dao, now = { clock })
 
-        val first = launch { repo.recordAnswer("q1", "s1", AnswerPayload.Choice("A").encode()) }
-        runCurrent()
+        repository.recordAnswer("q1", "s1", AnswerPayload.Choice("A").encode())
         clock = 2_000L
-        api.gate = null
-        val second = launch { repo.recordAnswer("q1", "s1", AnswerPayload.Choice("B").encode()) }
-        runCurrent()
-        gate.complete(Unit)
-        first.join()
-        second.join()
+        repository.recordAnswer("q1", "s1", AnswerPayload.Choice("B").encode())
 
-        assertEquals(listOf("A", "B"), api.seen.map { (it.answer["key"] as kotlinx.serialization.json.JsonPrimitive).content })
-        assertTrue(dao.rows.getValue("q1").isSynced)
-        assertEquals(1, api.seen.map { it.clientId }.distinct().size - 1)
+        assertEquals(AnswerPayload.Choice("B").encode(), dao.rows.getValue("q1").answer)
+        assertEquals(2_000L, dao.rows.getValue("q1").updatedAtMillis)
+        assertEquals(AnswerSyncState.LOCAL_PENDING, dao.rows.getValue("q1").syncState)
     }
 
     @Test
-    fun `a superseded revision is not sent at all`() = runTest {
-        val dao = OrderDao()
-        val api = OrderApi()
+    fun `editing a confirmed answer mints a fresh client id`() = runTest {
         var clock = 1_000L
-        val repo = ExamRepository(api, dao, OrderQuestionDao(), now = { clock })
-        val gate = CompletableDeferred<Unit>()
-        api.gate = gate
+        val dao = InMemoryAnswerDao()
+        val repository = repo(OrderApi(), dao, now = { clock })
 
-        val first = launch { repo.recordAnswer("q2", "s1", AnswerPayload.Choice("A").encode()) }
-        runCurrent()
+        val first = repository.recordAnswer("q1", "s1", AnswerPayload.Choice("A").encode())
+        dao.saveAnswer(first.copy(syncState = AnswerSyncState.SERVER_CONFIRMED, confirmedAtMillis = 1_000L))
         clock = 2_000L
-        api.gate = null
-        val second = launch { repo.recordAnswer("q2", "s1", AnswerPayload.Choice("C").encode()) }
-        runCurrent()
-        gate.complete(Unit)
-        first.join()
-        second.join()
+        val second = repository.recordAnswer("q1", "s1", AnswerPayload.Choice("C").encode())
 
-        assertEquals(listOf("A", "C"), api.seen.map { (it.answer["key"] as kotlinx.serialization.json.JsonPrimitive).content })
+        assertNotEquals(first.clientId, second.clientId)
+        assertEquals(AnswerSyncState.LOCAL_PENDING, second.syncState)
+        assertEquals(null, second.confirmedAtMillis)
     }
 
     @Test
-    fun `409 closed stops the queue and keeps the local answers`() = runTest {
-        val dao = OrderDao(ans("q1"), ans("q2"))
-        val api = OrderApi(errors = mapOf("q1" to http(409, "Waktu pengiriman jawaban sudah habis")))
+    fun `a closed window stops the batch and keeps every row pending`() = runTest {
+        val dao = InMemoryAnswerDao(
+            id.sch.mts241alikhlash.cbt.pendingAnswer("q1"),
+            id.sch.mts241alikhlash.cbt.pendingAnswer("q2")
+        )
+        val api = OrderApi(error = http(409, "Waktu pengiriman jawaban sudah habis"))
 
-        val report = ExamRepository(api, dao, OrderQuestionDao()).syncPending("s1")
+        val outcome = repo(api, dao).syncPendingBatch("s1")
 
-        assertEquals("Waktu pengiriman jawaban sudah habis", report.closedMessage)
-        assertEquals(1, api.seen.size)
-        assertEquals(2, report.failed)
-        assertFalse(dao.rows.getValue("q1").isSynced)
-        assertFalse(dao.rows.getValue("q2").isSynced)
+        assertEquals("Waktu pengiriman jawaban sudah habis", outcome.closedMessage)
+        assertEquals(1, api.batches.size)
+        assertEquals(2, outcome.pending)
+        assertTrue(dao.rows.values.all { it.syncState == AnswerSyncState.LOCAL_PENDING })
     }
 
     @Test
-    fun `400 is sent once per pass and does not stop the queue`() = runTest {
-        val dao = OrderDao(ans("q1"), ans("q2"))
-        val api = OrderApi(errors = mapOf("q1" to http(400, "Bentuk jawaban tidak sesuai dengan jenis soal")))
+    fun `a rejected batch reports the server message once`() = runTest {
+        val dao = InMemoryAnswerDao(id.sch.mts241alikhlash.cbt.pendingAnswer("q1"))
+        val api = OrderApi(error = http(400, "Bentuk jawaban tidak sesuai dengan jenis soal"))
 
-        val report = ExamRepository(api, dao, OrderQuestionDao()).syncPending("s1")
+        val outcome = repo(api, dao).syncPendingBatch("s1")
 
-        assertEquals(listOf("q1", "q2"), api.seen.map { it.questionId })
-        assertEquals(1, report.synced)
-        assertEquals(1, report.rejected)
-        assertEquals(1, report.failed)
-        assertEquals(null, report.closedMessage)
+        assertEquals(1, outcome.rejected)
+        assertEquals("Bentuk jawaban tidak sesuai dengan jenis soal", outcome.rejectedMessage)
+        assertEquals(null, outcome.closedMessage)
     }
 
     @Test
-    fun `a network failure stops the pass at the first row`() = runTest {
-        val dao = OrderDao(ans("q1"), ans("q2"), ans("q3"))
-        val offline = IOException("offline")
-        val api = OrderApi(errors = mapOf("q1" to offline, "q2" to offline, "q3" to offline))
+    fun `a network failure marks the pass offline and stops it`() = runTest {
+        val dao = InMemoryAnswerDao(
+            id.sch.mts241alikhlash.cbt.pendingAnswer("q1"),
+            id.sch.mts241alikhlash.cbt.pendingAnswer("q2")
+        )
+        val api = OrderApi(error = IOException("offline"))
 
-        val report = ExamRepository(api, dao, OrderQuestionDao()).syncPending("s1")
+        val outcome = repo(api, dao).syncPendingBatch("s1")
 
-        assertEquals(1, api.seen.size)
-        assertEquals(3, report.failed)
-    }
-
-    @Test
-    fun `a server error on one row does not stop the pass`() = runTest {
-        val dao = OrderDao(ans("q1"), ans("q2"))
-        val api = OrderApi(errors = mapOf("q1" to http(500, "Terjadi kesalahan")))
-
-        val report = ExamRepository(api, dao, OrderQuestionDao()).syncPending("s1")
-
-        assertEquals(listOf("q1", "q2"), api.seen.map { it.questionId })
-        assertEquals(1, report.synced)
-        assertEquals(1, report.failed)
-    }
-
-    @Test
-    fun `a network failure leaves the row for the next pass`() = runTest {
-        val dao = OrderDao(ans("q1"))
-        val api = OrderApi(errors = mapOf("q1" to IOException("offline")))
-
-        val report = ExamRepository(api, dao, OrderQuestionDao()).syncPending("s1")
-
-        assertEquals(1, report.failed)
-        assertEquals(0, report.rejected)
-        assertEquals(null, report.closedMessage)
+        assertTrue(outcome.offline)
+        assertEquals(1, api.batches.size)
+        assertEquals(2, outcome.pending)
     }
 
     @Test
     fun `pulls server answers without overwriting unsent local ones`() = runTest {
-        val dao = OrderDao(ans("q1", answer = AnswerPayload.Choice("A").encode()))
+        val dao = InMemoryAnswerDao(
+            id.sch.mts241alikhlash.cbt.pendingAnswer(
+                "q1",
+                answer = AnswerPayload.Choice("A").encode()
+            )
+        )
         val api = OrderApi(
             remote = listOf(
                 SavedAnswerDto("q1", AnswerPayload.Choice("B").toJson()),
                 SavedAnswerDto("q2", AnswerPayload.Multiple(listOf("C", "A")).toJson()),
-                SavedAnswerDto("q3", JsonObject(emptyMap()))
+                SavedAnswerDto("q3", kotlinx.serialization.json.JsonObject(emptyMap()))
             )
         )
 
-        val imported = ExamRepository(api, dao, OrderQuestionDao(), now = { 9_000L }).pullServerAnswers("s1")
+        val imported = repo(api, dao, now = { 9_000L }).pullServerAnswers("s1")
 
         assertEquals(1, imported)
         assertEquals(AnswerPayload.Choice("A").encode(), dao.rows.getValue("q1").answer)
-        assertFalse(dao.rows.getValue("q1").isSynced)
+        assertEquals(AnswerSyncState.LOCAL_PENDING, dao.rows.getValue("q1").syncState)
         val pulled = dao.rows.getValue("q2")
         assertEquals(AnswerPayload.Multiple(listOf("A", "C")).encode(), pulled.answer)
-        assertTrue(pulled.isSynced)
+        assertEquals(AnswerSyncState.SERVER_CONFIRMED, pulled.syncState)
         assertEquals(null, dao.rows["q3"])
     }
 
@@ -182,74 +145,33 @@ class AnswerOrderingTest {
         assertNotEquals(a, b)
     }
 
-    private fun ans(questionId: String, answer: String = AnswerPayload.Choice("A").encode()) = CachedAnswerEntity(
-        questionId = questionId,
-        sessionId = "s1",
-        answer = answer,
-        isSynced = false,
-        updatedAt = 1_000L
-    )
-}
-
-private class OrderDao(vararg initial: CachedAnswerEntity) : AnswerDao {
-    val rows = initial.associateBy { it.questionId }.toMutableMap()
-
-    override fun observeAnswers(sessionId: String): Flow<List<CachedAnswerEntity>> = flowOf(emptyList())
-
-    override suspend fun getAnswer(sessionId: String, questionId: String): CachedAnswerEntity? =
-        rows[questionId]?.takeIf { it.sessionId == sessionId }
-
-    override suspend fun getUnsyncedAnswers(sessionId: String): List<CachedAnswerEntity> =
-        rows.values.filter { it.sessionId == sessionId && !it.isSynced }
-
-    override suspend fun countUnsyncedAnswers(sessionId: String): Int =
-        rows.values.count { it.sessionId == sessionId && !it.isSynced }
-
-    override suspend fun saveAnswer(answer: CachedAnswerEntity) {
-        rows[answer.questionId] = answer
+    @Test
+    fun `a session-lost message is recognised`() {
+        assertTrue(isSessionLostMessage("Sesi dilepas. Mulai ujian lagi"))
+        assertTrue(isSessionLostMessage("Sesi aktif di perangkat lain. Minta pengawas melepas sesi"))
+        assertTrue(!isSessionLostMessage("Waktu pengiriman jawaban sudah habis"))
     }
-
-    override suspend fun insertIfAbsent(answer: CachedAnswerEntity): Long {
-        if (rows.containsKey(answer.questionId)) return -1L
-        rows[answer.questionId] = answer
-        return 1L
-    }
-
-    override suspend fun markSynced(sessionId: String, questionId: String, answer: String, updatedAt: Long): Int {
-        val row = rows[questionId] ?: return 0
-        if (row.sessionId != sessionId || row.answer != answer || row.updatedAt != updatedAt || row.isSynced) return 0
-        rows[questionId] = row.copy(isSynced = true)
-        return 1
-    }
-}
-
-private class OrderQuestionDao : QuestionDao {
-    override suspend fun getForSession(sessionId: String): List<CachedQuestionEntity> = emptyList()
-    override suspend fun insertAll(items: List<CachedQuestionEntity>) = Unit
-    override suspend fun deleteForSession(sessionId: String) = Unit
 }
 
 private class OrderApi(
-    private val errors: Map<String, Exception> = emptyMap(),
+    private val error: Exception? = null,
     private val remote: List<SavedAnswerDto> = emptyList()
 ) : ExamApiService {
-    val seen = mutableListOf<SaveAnswerRequest>()
-    var gate: CompletableDeferred<Unit>? = null
-    var failFirst = false
+    val batches = mutableListOf<SaveAnswersBatchRequest>()
 
-    override suspend fun getQuestions(sessionId: String): List<PaperQuestionDto> = emptyList()
+    override suspend fun getQuestions(sessionId: String) = paperOf()
 
     override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = remote
 
-    override suspend fun saveAnswer(sessionId: String, request: SaveAnswerRequest): SavedAnswerAckDto {
-        seen += request
-        val wait = gate
-        val firstCall = seen.size == 1
-        wait?.await()
-        if (failFirst && firstCall) throw IOException("offline")
-        errors[request.questionId]?.let { throw it }
-        return ackFor(request)
+    override suspend fun saveAnswersBatch(
+        sessionId: String,
+        request: SaveAnswersBatchRequest
+    ): SaveAnswersBatchResultDto {
+        batches += request
+        error?.let { throw it }
+        return batchAck(request)
     }
 
-    override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto = SubmittedSessionDto("SUBMITTED")
+    override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto =
+        SubmittedSessionDto("SUBMITTED")
 }

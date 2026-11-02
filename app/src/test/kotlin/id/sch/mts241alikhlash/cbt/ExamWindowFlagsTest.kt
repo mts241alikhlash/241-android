@@ -1,7 +1,10 @@
 package id.sch.mts241alikhlash.cbt
 
+import android.app.assist.AssistContent
+import android.os.Bundle
 import android.view.WindowManager
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -21,6 +24,43 @@ class ExamWindowFlagsTest {
             "FLAG_KEEP_SCREEN_ON must be set while the exam UI is active",
             flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON != 0
         )
+        activity.finish()
+    }
+
+    @Test
+    fun `secure flag is set unconditionally`() {
+        val activity = org.robolectric.Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        val flags = activity.window.attributes.flags
+        assertTrue(
+            "FLAG_SECURE must be set even in debug builds",
+            flags and WindowManager.LayoutParams.FLAG_SECURE != 0
+        )
+        activity.finish()
+    }
+
+    @Test
+    fun `assist content and data are withheld`() {
+        val activity = org.robolectric.Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        val content = AssistContent()
+        activity.onProvideAssistContent(content)
+        activity.onProvideAssistData(Bundle())
+        assertNull(content.intent)
+        assertNull(content.webUri)
+        assertNull(content.structuredData)
+        activity.finish()
+    }
+
+    @Test
+    fun `tracker events are merged into the reported count once`() {
+        val activity = org.robolectric.Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        val store = 1
+        val tracker = 2
+
+        val first = activity.reportedViolationCount(storeCount = store, trackerCount = tracker)
+        val afterWarning = activity.reportedViolationCount(storeCount = store, trackerCount = tracker)
+
+        assertEquals(3, first)
+        assertEquals(first, afterWarning)
         activity.finish()
     }
 

@@ -8,13 +8,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -56,7 +63,8 @@ fun TokenScreen(
     exam: ExamSummaryDto? = null,
     loading: Boolean = false,
     error: String? = null,
-    onBack: (() -> Unit)? = null
+    onBack: (() -> Unit)? = null,
+    resumeMode: Boolean = false
 ) {
     var token by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -83,6 +91,12 @@ fun TokenScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .windowInsetsPadding(
+                    WindowInsets.statusBars
+                        .union(WindowInsets.displayCutout)
+                        .union(WindowInsets.navigationBars)
+                        .union(WindowInsets.ime)
+                )
                 .verticalScroll(rememberScrollState())
                 .heightIn(min = screenHeight),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -117,7 +131,7 @@ fun TokenScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "Token Ujian",
+                                text = if (resumeMode) "Masukkan Token Kembali" else "Token Ujian",
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 fontFamily = DMSansFontFamily,
@@ -126,7 +140,11 @@ fun TokenScreen(
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                text = "Minta token kepada pengawas ruangan, lalu masukkan di bawah ini.",
+                                text = if (resumeMode) {
+                                    "Anda keluar dari aplikasi. Minta token terbaru kepada pengawas ruangan untuk melanjutkan."
+                                } else {
+                                    "Minta token kepada pengawas ruangan, lalu masukkan di bawah ini."
+                                },
                                 fontSize = 13.sp,
                                 fontFamily = DMSansFontFamily,
                                 color = WebTokens.MutedForeground,
@@ -151,7 +169,7 @@ fun TokenScreen(
                             )
                             Spacer(Modifier.height(18.dp))
                             PrimaryButton(
-                                text = "Mulai Ujian",
+                                text = if (resumeMode) "Lanjutkan Ujian" else "Mulai Ujian",
                                 onClick = { submit() },
                                 enabled = !loading,
                                 loading = loading
@@ -163,7 +181,7 @@ fun TokenScreen(
                         ExamDetailCard(exam)
                     }
                     Spacer(Modifier.height(12.dp))
-                    if (onBack != null) {
+                    if (onBack != null && !resumeMode) {
                         Text(
                             text = "Kembali ke daftar ujian",
                             fontSize = 13.sp,

@@ -28,6 +28,24 @@ class SessionRepository(
         store.save(trimmed, deadline)
     }
 
+    suspend fun reentryPending(id: String): Boolean =
+        store.load() == id && store.loadReentryPending()
+
+    suspend fun markReentryPending(id: String) {
+        if (store.load() != id) return
+        store.saveReentryPending(true)
+    }
+
+    suspend fun clearReentryPending(id: String) {
+        if (store.load() != id) return
+        store.saveReentryPending(false)
+    }
+
+    suspend fun retarget(id: String, deadline: Long) {
+        if (store.load() != id) return
+        store.save(id, deadline)
+    }
+
     suspend fun finish() {
         store.clear()
     }

@@ -46,18 +46,61 @@ class ExamDtoJsonTest {
     }
 
     @Test
-    fun saved_answer_and_ack_and_submitted() {
+    fun saved_answer_and_submitted() {
         val saved = json.decodeFromString<SavedAnswerDto>("""{"questionId":"q1","answer":{"keys":["A","B"]}}""")
         assertEquals(AnswerPayload.Multiple(listOf("A", "B")), AnswerPayload.fromJson(saved.answer))
-        val ack = json.decodeFromString<SavedAnswerAckDto>("""{"questionId":"q1","clientId":"c","receivedAfterDeadline":true,"updatedAt":"t"}""")
-        assertEquals(true, ack.receivedAfterDeadline)
-        val done = json.decodeFromString<SubmittedSessionDto>("""{"status":"GRADED","submittedAt":null}""")
+        val done = json.decodeFromString<SubmittedSessionDto>(
+            """{"status":"GRADED","submittedAt":null,"confirmedAnswerCount":46,"serverTime":"t"}"""
+        )
         assertNull(done.submittedAt)
+        assertEquals(46, done.confirmedAnswerCount)
     }
 
     @Test
-    fun save_request_serializes_camel_case() {
-        val body = json.encodeToString(SaveAnswerRequest.serializer(), SaveAnswerRequest("q1", "c1", AnswerPayload.Choice("A").toJson()))
-        assertEquals("""{"questionId":"q1","clientId":"c1","answer":{"key":"A"}}""", body)
+    fun batch_response_reads_confirmed_and_skipped() {
+        val result = json.decodeFromString<SaveAnswersBatchResultDto>(
+            """{"confirmed":[{"questionId":"q1","clientId":"c1","updatedAt":"t","receivedAfterDeadline":false}],"skipped":[{"questionId":"q2","clientId":"c2"}],"confirmedCount":1,"serverTime":"s"}"""
+        )
+        assertEquals(listOf("q1"), result.confirmed.map { it.questionId })
+        assertEquals(listOf("q2"), result.skipped.map { it.questionId })
+        assertEquals(1, result.confirmedCount)
+        assertEquals("s", result.serverTime)
+    }
+
+    @Test
+    fun batch_request_serializes_camel_case() {
+        val body = json.encodeToString(
+            SaveAnswersBatchRequest.serializer(),
+            SaveAnswersBatchRequest(
+                answers = listOf(
+                    SaveAnswerItemDto("q1", "c1", AnswerPayload.Choice("A").toJson())
+                ),
+                pendingLocalCount = 4,
+                batteryLevel = 88,
+                isCharging = true
+            )
+        )
+        assertEquals(
+            """{"answers":[{"questionId":"q1","clientId":"c1","answer":{"key":"A"}}],"pendingLocalCount":4,"batteryLevel":88,"isCharging":true}""",
+            body
+        )
+    }
+
+    @Test
+    fun submit_request_sends_pending_answers_and_the_expected_count() {
+        val body = json.encodeToString(
+            SubmitRequest.serializer(),
+            SubmitRequest(
+                violations = 2,
+                expectedAnswerCount = 46,
+                pendingAnswers = listOf(
+                    SaveAnswerItemDto("q1", "c1", AnswerPayload.Choice("A").toJson())
+                )
+            )
+        )
+        assertEquals(
+            """{"violations":2,"expectedAnswerCount":46,"pendingAnswers":[{"questionId":"q1","clientId":"c1","answer":{"key":"A"}}]}""",
+            body
+        )
     }
 }

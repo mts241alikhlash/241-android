@@ -14,13 +14,22 @@ data class ExamSummaryDto(
     val sessionId: String? = null,
     val subjectName: String? = null,
     val type: String? = null,
-    val participantNumber: String? = null
+    val participantNumber: String? = null,
+    val minSubmitMinutes: Int = 0
 )
 
 @Serializable
 data class StartSessionRequest(
     val accessCode: String,
     val deviceId: String
+)
+
+@Serializable
+data class SessionPaperDto(
+    val questions: List<PaperQuestionDto>,
+    val startedAt: String,
+    val minSubmitMinutes: Int = 0,
+    val serverTime: String? = null
 )
 
 @Serializable
@@ -32,7 +41,9 @@ data class StartedSessionDto(
 
 @Serializable
 data class SubmitRequest(
-    val violations: Int = 0
+    val violations: Int = 0,
+    val expectedAnswerCount: Int? = null,
+    val pendingAnswers: List<SaveAnswerItemDto>? = null
 )
 
 @Serializable
@@ -48,14 +59,10 @@ data class ViolationCountDto(
 @Serializable
 data class SubmittedSessionDto(
     val status: String,
-    val submittedAt: String? = null
-)
-
-@Serializable
-data class StreamTokenDto(
-    val publishUrl: String,
-    val expiresAt: String,
-    val heartbeatSeconds: Int = 20
+    val submittedAt: String? = null,
+    val confirmedAnswerCount: Int = 0,
+    val answersStored: Boolean = true,
+    val serverTime: String? = null
 )
 
 @Serializable

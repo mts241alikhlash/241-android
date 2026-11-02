@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="proctor_channel_name">Pengawasan ujian</string>
-    <string name="proctor_notification_title">Kamera ujian aktif</string>
-    <string name="proctor_notification_text">Kamera menyala sampai ujian dikumpulkan.</string>
-</resources>

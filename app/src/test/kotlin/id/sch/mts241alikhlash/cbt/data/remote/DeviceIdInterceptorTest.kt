@@ -51,6 +51,9 @@ class DeviceIdInterceptorTest {
 
         client { "" }.newCall(Request.Builder().url(server.url("/x")).build()).execute().close()
 
-        assertEquals(null, server.takeRequest().getHeader("X-Device-Id"))
+        val sent = server.takeRequest()
+
+        assertEquals(null, sent.getHeader("X-Device-Id"))
+        assertEquals("android", sent.getHeader("X-Client-Platform"))
     }
 }

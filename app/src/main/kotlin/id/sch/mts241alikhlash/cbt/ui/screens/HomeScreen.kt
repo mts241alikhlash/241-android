@@ -11,14 +11,20 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DrawerValue
@@ -210,7 +216,11 @@ fun HomeScreen(
                 title = section.title,
                 onMenu = { scope.launch { drawerState.open() } }
             )
-            Box(modifier = Modifier.weight(1f)) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+            ) {
                 Image(
                     painter = painterResource(id = R.drawable.logo),
                     contentDescription = null,
@@ -255,7 +265,14 @@ fun HomeScreen(
 
 @Composable
 private fun TopBar(title: String, onMenu: () -> Unit) {
-    Column {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(WebTokens.Card)
+            .windowInsetsPadding(
+                WindowInsets.statusBars.union(WindowInsets.displayCutout)
+            )
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

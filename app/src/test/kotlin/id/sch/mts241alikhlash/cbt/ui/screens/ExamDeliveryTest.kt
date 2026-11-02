@@ -3,20 +3,22 @@ package id.sch.mts241alikhlash.cbt.ui.screens
 import id.sch.mts241alikhlash.cbt.EmptyQuestionDao
 import id.sch.mts241alikhlash.cbt.InMemoryAnswerDao
 import id.sch.mts241alikhlash.cbt.MainDispatcherRule
-import id.sch.mts241alikhlash.cbt.ackFor
+import id.sch.mts241alikhlash.cbt.batchAck
+import id.sch.mts241alikhlash.cbt.paperOf
 import id.sch.mts241alikhlash.cbt.choices
-import id.sch.mts241alikhlash.cbt.data.local.CachedAnswerEntity
 import id.sch.mts241alikhlash.cbt.data.model.AnswerPayload
 import id.sch.mts241alikhlash.cbt.data.model.PaperQuestionDto
-import id.sch.mts241alikhlash.cbt.data.model.SaveAnswerRequest
-import id.sch.mts241alikhlash.cbt.data.model.SavedAnswerAckDto
+import id.sch.mts241alikhlash.cbt.data.model.SaveAnswersBatchRequest
+import id.sch.mts241alikhlash.cbt.data.model.SaveAnswersBatchResultDto
 import id.sch.mts241alikhlash.cbt.data.model.SavedAnswerDto
 import id.sch.mts241alikhlash.cbt.data.model.SubmitRequest
 import id.sch.mts241alikhlash.cbt.data.model.SubmittedSessionDto
 import id.sch.mts241alikhlash.cbt.data.remote.ExamApiService
 import id.sch.mts241alikhlash.cbt.data.repository.ExamRepository
+import id.sch.mts241alikhlash.cbt.pendingAnswer
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -27,6 +29,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
+import id.sch.mts241alikhlash.cbt.testClock
 import org.junit.Test
 import retrofit2.HttpException
 import retrofit2.Response
@@ -45,18 +48,24 @@ class ExamDeliveryTest {
     )
 
     private class Api(
-        var answerError: Exception? = null,
+        var batchError: Exception? = null,
         var submitError: Exception? = null
     ) : ExamApiService {
         var submitCalls = 0
+        var batchCalls = 0
+
         override suspend fun getQuestions(sessionId: String) =
-            listOf(PaperQuestionDto("q1", 1, "MULTIPLE_CHOICE", "x", 1.0, choices("a", "b")))
+            paperOf(listOf(PaperQuestionDto("q1", 1, "MULTIPLE_CHOICE", "x", 1.0, choices("a", "b"))))
 
         override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
 
-        override suspend fun saveAnswer(sessionId: String, request: SaveAnswerRequest): SavedAnswerAckDto {
-            answerError?.let { throw it }
-            return ackFor(request)
+        override suspend fun saveAnswersBatch(
+            sessionId: String,
+            request: SaveAnswersBatchRequest
+        ): SaveAnswersBatchResultDto {
+            batchCalls++
+            batchError?.let { throw it }
+            return batchAck(request)
         }
 
         override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto {
@@ -77,18 +86,19 @@ class ExamDeliveryTest {
             repository = ExamRepository(api, dao, EmptyQuestionDao(), now = { testScheduler.currentTime }),
             sessionId = "s1",
             deadline = deadline,
-            now = { testScheduler.currentTime }
+            clock = testClock(testScheduler)
         )
 
     private val window = "Waktu pengiriman jawaban sudah habis"
     private val released = "Sesi dilepas. Mulai ujian lagi"
 
     @Test
-    fun `a closed sending window on an answer shows a warning and keeps the exam`() = runTest {
-        val vm = newViewModel(Api(answerError = http(409, window)))
+    fun `a closed sending window on a sync shows a warning and keeps the exam`() = runTest {
+        val vm = newViewModel(Api(batchError = http(409, window)))
         runCurrent()
 
         vm.selectAnswer("q1", AnswerPayload.Choice("A"))
+        advanceTimeBy(ExamViewModel.SYNC_DEBOUNCE_MS + 100)
         runCurrent()
 
         assertEquals(window, vm.uiState.value.deliveryWarning)
@@ -96,22 +106,24 @@ class ExamDeliveryTest {
     }
 
     @Test
-    fun `a released session on an answer sends the student out of the exam`() = runTest {
-        val vm = newViewModel(Api(answerError = http(409, released)))
+    fun `a released session on a sync sends the student out of the exam`() = runTest {
+        val vm = newViewModel(Api(batchError = http(409, released)))
         runCurrent()
 
         vm.selectAnswer("q1", AnswerPayload.Choice("A"))
+        advanceTimeBy(ExamViewModel.SYNC_DEBOUNCE_MS + 100)
         runCurrent()
 
         assertEquals(released, vm.uiState.value.lostMessage)
     }
 
     @Test
-    fun `a rejected answer shows the server message`() = runTest {
-        val vm = newViewModel(Api(answerError = http(400, "Bentuk jawaban tidak sesuai dengan jenis soal")))
+    fun `a rejected batch shows the server message`() = runTest {
+        val vm = newViewModel(Api(batchError = http(400, "Bentuk jawaban tidak sesuai dengan jenis soal")))
         runCurrent()
 
         vm.selectAnswer("q1", AnswerPayload.Choice("A"))
+        advanceTimeBy(ExamViewModel.SYNC_DEBOUNCE_MS + 100)
         runCurrent()
 
         assertEquals("Bentuk jawaban tidak sesuai dengan jenis soal", vm.uiState.value.deliveryWarning)
@@ -119,17 +131,16 @@ class ExamDeliveryTest {
 
     @Test
     fun `submit reports how many answers never arrived`() = runTest {
-        val dao = InMemoryAnswerDao(
-            CachedAnswerEntity("q1", "s1", AnswerPayload.Choice("A").encode(), isSynced = false, updatedAt = 1_000L)
-        )
-        val vm = newViewModel(Api(answerError = http(409, window)), dao)
+        val dao = InMemoryAnswerDao(pendingAnswer("q1"))
+        val vm = newViewModel(Api(submitError = http(409, window)), dao)
         runCurrent()
 
         vm.submitExam()
         runCurrent()
 
-        assertTrue(vm.uiState.value.isSubmitted)
+        assertFalse(vm.uiState.value.isSubmitted)
         assertEquals(1, vm.uiState.value.unsentAnswers)
+        assertEquals(window, vm.uiState.value.submitError)
     }
 
     @Test

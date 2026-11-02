@@ -3,18 +3,17 @@ package id.sch.mts241alikhlash.cbt.ui.screens
 import id.sch.mts241alikhlash.cbt.EmptyQuestionDao
 import id.sch.mts241alikhlash.cbt.InMemoryAnswerDao
 import id.sch.mts241alikhlash.cbt.MainDispatcherRule
-import id.sch.mts241alikhlash.cbt.ackFor
+import id.sch.mts241alikhlash.cbt.StubExamApi
 import id.sch.mts241alikhlash.cbt.choices
+import id.sch.mts241alikhlash.cbt.paperOf
+import id.sch.mts241alikhlash.cbt.data.local.AnswerSyncState
+import id.sch.mts241alikhlash.cbt.data.local.CachedAnswerEntity
 import id.sch.mts241alikhlash.cbt.data.model.AnswerPayload
 import id.sch.mts241alikhlash.cbt.data.model.PaperQuestionDto
-import id.sch.mts241alikhlash.cbt.data.model.SaveAnswerRequest
-import id.sch.mts241alikhlash.cbt.data.model.SavedAnswerAckDto
-import id.sch.mts241alikhlash.cbt.data.model.SavedAnswerDto
-import id.sch.mts241alikhlash.cbt.data.model.SubmitRequest
-import id.sch.mts241alikhlash.cbt.data.model.SubmittedSessionDto
-import id.sch.mts241alikhlash.cbt.data.remote.ExamApiService
 import id.sch.mts241alikhlash.cbt.data.repository.ExamRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -22,6 +21,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
+import id.sch.mts241alikhlash.cbt.testClock
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -30,94 +30,90 @@ class ExamAnswerInputTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private class RecordingApi : ExamApiService {
-        val sent = mutableListOf<SaveAnswerRequest>()
-        val questions = listOf(
-            PaperQuestionDto("q1", 1, "MULTIPLE_CHOICE", "x", 1.0, choices("a", "b", "c")),
-            PaperQuestionDto("q2", 2, "ESSAY", "y", 5.0, null)
+    private class RecordingApi : StubExamApi() {
+        override suspend fun getQuestions(sessionId: String) = paperOf(
+            listOf(
+                PaperQuestionDto("q1", 1, "MULTIPLE_CHOICE", "x", 1.0, choices("a", "b", "c")),
+                PaperQuestionDto("q2", 2, "ESSAY", "y", 5.0, null)
+            )
         )
-
-        override suspend fun getQuestions(sessionId: String) = questions
-        override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
-        override suspend fun saveAnswer(sessionId: String, request: SaveAnswerRequest): SavedAnswerAckDto {
-            sent += request
-            return ackFor(request)
-        }
-        override suspend fun submit(sessionId: String, request: SubmitRequest) = SubmittedSessionDto("GRADED")
     }
 
-    private fun TestScope.newViewModel(api: RecordingApi) = ExamViewModel(
-        repository = ExamRepository(api, InMemoryAnswerDao(), EmptyQuestionDao(), now = { testScheduler.currentTime }),
-        sessionId = "s1",
-        deadline = 60 * 60 * 1000L,
-        now = { testScheduler.currentTime }
-    )
+    private fun TestScope.newViewModel(api: RecordingApi = RecordingApi(), dao: InMemoryAnswerDao = InMemoryAnswerDao()) =
+        ExamViewModel(
+            repository = ExamRepository(api, dao, EmptyQuestionDao(), now = { testScheduler.currentTime }),
+            sessionId = "s1",
+            deadline = 60 * 60 * 1000L,
+            clock = testClock(testScheduler)
+        )
 
-    private fun RecordingApi.last() = AnswerPayload.fromJson(sent.last().answer)
+    private fun InMemoryAnswerDao.answerOf(questionId: String): AnswerPayload? =
+        rows[questionId]?.let { AnswerPayload.decode(it.answer) }
 
     @Test
-    fun `single choice sends its key`() = runTest {
-        val api = RecordingApi()
-        val vm = newViewModel(api)
+    fun `single choice writes its key locally`() = runTest {
+        val dao = InMemoryAnswerDao()
+        val vm = newViewModel(dao = dao)
         runCurrent()
 
         vm.selectAnswer("q1", AnswerPayload.Choice("B"))
         runCurrent()
 
-        assertEquals(AnswerPayload.Choice("B"), api.last())
+        assertEquals(AnswerPayload.Choice("B"), dao.answerOf("q1"))
         assertEquals(AnswerPayload.Choice("B"), vm.uiState.value.answers["q1"])
+        assertEquals(AnswerSyncState.LOCAL_PENDING, dao.rows.getValue("q1").syncState)
     }
 
     @Test
-    fun `true false sends a bool`() = runTest {
-        val api = RecordingApi()
-        val vm = newViewModel(api)
+    fun `true false writes a bool`() = runTest {
+        val dao = InMemoryAnswerDao()
+        val vm = newViewModel(dao = dao)
         runCurrent()
 
         vm.selectAnswer("q1", AnswerPayload.Bool(false))
         runCurrent()
 
-        assertEquals(AnswerPayload.Bool(false), api.last())
+        assertEquals(AnswerPayload.Bool(false), dao.answerOf("q1"))
     }
 
     @Test
     fun `multiple response toggles keys and keeps them sorted`() = runTest {
-        val api = RecordingApi()
-        val vm = newViewModel(api)
+        val dao = InMemoryAnswerDao()
+        val vm = newViewModel(dao = dao)
         runCurrent()
 
         vm.toggleKey("q1", "C")
         runCurrent()
         vm.toggleKey("q1", "A")
         runCurrent()
-        assertEquals(AnswerPayload.Multiple(listOf("A", "C")), api.last())
+        assertEquals(AnswerPayload.Multiple(listOf("A", "C")), dao.answerOf("q1"))
 
         vm.toggleKey("q1", "A")
         runCurrent()
-        assertEquals(AnswerPayload.Multiple(listOf("C")), api.last())
+        assertEquals(AnswerPayload.Multiple(listOf("C")), dao.answerOf("q1"))
     }
 
     @Test
-    fun `text is saved after the debounce`() = runTest {
-        val api = RecordingApi()
-        val vm = newViewModel(api)
+    fun `text is written after the debounce`() = runTest {
+        val dao = InMemoryAnswerDao()
+        val vm = newViewModel(dao = dao)
         runCurrent()
 
         vm.updateText("q2", "jawab")
         advanceTimeBy(ExamViewModel.TEXT_DEBOUNCE_MS - 1)
         runCurrent()
-        assertTrue(api.sent.isEmpty())
+        assertTrue(dao.rows.isEmpty())
         assertEquals("jawab", vm.uiState.value.drafts["q2"])
 
         advanceTimeBy(2)
         runCurrent()
-        assertEquals(AnswerPayload.Text("jawab"), api.last())
+        assertEquals(AnswerPayload.Text("jawab"), dao.answerOf("q2"))
     }
 
     @Test
-    fun `only the last typed text is sent`() = runTest {
-        val api = RecordingApi()
-        val vm = newViewModel(api)
+    fun `only the last typed text is stored`() = runTest {
+        val dao = InMemoryAnswerDao()
+        val vm = newViewModel(dao = dao)
         runCurrent()
 
         vm.updateText("q2", "a")
@@ -126,13 +122,13 @@ class ExamAnswerInputTest {
         advanceTimeBy(ExamViewModel.TEXT_DEBOUNCE_MS + 10)
         runCurrent()
 
-        assertEquals(listOf(AnswerPayload.Text("ab")), api.sent.map { AnswerPayload.fromJson(it.answer) })
+        assertEquals(AnswerPayload.Text("ab"), dao.answerOf("q2"))
     }
 
     @Test
     fun `leaving the question saves the pending text at once`() = runTest {
-        val api = RecordingApi()
-        val vm = newViewModel(api)
+        val dao = InMemoryAnswerDao()
+        val vm = newViewModel(dao = dao)
         runCurrent()
         vm.goToIndex(1)
 
@@ -140,27 +136,26 @@ class ExamAnswerInputTest {
         vm.goToIndex(0)
         runCurrent()
 
-        assertEquals(AnswerPayload.Text("belum selesai"), api.last())
+        assertEquals(AnswerPayload.Text("belum selesai"), dao.answerOf("q2"))
     }
 
     @Test
     fun `submit saves the pending text first`() = runTest {
-        val api = RecordingApi()
-        val vm = newViewModel(api)
+        val dao = InMemoryAnswerDao()
+        val vm = newViewModel(dao = dao)
         runCurrent()
 
         vm.updateText("q2", "akhir")
         vm.submitExam()
         runCurrent()
 
-        assertEquals(AnswerPayload.Text("akhir"), api.last())
+        assertEquals(AnswerPayload.Text("akhir"), dao.answerOf("q2"))
         assertTrue(vm.uiState.value.isSubmitted)
     }
 
     @Test
     fun `text longer than the server limit is cut`() = runTest {
-        val api = RecordingApi()
-        val vm = newViewModel(api)
+        val vm = newViewModel()
         runCurrent()
 
         vm.updateText("q2", "x".repeat(25_000))
@@ -169,16 +164,16 @@ class ExamAnswerInputTest {
     }
 
     @Test
-    fun `marking a question doubtful without an answer sends nothing`() = runTest {
-        val api = RecordingApi()
-        val vm = newViewModel(api)
+    fun `marking a question doubtful without an answer keeps the mark`() = runTest {
+        val dao = InMemoryAnswerDao()
+        val vm = newViewModel(dao = dao)
         runCurrent()
 
         vm.toggleDoubtful("q1")
         runCurrent()
 
-        assertTrue(api.sent.isEmpty())
         assertTrue("q1" in vm.uiState.value.doubtfuls)
+        assertEquals(true, dao.rows.getValue("q1").isDoubtful)
     }
 
     @Test
@@ -188,7 +183,7 @@ class ExamAnswerInputTest {
             repository = ExamRepository(RecordingApi(), dao, EmptyQuestionDao(), now = { testScheduler.currentTime }),
             sessionId = "s1",
             deadline = 60 * 60 * 1000L,
-            now = { testScheduler.currentTime }
+            clock = testClock(testScheduler)
         )
         runCurrent()
 
@@ -206,11 +201,12 @@ class ExamAnswerInputTest {
             repository = ExamRepository(RecordingApi(), dao, EmptyQuestionDao(), now = { testScheduler.currentTime }),
             sessionId = "s1",
             deadline = 60 * 60 * 1000L,
-            now = { testScheduler.currentTime }
+            clock = testClock(testScheduler)
         )
         runCurrent()
 
         vm.toggleDoubtful("q1")
+        runCurrent()
         vm.toggleDoubtful("q1")
         runCurrent()
 
@@ -219,6 +215,6 @@ class ExamAnswerInputTest {
 }
 
 private class StaleDao : InMemoryAnswerDao() {
-    override fun observeAnswers(sessionId: String): kotlinx.coroutines.flow.Flow<List<id.sch.mts241alikhlash.cbt.data.local.CachedAnswerEntity>> =
-        kotlinx.coroutines.flow.flowOf(emptyList())
+    override fun observeAnswers(sessionId: String): Flow<List<CachedAnswerEntity>> =
+        flowOf(emptyList())
 }

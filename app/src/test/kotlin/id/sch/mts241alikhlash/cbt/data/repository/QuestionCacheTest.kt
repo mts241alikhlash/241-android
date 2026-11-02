@@ -1,16 +1,18 @@
 package id.sch.mts241alikhlash.cbt.data.repository
 
 import id.sch.mts241alikhlash.cbt.choices
+import id.sch.mts241alikhlash.cbt.paperOf
 import id.sch.mts241alikhlash.cbt.data.local.AnswerDao
 import id.sch.mts241alikhlash.cbt.data.local.CachedAnswerEntity
 import id.sch.mts241alikhlash.cbt.data.local.CachedQuestionEntity
 import id.sch.mts241alikhlash.cbt.data.local.QuestionDao
-import id.sch.mts241alikhlash.cbt.data.model.SavedAnswerAckDto
 import id.sch.mts241alikhlash.cbt.data.model.SavedAnswerDto
 import id.sch.mts241alikhlash.cbt.data.model.SubmitRequest
 import id.sch.mts241alikhlash.cbt.data.model.SubmittedSessionDto
 import id.sch.mts241alikhlash.cbt.data.model.PaperQuestionDto
-import id.sch.mts241alikhlash.cbt.data.model.SaveAnswerRequest
+import id.sch.mts241alikhlash.cbt.data.model.SaveAnswersBatchRequest
+import id.sch.mts241alikhlash.cbt.data.model.SaveAnswersBatchResultDto
+import id.sch.mts241alikhlash.cbt.data.model.SessionPaperDto
 import id.sch.mts241alikhlash.cbt.data.remote.ExamApiService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -27,8 +29,6 @@ class QuestionCacheTest {
 
     @Test
     fun `falls back to cache when network fails`() = runTest {
-        // Stale cache so the repository actually reaches the network instead of
-        // returning the cache-hit fast path (which made this test vacuous).
         val api = FakeApi(failure = IOException("offline"))
         val dao = FakeQuestionDao(
             preloaded = listOf(cached("q1", cachedAt = now - ExamRepository.CACHE_TTL_MS - 1))
@@ -158,7 +158,6 @@ class QuestionCacheTest {
         assertEquals(1, api.calls)
     }
 
-    /** I8: a cache write failure must not turn a good download into an error screen. */
     @Test
     fun `cache write failure still returns the network result`() = runTest {
         val api = FakeApi(questions = listOf(dto("q9")))
@@ -178,7 +177,6 @@ class QuestionCacheTest {
         assertEquals(1, logged.size)
     }
 
-    /** I8: with no cache, the paper still renders even though it could not be persisted. */
     @Test
     fun `cache write failure with empty cache still returns questions`() = runTest {
         val dao = FakeQuestionDao(failOnReplace = true)
@@ -311,18 +309,32 @@ private class FakeAnswerDao : AnswerDao {
 
     override suspend fun insertIfAbsent(answer: CachedAnswerEntity): Long = 1L
 
-    override suspend fun getUnsyncedAnswers(sessionId: String): List<CachedAnswerEntity> =
+    override suspend fun getPendingAnswers(sessionId: String): List<CachedAnswerEntity> =
         emptyList()
 
-    override suspend fun countUnsyncedAnswers(sessionId: String): Int = 0
+    override suspend fun countPendingAnswers(sessionId: String): Int = 0
+
+    override suspend fun countAnswered(sessionId: String): Int = 0
 
     override suspend fun saveAnswer(answer: CachedAnswerEntity) = Unit
 
-    override suspend fun markSynced(
+    override suspend fun markConfirmed(
         sessionId: String,
         questionId: String,
-        answer: String,
-        updatedAt: Long
+        clientId: String,
+        updatedAtMillis: Long,
+        confirmedAtMillis: Long
+    ): Int = 0
+
+    override suspend fun markSyncing(sessionId: String, questionId: String, clientId: String): Int = 0
+
+    override suspend fun releaseSyncing(sessionId: String, questionId: String, clientId: String): Int = 0
+
+    override suspend fun replaceClientId(
+        sessionId: String,
+        questionId: String,
+        clientId: String,
+        nextClientId: String
     ): Int = 0
 }
 
@@ -337,14 +349,14 @@ private class FakeApi(
     var calls = 0
         private set
 
-    override suspend fun getQuestions(sessionId: String): List<PaperQuestionDto> {
+    override suspend fun getQuestions(sessionId: String): SessionPaperDto {
         calls++
         failure?.let { throw it }
-        return questions
+        return paperOf(questions)
     }
 
-    override suspend fun saveAnswer(
+    override suspend fun saveAnswersBatch(
         sessionId: String,
-        request: SaveAnswerRequest
-    ): SavedAnswerAckDto = throw UnsupportedOperationException("not used in QuestionCacheTest")
+        request: SaveAnswersBatchRequest
+    ): SaveAnswersBatchResultDto = throw UnsupportedOperationException("not used in QuestionCacheTest")
 }

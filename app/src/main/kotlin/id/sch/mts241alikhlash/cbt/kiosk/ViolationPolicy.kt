@@ -3,7 +3,7 @@ package id.sch.mts241alikhlash.cbt.kiosk
 object ViolationPolicy {
     const val LIMIT = 3
 
-    private val COUNTED = setOf("left_app", "pin_lost")
+    private val COUNTED = setOf("left_app", "pin_lost", "overlay_or_shade", "screen_share_detected")
 
     fun counts(reason: String): Boolean = reason in COUNTED
 

@@ -8,17 +8,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.cancellation.CancellationException
 
-/**
- * The persisted exam session: which paper is open and when it must end.
- *
- * The deadline is stored rather than a countdown so that the remaining time can be
- * recomputed from the wall clock after a process death.
- */
 data class RestoredSession(val sessionId: String, val deadline: Long?)
 
 sealed interface RestoreOutcome {
     data object NoSession : RestoreOutcome
     data class Restored(val session: RestoredSession) : RestoreOutcome
+    data class TokenReentry(val session: RestoredSession) : RestoreOutcome
     data class Failed(val message: String) : RestoreOutcome
     data class SessionLost(val message: String) : RestoreOutcome
 }
@@ -26,17 +21,13 @@ sealed interface RestoreOutcome {
 const val RESTORE_CHECK_TIMEOUT_MS = 3_000L
 const val RESTORE_ERROR_MESSAGE = "Gagal memulihkan sesi ujian. Coba lagi."
 
-/**
- * Reads the persisted session without letting a storage failure hang the splash screen.
- *
- * A restored session also kicks off a best-effort answer sync on [scope]; the sync is
- * deliberately fire-and-forget so a slow network cannot block the exam UI.
- */
 suspend fun restoreExamSession(
     sessionRepository: SessionRepository,
     scope: CoroutineScope,
     syncPending: suspend (String) -> SyncReport,
     validate: suspend (String) -> Unit = {},
+    syncClock: suspend (String) -> Unit = {},
+    requiresTokenReentry: suspend (String) -> Boolean = { false },
     onSyncResult: (Result<SyncReport>) -> Unit = {}
 ): RestoreOutcome {
     val session = try {
@@ -54,15 +45,15 @@ suspend fun restoreExamSession(
         return RestoreOutcome.SessionLost(lost)
     }
 
+    syncClockQuietly(session.sessionId, syncClock)
     syncPendingInBackground(scope, session.sessionId, syncPending, onSyncResult)
-    return RestoreOutcome.Restored(session)
+    return if (tokenReentryNeeded(session.sessionId, requiresTokenReentry)) {
+        RestoreOutcome.TokenReentry(session)
+    } else {
+        RestoreOutcome.Restored(session)
+    }
 }
 
-/**
- * Runs [syncPending] on [scope] and reports the outcome instead of throwing.
- *
- * Returns immediately; the caller (splash/restore path) must not wait for the network.
- */
 fun syncPendingInBackground(
     scope: CoroutineScope,
     sessionId: String,
@@ -77,6 +68,30 @@ fun syncPendingInBackground(
         Result.failure(error)
     }
     onResult(result)
+}
+
+private suspend fun tokenReentryNeeded(
+    sessionId: String,
+    requiresTokenReentry: suspend (String) -> Boolean
+): Boolean =
+    try {
+        requiresTokenReentry(sessionId)
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (_: Exception) {
+        false
+    }
+
+private suspend fun syncClockQuietly(
+    sessionId: String,
+    syncClock: suspend (String) -> Unit
+) {
+    try {
+        withTimeoutOrNull(RESTORE_CHECK_TIMEOUT_MS) { syncClock(sessionId) }
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (_: Exception) {
+    }
 }
 
 private suspend fun sessionLostMessage(sessionId: String, validate: suspend (String) -> Unit): String? =

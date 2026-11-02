@@ -2,11 +2,6 @@ package id.sch.mts241alikhlash.cbt.kiosk
 
 import android.content.Context
 
-/**
- * Local record of exam-integrity events. Kept in SharedPreferences because the
- * writes are tiny, synchronous, and must survive a process death caused by the
- * student force-stopping the app.
- */
 class ViolationStore(context: Context) {
 
     private val prefs = context.applicationContext
@@ -14,12 +9,10 @@ class ViolationStore(context: Context) {
 
     fun count(): Int = prefs.getInt(KEY_COUNT, 0)
 
-    /** Events seen on this device plus what the server already held when the app came back. */
     fun counted(): Int =
         entries().count { ViolationPolicy.counts(it.substringAfter('|')) } +
             prefs.getInt(KEY_BASELINE, 0)
 
-    /** Raises the count to what the server holds; never lowers it. */
     fun restore(serverCount: Int) {
         val gap = serverCount - counted()
         if (gap > 0) {
@@ -32,7 +25,6 @@ class ViolationStore(context: Context) {
         prefs.edit().clear().putString(KEY_SESSION, sessionId).apply()
     }
 
-    /** Appends one event and returns the new total. */
     fun record(reason: String): Int {
         val total = count() + 1
         val entry = "${System.currentTimeMillis()}|$reason"
@@ -44,7 +36,6 @@ class ViolationStore(context: Context) {
         return total
     }
 
-    /** Newest first. */
     fun entries(): List<String> =
         prefs.getString(KEY_LOG, null)
             ?.lineSequence()

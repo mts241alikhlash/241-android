@@ -1,5 +1,6 @@
 package id.sch.mts241alikhlash.cbt.ui.screens
 
+import id.sch.mts241alikhlash.cbt.proctor.CameraPermissionState
 import id.sch.mts241alikhlash.cbt.proctor.ProctorController
 import id.sch.mts241alikhlash.cbt.proctor.rememberProctorPermission
 import id.sch.mts241alikhlash.cbt.ui.exam.ImageContext
@@ -21,13 +22,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import id.sch.mts241alikhlash.cbt.data.model.PaperQuestionDto
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -62,7 +70,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -91,6 +98,8 @@ import id.sch.mts241alikhlash.cbt.ui.theme.DoubtfulOrange
 import id.sch.mts241alikhlash.cbt.ui.theme.DoubtfulOrangeLight
 import id.sch.mts241alikhlash.cbt.ui.theme.StatusError
 import id.sch.mts241alikhlash.cbt.ui.theme.StatusSuccess
+import id.sch.mts241alikhlash.cbt.ui.theme.StatusSuccessLight
+import id.sch.mts241alikhlash.cbt.ui.theme.SubmitGreen
 import id.sch.mts241alikhlash.cbt.ui.theme.TextMuted
 import id.sch.mts241alikhlash.cbt.ui.theme.TextPrimary
 import id.sch.mts241alikhlash.cbt.ui.theme.TextSecondary
@@ -105,31 +114,42 @@ fun ExamScreen(
     onFinish: () -> Unit,
     onSupervisorExit: () -> Unit = {},
     onSessionLost: (String) -> Unit = {},
-    proctor: ProctorController = ProctorController()
+    proctor: ProctorController? = null
 ) {
     val state by viewModel.uiState.collectAsState()
 
-    // The camera lives exactly as long as this screen: it starts once the camera
-    // permission is held and stops on dispose, on submit, and on supervisor exit.
+    val isOnline = id.sch.mts241alikhlash.cbt.ui.components.rememberIsOnline()
+    LaunchedEffect(isOnline) { viewModel.onConnectivityChanged(isOnline) }
+
     val context = androidx.compose.ui.platform.LocalContext.current
-    val cameraPermission = rememberProctorPermission(sessionId, proctor)
+    val owner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    val cameraPermission = if (proctor != null) {
+        rememberProctorPermission(sessionId, proctor)
+    } else {
+        CameraPermissionState.ASK
+    }
     val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
-    ) { granted -> if (granted) proctor.start(sessionId) }
+    ) { granted -> if (granted) proctor?.start(owner, sessionId) }
 
     DisposableEffect(proctor) {
-        onDispose { proctor.stop() }
+        onDispose { proctor?.stop() }
     }
     androidx.compose.foundation.layout.Column {
-        id.sch.mts241alikhlash.cbt.proctor.CameraPermissionBanner(
-            state = cameraPermission,
-            onRequest = {
-                id.sch.mts241alikhlash.cbt.proctor.requestCameraAgain(
-                    context,
-                    cameraPermission,
-                ) { permissionLauncher.launch(android.Manifest.permission.CAMERA) }
-            },
-        )
+        if (proctor != null) {
+            id.sch.mts241alikhlash.cbt.proctor.CameraPermissionBanner(
+                state = cameraPermission,
+                onRequest = {
+                    id.sch.mts241alikhlash.cbt.proctor.requestCameraAgain(
+                        context,
+                        cameraPermission,
+                    ) { permissionLauncher.launch(android.Manifest.permission.CAMERA) }
+                },
+                modifier = Modifier.windowInsetsPadding(
+                    WindowInsets.statusBars.union(WindowInsets.displayCutout)
+                )
+            )
+        }
         ExamContent(
         state = state,
         onAnswer = viewModel::selectAnswer,
@@ -146,6 +166,51 @@ fun ExamScreen(
         exam = exam,
         baseUrl = baseUrl,
         imageLoader = imageLoader
+        )
+    }
+}
+
+data class SubmitSummary(
+    val total: Int,
+    val answered: Int,
+    val doubtful: Int,
+    val unanswered: Int,
+    val pendingSync: Int
+)
+
+fun submitSummary(state: ExamUiState): SubmitSummary {
+    val total = state.questions.size
+    val answered = state.questions.count { q ->
+        state.answers[q.id].isFilled() || !state.drafts[q.id].isNullOrBlank()
+    }
+    return SubmitSummary(
+        total = total,
+        answered = answered,
+        doubtful = state.doubtfuls.size,
+        unanswered = (total - answered).coerceAtLeast(0),
+        pendingSync = state.pendingSync
+    )
+}
+
+@Composable
+private fun SubmitCountRow(label: String, count: Int, color: Color) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            fontFamily = DMSansFontFamily,
+            fontSize = 13.sp,
+            color = TextPrimary
+        )
+        Text(
+            text = count.toString(),
+            fontFamily = DMSansFontFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 13.sp,
+            color = color
         )
     }
 }
@@ -237,8 +302,7 @@ fun ExamContent(
     }
 
     if (showConfirmDialog && !state.violationExit) {
-        val total = state.questions.size
-        val doubtfulCount = state.doubtfuls.size
+        val summary = submitSummary(state)
         AppDialog(
             title = "Kumpulkan Lembar Ujian?",
             onDismiss = { if (!state.isSubmitting) showConfirmDialog = false },
@@ -262,26 +326,13 @@ fun ExamContent(
                 )
             }
         ) {
-            val answered = state.questions.count { q ->
-                state.answers[q.id].isFilled() || !state.drafts[q.id].isNullOrBlank()
-            }
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                SubmitCountRow("Dijawab", summary.answered, StatusSuccess)
+                SubmitCountRow("Ragu-ragu", summary.doubtful, DoubtfulOrange)
+                SubmitCountRow("Belum dijawab", summary.unanswered, StatusError)
+                SubmitCountRow("Belum terkirim", summary.pendingSync, if (summary.pendingSync > 0) DoubtfulOrange else StatusSuccess)
                 Text(
-                    text = "Anda telah menjawab $answered dari $total soal.",
-                    fontFamily = DMSansFontFamily,
-                    fontSize = 13.sp,
-                    color = TextPrimary
-                )
-                if (doubtfulCount > 0) {
-                    Text(
-                        text = "Terdapat $doubtfulCount soal yang masih ditandai ragu-ragu.",
-                        fontFamily = DMSansFontFamily,
-                        fontSize = 12.sp,
-                        color = DoubtfulOrange
-                    )
-                }
-                Text(
-                    text = "Setelah dikumpulkan, jawaban tidak dapat diubah kembali.",
+                    text = "Dari ${summary.total} soal. Setelah dikumpulkan, jawaban tidak dapat diubah kembali.",
                     fontFamily = DMSansFontFamily,
                     fontSize = 12.sp,
                     color = TextMuted
@@ -328,6 +379,10 @@ fun ExamContent(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .background(BrandSurface)
+                    .windowInsetsPadding(
+                        WindowInsets.statusBars.union(WindowInsets.displayCutout)
+                    )
                     .heightIn(min = 54.dp),
                 color = BrandSurface,
                 border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle)
@@ -356,6 +411,24 @@ fun ExamContent(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        val sync = state.sync
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (sync.allConfirmed) StatusSuccessLight else DoubtfulOrangeLight,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (sync.allConfirmed) StatusSuccess else DoubtfulOrange
+                            )
+                        ) {
+                            Text(
+                                text = answerSyncLabel(sync),
+                                fontFamily = DMSansFontFamily,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 11.sp,
+                                color = if (sync.allConfirmed) StatusSuccess else DoubtfulOrange,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
                         val minutes = state.remainingSeconds / 60
                         val seconds = state.remainingSeconds % 60
                         Surface(
@@ -378,7 +451,14 @@ fun ExamContent(
             }
         },
         bottomBar = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(BrandSurface)
+                    .windowInsetsPadding(
+                        WindowInsets.navigationBars.union(WindowInsets.ime)
+                    )
+            ) {
             if (state.isResumed && !resumeNoticeDismissed) {
                 ResumeNotice(onClose = { resumeNoticeDismissed = true })
             }
@@ -393,12 +473,16 @@ fun ExamContent(
                     val isLastQuestion = state.currentIndex >= state.questions.size - 1
                     val primaryLabel =
                         if (isLastQuestion) {
-                            if (state.isSubmitting) "Mengirim…" else "Kumpulkan"
+                            when {
+                                state.isSubmitting -> "Mengirim…"
+                                state.submitGateSeconds > 0L -> "Kumpulkan (${state.submitGateMinutes} mnt)"
+                                else -> "Kumpulkan"
+                            }
                         } else {
                             "Selanjutnya"
                         }
                     val primaryEnabled = if (isLastQuestion) state.canSubmit else !state.isSubmitting
-                    val primaryColor = if (isLastQuestion) StatusSuccess else BrandNavy
+                    val primaryColor = if (isLastQuestion) SubmitGreen else BrandNavy
                     val onPrimaryClick: () -> Unit =
                         if (isLastQuestion) {
                             { showConfirmDialog = true }
@@ -406,86 +490,37 @@ fun ExamContent(
                             { onGoToIndex(state.currentIndex + 1) }
                         }
 
-                    // At accessibility font scales three labels cannot share one 320dp
-                    // row: "Selanjutnya" was cut mid-glyph because a single line with
-                    // softWrap=false defaults to Clip. Two rows keep every label whole,
-                    // which beats ellipsizing the primary verb ("Selanjut…") and beats
-                    // shrinking the text back below the user's chosen size.
-                    val useTwoRows = LocalDensity.current.fontScale > 1.2f
-
-                    if (useTwoRows) {
-                        Column(
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        ExamPreviousButton(
+                            enabled = state.currentIndex > 0 && !state.isSubmitting,
+                            onClick = { onGoToIndex(state.currentIndex - 1) },
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 10.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                ExamPreviousButton(
-                                    enabled = state.currentIndex > 0 && !state.isSubmitting,
-                                    onClick = { onGoToIndex(state.currentIndex - 1) },
-                                    // Let the buttons grow with the user's font size
-                                    // instead of pinning a height the text outgrows.
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .heightIn(min = 38.dp)
-                                )
-                                ExamDoubtButton(
-                                    isDoubt = isDoubt,
-                                    enabled = state.canAnswer,
-                                    onClick = { onToggleDoubtful(currentQ.id) },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .heightIn(min = 38.dp)
-                                )
-                            }
-                            ExamPrimaryAction(
-                                label = primaryLabel,
-                                enabled = primaryEnabled,
-                                containerColor = primaryColor,
-                                onClick = onPrimaryClick,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 38.dp)
-                            )
-                        }
-                    } else {
-                        Row(
+                                .weight(1f)
+                                .height(44.dp)
+                        )
+                        ExamDoubtButton(
+                            isDoubt = isDoubt,
+                            enabled = state.canAnswer,
+                            onClick = { onToggleDoubtful(currentQ.id) },
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            ExamPreviousButton(
-                                enabled = state.currentIndex > 0 && !state.isSubmitting,
-                                onClick = { onGoToIndex(state.currentIndex - 1) },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(40.dp)
-                            )
-                            ExamDoubtButton(
-                                isDoubt = isDoubt,
-                                enabled = state.canAnswer,
-                                onClick = { onToggleDoubtful(currentQ.id) },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(40.dp)
-                            )
-                            ExamPrimaryAction(
-                                label = primaryLabel,
-                                enabled = primaryEnabled,
-                                containerColor = primaryColor,
-                                onClick = onPrimaryClick,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(40.dp)
-                            )
-                        }
+                                .weight(1f)
+                                .height(44.dp)
+                        )
+                        ExamPrimaryAction(
+                            label = primaryLabel,
+                            enabled = primaryEnabled,
+                            containerColor = primaryColor,
+                            onClick = onPrimaryClick,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                        )
                     }
                 }
             }
@@ -608,10 +643,6 @@ fun ExamContent(
     }
 }
 
-/**
- * Shown when the paper cannot be displayed at all (no cache + offline, or an empty
- * payload for an active session). Offers a retry that forces a network fetch.
- */
 @Composable
 private fun ExamErrorContent(
     message: String,
@@ -681,12 +712,6 @@ private fun ExamErrorContent(
     }
 }
 
-/**
- * Bottom-bar "previous question" action.
- *
- * The label is allowed to ellipsize: skipping back is recoverable and its meaning
- * survives an abbreviation, unlike the primary action. The primary never uses this.
- */
 @Composable
 private fun ExamPreviousButton(
     enabled: Boolean,
@@ -712,7 +737,6 @@ private fun ExamPreviousButton(
     }
 }
 
-/** Bottom-bar "mark doubtful" toggle; secondary, so it may ellipsize like [ExamPreviousButton]. */
 @Composable
 private fun ExamDoubtButton(
     isDoubt: Boolean,
@@ -754,14 +778,6 @@ private fun ExamDoubtButton(
     }
 }
 
-/**
- * The bottom bar's primary action ("Selanjutnya" / "Kumpulkan").
- *
- * It wraps instead of clipping: `softWrap = true` with `maxLines = 2` and an explicit
- * [TextOverflow.Ellipsis] means a label that still does not fit is visibly truncated
- * rather than silently cut mid-glyph. The two-row layout gives it a full-width row at
- * large font scales, so in practice it renders whole.
- */
 @Composable
 private fun ExamPrimaryAction(
     label: String,
@@ -1027,6 +1043,15 @@ private fun QuestionDetailCard(
                 )
             }
             DetailRow("Terjawab", "$answeredCount dari ${state.questions.size} soal")
+            if (state.submitGateSeconds > 0L) {
+                Text(
+                    text = "Dapat dikumpulkan dalam ${state.submitGateMinutes} menit",
+                    fontFamily = DMSansFontFamily,
+                    fontSize = 11.sp,
+                    color = TextMuted,
+                    modifier = Modifier.padding(bottom = 6.dp)
+                )
+            }
             Spacer(modifier = Modifier.height(10.dp))
             ActionButton(
                 text = if (state.isSubmitting) "Mengirim…" else "Selesai & Kumpulkan",

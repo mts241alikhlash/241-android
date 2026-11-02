@@ -3,23 +3,22 @@ package id.sch.mts241alikhlash.cbt.ui.screens
 import id.sch.mts241alikhlash.cbt.EmptyQuestionDao
 import id.sch.mts241alikhlash.cbt.InMemoryAnswerDao
 import id.sch.mts241alikhlash.cbt.MainDispatcherRule
-import id.sch.mts241alikhlash.cbt.ackFor
+import id.sch.mts241alikhlash.cbt.batchAck
+import id.sch.mts241alikhlash.cbt.paperOf
 import id.sch.mts241alikhlash.cbt.choices
-import id.sch.mts241alikhlash.cbt.data.local.CachedAnswerEntity
 import id.sch.mts241alikhlash.cbt.data.model.AnswerPayload
 import id.sch.mts241alikhlash.cbt.data.model.PaperQuestionDto
-import id.sch.mts241alikhlash.cbt.data.model.SaveAnswerRequest
-import id.sch.mts241alikhlash.cbt.data.model.SavedAnswerAckDto
+import id.sch.mts241alikhlash.cbt.data.model.SaveAnswersBatchRequest
+import id.sch.mts241alikhlash.cbt.data.model.SaveAnswersBatchResultDto
 import id.sch.mts241alikhlash.cbt.data.model.SavedAnswerDto
 import id.sch.mts241alikhlash.cbt.data.model.SubmitRequest
 import id.sch.mts241alikhlash.cbt.data.model.SubmittedSessionDto
 import id.sch.mts241alikhlash.cbt.data.remote.ExamApiService
-import id.sch.mts241alikhlash.cbt.data.remote.NETWORK_ERROR_MESSAGE
 import id.sch.mts241alikhlash.cbt.data.repository.ExamRepository
+import id.sch.mts241alikhlash.cbt.pendingAnswer
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
@@ -29,6 +28,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
+import id.sch.mts241alikhlash.cbt.testClock
 import org.junit.Test
 import retrofit2.HttpException
 import retrofit2.Response
@@ -40,31 +40,30 @@ class ExamSubmitFlowTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private fun pending(vararg ids: String) = ids.map {
-        CachedAnswerEntity(it, "s1", AnswerPayload.Choice("A").encode(), isSynced = false, updatedAt = 1_000L)
-    }.toTypedArray()
-
     private class FlowApi(
-        var submitFailures: Int = 0,
-        var answerError: Exception? = null
+        var submitFailures: Int = 0
     ) : ExamApiService {
         val events = mutableListOf<String>()
         var submitCalls = 0
+        val submits = mutableListOf<SubmitRequest>()
 
-        override suspend fun getQuestions(sessionId: String): List<PaperQuestionDto> =
-            listOf(PaperQuestionDto("q1", 1, "MULTIPLE_CHOICE", "x", 1.0, choices("a", "b")))
+        override suspend fun getQuestions(sessionId: String) =
+            paperOf(listOf(PaperQuestionDto("q1", 1, "MULTIPLE_CHOICE", "x", 1.0, choices("a", "b"))))
 
         override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
 
-        override suspend fun saveAnswer(sessionId: String, request: SaveAnswerRequest): SavedAnswerAckDto {
-            events += "answer:${request.questionId}"
-            answerError?.let { throw it }
-            return ackFor(request)
+        override suspend fun saveAnswersBatch(
+            sessionId: String,
+            request: SaveAnswersBatchRequest
+        ): SaveAnswersBatchResultDto {
+            events += "batch:${request.answers.size}"
+            return batchAck(request)
         }
 
         override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto {
             events += "submit"
             submitCalls++
+            submits += request
             if (submitFailures > 0) {
                 submitFailures--
                 throw IOException("offline")
@@ -78,19 +77,23 @@ class ExamSubmitFlowTest {
             repository = ExamRepository(api, dao, EmptyQuestionDao()),
             sessionId = "s1",
             deadline = deadline,
-            now = { testScheduler.currentTime }
+            clock = testClock(testScheduler)
         )
 
     @Test
-    fun `submit syncs the queue and then posts submit`() = runTest {
+    fun `submit carries the pending answers in one trip`() = runTest {
         val api = FlowApi()
-        val vm = newViewModel(api, InMemoryAnswerDao(*pending("q1")))
-        advanceUntilIdle()
+        val dao = InMemoryAnswerDao(*Array(46) { pendingAnswer("q$it") })
+        val vm = newViewModel(api, dao)
+        runCurrent()
 
         vm.submitExam()
-        advanceUntilIdle()
+        runCurrent()
 
-        assertEquals(listOf("answer:q1", "submit"), api.events)
+        assertEquals(listOf("submit"), api.events)
+        val request = api.submits.single()
+        assertEquals(46, request.pendingAnswers?.size)
+        assertEquals(46, request.expectedAnswerCount)
         assertTrue(vm.uiState.value.isSubmitted)
         assertNull(vm.uiState.value.submitError)
     }
@@ -99,12 +102,12 @@ class ExamSubmitFlowTest {
     fun `submitting twice leaves the screen submitted and posts once`() = runTest {
         val api = FlowApi()
         val vm = newViewModel(api, InMemoryAnswerDao())
-        advanceUntilIdle()
+        runCurrent()
 
         vm.submitExam()
-        advanceUntilIdle()
+        runCurrent()
         vm.submitExam()
-        advanceUntilIdle()
+        runCurrent()
 
         assertEquals(1, api.submitCalls)
         assertTrue(vm.uiState.value.isSubmitted)
@@ -119,7 +122,7 @@ class ExamSubmitFlowTest {
         vm.submitExam()
         runCurrent()
         assertFalse(vm.uiState.value.isSubmitted)
-        assertEquals(NETWORK_ERROR_MESSAGE, vm.uiState.value.submitError)
+        assertEquals("Tidak dapat terhubung ke server.", vm.uiState.value.submitError)
 
         vm.submitExam()
         runCurrent()
@@ -127,22 +130,46 @@ class ExamSubmitFlowTest {
     }
 
     @Test
-    fun `a closed session still hands in so the server can finish it`() = runTest {
+    fun `a short count from the server is retried once after a batch sync`() = runTest {
+        val api = FlowApi()
+        val dao = InMemoryAnswerDao(pendingAnswer("q1"))
+        val vm = newViewModel(api, dao)
+        runCurrent()
+
+        vm.submitExam()
+        runCurrent()
+
+        assertTrue(vm.uiState.value.isSubmitted)
+        assertEquals(1, api.submitCalls)
+    }
+
+    @Test
+    fun `a closed sending window blocks the hand-in and surfaces the server message`() = runTest {
         val closed = HttpException(
             Response.error<Any>(
                 409,
                 """{"statusCode":409,"message":"Waktu pengiriman jawaban sudah habis","data":null}""".toResponseBody("application/json".toMediaType())
             )
         )
-        val api = FlowApi(answerError = closed)
-        val vm = newViewModel(api, InMemoryAnswerDao(*pending("q1")))
-        advanceUntilIdle()
+        val api = FlowApi(submitFailures = 1)
+        val dao = InMemoryAnswerDao(pendingAnswer("q1"))
+        val vm = ExamViewModel(
+            repository = ExamRepository(
+                api = FailingBatchApi(closed),
+                dao = dao,
+                questionDao = EmptyQuestionDao()
+            ),
+            sessionId = "s1",
+            deadline = 60 * 60 * 1000L,
+            clock = testClock(testScheduler)
+        )
+        runCurrent()
 
         vm.submitExam()
-        advanceUntilIdle()
+        runCurrent()
 
-        assertEquals(1, api.submitCalls)
-        assertTrue(vm.uiState.value.isSubmitted)
+        assertFalse(vm.uiState.value.isSubmitted)
+        assertEquals("Waktu pengiriman jawaban sudah habis", vm.uiState.value.submitError)
     }
 
     @Test
@@ -192,10 +219,77 @@ class ExamSubmitFlowTest {
         val vm = newViewModel(api, InMemoryAnswerDao(), deadline = 1_000L)
         runCurrent()
 
-        advanceUntilIdle()
+        advanceTimeBy(
+            ExamViewModel.AUTO_SUBMIT_MAX_ATTEMPTS * ExamViewModel.AUTO_SUBMIT_RETRY_MS + 2_000L
+        )
+        runCurrent()
 
         assertFalse(vm.uiState.value.isSubmitted)
         assertEquals(ExamViewModel.AUTO_SUBMIT_MAX_ATTEMPTS, api.submitCalls)
         assertTrue(vm.uiState.value.canSubmit)
+    }
+
+    @Test
+    fun `a periodic pass syncs without a keystroke`() = runTest {
+        val api = FlowApi()
+        val dao = InMemoryAnswerDao(pendingAnswer("q1"))
+        newViewModel(api, dao)
+        runCurrent()
+
+        advanceTimeBy(ExamViewModel.SYNC_INTERVAL_MS + 100)
+        runCurrent()
+
+        assertEquals(listOf("batch:1"), api.events)
+    }
+
+    @Test
+    fun `a connectivity change triggers a debounced sync`() = runTest {
+        val api = FlowApi()
+        val dao = InMemoryAnswerDao(pendingAnswer("q1"))
+        val vm = newViewModel(api, dao)
+        runCurrent()
+
+        vm.onConnectivityChanged(true)
+        advanceTimeBy(ExamViewModel.SYNC_DEBOUNCE_MS - 1)
+        runCurrent()
+        assertTrue("the sync must wait for the debounce", api.events.isEmpty())
+
+        advanceTimeBy(2)
+        runCurrent()
+        assertEquals(listOf("batch:1"), api.events)
+    }
+
+    @Test
+    fun `no sync is attempted while offline`() = runTest {
+        val api = FlowApi()
+        val dao = InMemoryAnswerDao(pendingAnswer("q1"))
+        val vm = ExamViewModel(
+            repository = ExamRepository(api, dao, EmptyQuestionDao()),
+            sessionId = "s1",
+            deadline = 60 * 60 * 1000L,
+            clock = testClock(testScheduler),
+            isOnline = { false }
+        )
+        runCurrent()
+
+        advanceTimeBy(ExamViewModel.SYNC_INTERVAL_MS * 3)
+        runCurrent()
+
+        assertTrue(api.events.isEmpty())
+    }
+
+    private class FailingBatchApi(private val failure: Exception) : ExamApiService {
+        override suspend fun getQuestions(sessionId: String) =
+            paperOf(listOf(PaperQuestionDto("q1", 1, "MULTIPLE_CHOICE", "x", 1.0, choices("a", "b"))))
+
+        override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
+
+        override suspend fun saveAnswersBatch(
+            sessionId: String,
+            request: SaveAnswersBatchRequest
+        ): SaveAnswersBatchResultDto = throw failure
+
+        override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto =
+            throw failure
     }
 }

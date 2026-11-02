@@ -10,4 +10,8 @@ interface SessionStore {
     suspend fun save(id: String, deadline: Long)
 
     suspend fun clear()
+
+    suspend fun loadReentryPending(): Boolean = false
+
+    suspend fun saveReentryPending(pending: Boolean) = Unit
 }

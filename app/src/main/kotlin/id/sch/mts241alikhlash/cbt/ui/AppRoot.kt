@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.sch.mts241alikhlash.cbt.data.auth.AuthUser
 import id.sch.mts241alikhlash.cbt.data.model.ExamSummaryDto
+import id.sch.mts241alikhlash.cbt.ui.screens.DeviceReadinessScreen
 import id.sch.mts241alikhlash.cbt.ui.screens.TokenScreen
 import id.sch.mts241alikhlash.cbt.ui.screens.displayTitle
 import id.sch.mts241alikhlash.cbt.ui.theme.AssessmentTheme
@@ -33,14 +34,17 @@ import id.sch.mts241alikhlash.cbt.ui.theme.DMSansFontFamily
 import id.sch.mts241alikhlash.cbt.ui.theme.TextMuted
 import id.sch.mts241alikhlash.cbt.ui.theme.TextPrimary
 
-/** Everything the app root needs to decide which screen to show. */
 data class AppRootState(
     val restoreComplete: Boolean = false,
     val restoreError: String? = null,
     val sessionId: String? = null,
     val deadline: Long? = null,
+    val reentrySessionId: String? = null,
+    val reentryLoading: Boolean = false,
+    val reentryError: String? = null,
     val user: AuthUser? = null,
     val selectedExam: ExamSummaryDto? = null,
+    val readinessComplete: Boolean = false,
     val activeExam: ExamSummaryDto? = null,
     val starting: Boolean = false,
     val startError: String? = null,
@@ -56,6 +60,11 @@ fun AssessmentAppRoot(
     loginContent: @Composable () -> Unit = {},
     examListContent: @Composable () -> Unit = {},
     onBackToList: () -> Unit = {},
+    onResumeWithToken: (String) -> Unit = {},
+    onReadinessConfirmed: () -> Unit = {},
+    readinessContent: @Composable (onReadyToProceed: () -> Unit) -> Unit = { ready ->
+        DeviceReadinessScreen(onReadyToProceed = ready, onBack = onBackToList)
+    },
     tokenContent: @Composable (ExamSummaryDto) -> Unit = { exam ->
         TokenScreen(
             exam = exam,
@@ -79,11 +88,20 @@ fun AssessmentAppRoot(
                 onRetry = onRetryRestore
             )
 
+            state.reentrySessionId != null -> TokenScreen(
+                onStartExam = onResumeWithToken,
+                loading = state.reentryLoading,
+                error = state.reentryError,
+                resumeMode = true
+            )
+
             state.sessionId != null -> examContent(state.sessionId, state.deadline)
 
             state.user == null -> loginContent()
 
             state.selectedExam == null -> examListContent()
+
+            !state.readinessComplete -> readinessContent(onReadinessConfirmed)
 
             else -> tokenContent(state.selectedExam)
         }

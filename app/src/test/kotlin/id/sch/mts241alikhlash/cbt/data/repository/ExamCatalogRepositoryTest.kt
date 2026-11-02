@@ -5,6 +5,7 @@ import id.sch.mts241alikhlash.cbt.data.model.StartSessionRequest
 import id.sch.mts241alikhlash.cbt.data.model.StartedSessionDto
 import id.sch.mts241alikhlash.cbt.data.remote.ApiException
 import id.sch.mts241alikhlash.cbt.data.remote.ExamCatalogApiService
+import id.sch.mts241alikhlash.cbt.data.session.ServerClock
 import kotlinx.coroutines.test.runTest
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
@@ -45,14 +46,16 @@ class ExamCatalogRepositoryTest {
     }
 
     @Test
-    fun startSession_converts_deadline_using_server_time_offset() = runTest {
+    fun startSession_keeps_the_server_deadline_once_the_clock_is_synced() = runTest {
         val api = FakeCatalogApi(started = { StartedSessionDto("s1", deadline = 65_000L, serverTime = 5_000L) })
-        val repo = ExamCatalogRepository(api, { "device-1" }, now = { 1_000L })
+        val clock = ServerClock { 0L }
+        val repo = ExamCatalogRepository(api, { "device-1" }, clock = clock)
 
         val session = repo.startSession("e1", "ABC123")
 
         assertEquals("s1", session.sessionId)
-        assertEquals(61_000L, session.deadlineLocalMillis)
+        assertEquals(65_000L, session.deadlineLocalMillis)
+        assertEquals(5_000L, clock.nowMillis())
         assertEquals(StartSessionRequest("ABC123", "device-1"), api.lastRequest)
     }
 

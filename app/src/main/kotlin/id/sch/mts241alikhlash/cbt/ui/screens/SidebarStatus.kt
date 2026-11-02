@@ -2,6 +2,13 @@ package id.sch.mts241alikhlash.cbt.ui.screens
 
 import id.sch.mts241alikhlash.cbt.data.model.ExamSummaryDto
 
+fun answerSyncLabel(summary: AnswerSyncSummary): String =
+    if (summary.allConfirmed) {
+        "Tersimpan: ${summary.totalAnswered} soal (Terkirim ke server: ${summary.confirmedCount})"
+    } else {
+        "Tersimpan di HP: ${summary.totalAnswered} soal (Menunggu koneksi: ${summary.pendingCount})"
+    }
+
 fun examStatusSummary(exams: List<ExamSummaryDto>): String {
     val running = exams.filter { it.status == "IN_PROGRESS" }
     if (running.isNotEmpty()) return "Ujian berlangsung · ${running.first().title}"

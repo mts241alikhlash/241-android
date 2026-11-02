@@ -3,18 +3,30 @@ package id.sch.mts241alikhlash.cbt.ui.screens
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import id.sch.mts241alikhlash.cbt.kiosk.ViolationPolicy
+import id.sch.mts241alikhlash.cbt.data.local.AnswerSyncState
 import id.sch.mts241alikhlash.cbt.data.model.AnswerPayload
 import id.sch.mts241alikhlash.cbt.data.model.PaperQuestionDto
+import id.sch.mts241alikhlash.cbt.data.remote.ApiErrorCode
 import id.sch.mts241alikhlash.cbt.data.remote.ApiException
 import id.sch.mts241alikhlash.cbt.data.repository.ExamRepository
-import id.sch.mts241alikhlash.cbt.data.repository.SendOutcome
+import id.sch.mts241alikhlash.cbt.data.repository.isSessionLost
 import id.sch.mts241alikhlash.cbt.data.session.ExamTimer
+import id.sch.mts241alikhlash.cbt.data.session.ServerClock
+import id.sch.mts241alikhlash.cbt.data.session.parseIsoMillis
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+data class AnswerSyncSummary(
+    val totalAnswered: Int = 0,
+    val confirmedCount: Int = 0,
+    val pendingCount: Int = 0
+) {
+    val allConfirmed: Boolean get() = pendingCount == 0
+}
 
 data class ExamUiState(
     val isLoading: Boolean = true,
@@ -34,13 +46,19 @@ data class ExamUiState(
     val deliveryWarning: String? = null,
     val lostMessage: String? = null,
     val unsentAnswers: Int = 0,
-    val serverViolations: Int = 0
+    val sync: AnswerSyncSummary = AnswerSyncSummary(),
+    val serverViolations: Int = 0,
+    val minSubmitMinutes: Int = 0,
+    val submitGateSeconds: Long = 0
 ) {
-    /** Answers only make sense once a paper is on screen and not being submitted. */
     val canAnswer: Boolean get() = !isLoading && !isSubmitting && !isSubmitted && !isTimeOver && questions.isNotEmpty()
 
-    /** Submission is impossible until the paper actually loaded. */
-    val canSubmit: Boolean get() = !isLoading && !isSubmitting && !isSubmitted && questions.isNotEmpty()
+    val canSubmit: Boolean
+        get() = !isLoading && !isSubmitting && !isSubmitted && questions.isNotEmpty() && submitGateSeconds == 0L
+
+    val submitGateMinutes: Long get() = (submitGateSeconds + 59L) / 60L
+
+    val pendingSync: Int get() = sync.pendingCount
 }
 
 class ExamViewModel(
@@ -48,21 +66,26 @@ class ExamViewModel(
     private val sessionId: String,
     deadline: Long? = null,
     restored: Boolean? = null,
-    private val now: () -> Long = { System.currentTimeMillis() },
-    private val onSubmitConfirmed: suspend (String) -> Unit = {}
+    private val clock: ServerClock = ServerClock(),
+    private val onSubmitConfirmed: suspend (String) -> Unit = {},
+    private val isOnline: () -> Boolean = { true },
+    private val batteryLevel: () -> Int? = { null },
+    private val isCharging: () -> Boolean? = { null }
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
         ExamUiState(
-            remainingSeconds = deadline?.let { ExamTimer.remainingSeconds(it, now()) }
+            remainingSeconds = deadline?.let { ExamTimer.remainingSeconds(it, clock.nowMillis()) }
                 ?: ExamTimer.EXAM_DURATION_SECONDS,
-            isResumed = deadline != null && ExamTimer.isResumed(deadline, now(), restored)
+            isResumed = deadline != null && ExamTimer.isResumed(deadline, clock.nowMillis(), restored)
         )
     )
     val uiState: StateFlow<ExamUiState> = _uiState.asStateFlow()
 
-    private val timerDeadline: Long = deadline ?: ExamTimer.deadlineFrom(now())
+    private val timerDeadline: Long = deadline ?: ExamTimer.deadlineFrom(clock.nowMillis())
+    private var startedAtMillis: Long? = null
     private var timerJob: Job? = null
+    private var debounceJob: Job? = null
 
     init {
         loadQuestions()
@@ -73,10 +96,16 @@ class ExamViewModel(
     fun loadQuestions(forceRefresh: Boolean = false) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
-            repository.getQuestions(sessionId, forceRefresh)
-                .onSuccess { list ->
-                    // An active session with zero questions is a broken paper, not a
-                    // valid empty exam: show the retry screen instead of a blank sheet.
+            repository.loadPaper(sessionId, forceRefresh)
+                .onSuccess { paper ->
+                    startedAtMillis = paper.startedAt
+                        .takeIf { it.isNotBlank() }
+                        ?.let { runCatching { parseIsoMillis(it) }.getOrNull() }
+                    _uiState.value = _uiState.value.copy(
+                        minSubmitMinutes = paper.minSubmitMinutes,
+                        submitGateSeconds = submitGate(paper.minSubmitMinutes)
+                    )
+                    val list = paper.questions
                     if (list.isEmpty()) {
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
@@ -103,8 +132,17 @@ class ExamViewModel(
         }
     }
 
-    /** Retry from the error screen; bypasses the cache so a stale/empty paper cannot win. */
     fun retry() = loadQuestions(forceRefresh = true)
+
+    private fun submitGate(minSubmitMinutes: Int): Long {
+        val startedAt = startedAtMillis ?: return 0L
+        return ExamTimer.secondsUntilSubmitAllowed(
+            startedAt,
+            minSubmitMinutes,
+            timerDeadline,
+            clock.nowMillis()
+        )
+    }
 
     private fun observeLocalAnswers() {
         viewModelScope.launch {
@@ -113,9 +151,17 @@ class ExamViewModel(
                     AnswerPayload.decode(row.answer)?.let { row.questionId to it }
                 }.toMap()
                 val doubtSet = list.filter { it.isDoubtful }.map { it.questionId }.toSet()
+                val answered = list.filter {
+                    it.answer.isNotBlank() && AnswerPayload.decode(it.answer) != null
+                }
                 _uiState.value = _uiState.value.copy(
                     answers = answerMap,
-                    doubtfuls = doubtSet
+                    doubtfuls = doubtSet,
+                    sync = AnswerSyncSummary(
+                        totalAnswered = answered.size,
+                        confirmedCount = answered.count { it.syncState == AnswerSyncState.SERVER_CONFIRMED },
+                        pendingCount = answered.count { it.syncState != AnswerSyncState.SERVER_CONFIRMED }
+                    )
                 )
             }
         }
@@ -124,15 +170,54 @@ class ExamViewModel(
     private fun startTimer() {
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
+            var elapsedMs = 0L
             while (!_uiState.value.isSubmitted) {
-                val remaining = ExamTimer.remainingSeconds(timerDeadline, now())
-                _uiState.value = _uiState.value.copy(remainingSeconds = remaining)
+                val remaining = ExamTimer.remainingSeconds(timerDeadline, clock.nowMillis())
+                _uiState.value = _uiState.value.copy(
+                    remainingSeconds = remaining,
+                    submitGateSeconds = submitGate(_uiState.value.minSubmitMinutes)
+                )
                 if (remaining <= 0L) {
                     autoSubmit()
                     break
                 }
-                delay(1000)
+                if (elapsedMs >= SYNC_INTERVAL_MS) {
+                    elapsedMs = 0L
+                    launch { syncNow() }
+                }
+                elapsedMs += TICK_MS
+                delay(TICK_MS)
             }
+        }
+    }
+
+    fun onConnectivityChanged(online: Boolean) {
+        if (!online || _uiState.value.isSubmitted) return
+        debounceJob?.cancel()
+        debounceJob = viewModelScope.launch {
+            delay(SYNC_DEBOUNCE_MS)
+            syncNow()
+        }
+    }
+
+    private suspend fun syncNow() {
+        val state = _uiState.value
+        if (state.isSubmitted || state.isSubmitting || state.sync.pendingCount == 0) return
+        if (!isOnline()) return
+        val outcome = runCatching {
+            repository.syncPendingBatch(sessionId, batteryLevel(), isCharging())
+        }.getOrElse { return }
+        val closed = outcome.closedMessage
+        if (closed != null) {
+            _uiState.value = if (
+                outcome.closedCode == ApiErrorCode.WINDOW_CLOSED || closed == WINDOW_CLOSED_MESSAGE
+            ) {
+                _uiState.value.copy(deliveryWarning = closed)
+            } else {
+                _uiState.value.copy(lostMessage = closed)
+            }
+        } else if (outcome.rejectedMessage != null) {
+            _uiState.value = _uiState.value.copy(deliveryWarning = outcome.rejectedMessage)
         }
     }
 
@@ -200,7 +285,8 @@ class ExamViewModel(
         optimistic[questionId] = answer
         val currentDoubt = isDoubtful(questionId)
         viewModelScope.launch {
-            handle(repository.recordAnswer(questionId, sessionId, answer.encode(), currentDoubt))
+            repository.recordAnswer(questionId, sessionId, answer.encode(), currentDoubt)
+            scheduleSync()
         }
     }
 
@@ -221,13 +307,11 @@ class ExamViewModel(
         }
     }
 
-    private fun handle(outcome: SendOutcome) {
-        when (outcome) {
-            is SendOutcome.Closed -> _uiState.value =
-                if (outcome.message == WINDOW_CLOSED_MESSAGE) _uiState.value.copy(deliveryWarning = outcome.message)
-                else _uiState.value.copy(lostMessage = outcome.message)
-            is SendOutcome.Rejected -> _uiState.value = _uiState.value.copy(deliveryWarning = outcome.message)
-            else -> Unit
+    private fun scheduleSync() {
+        debounceJob?.cancel()
+        debounceJob = viewModelScope.launch {
+            delay(SYNC_DEBOUNCE_MS)
+            syncNow()
         }
     }
 
@@ -236,7 +320,8 @@ class ExamViewModel(
         val payload = AnswerPayload.Text(text)
         optimistic[questionId] = payload
         val doubt = isDoubtful(questionId)
-        handle(repository.recordAnswer(questionId, sessionId, payload.encode(), doubt))
+        repository.recordAnswer(questionId, sessionId, payload.encode(), doubt)
+        scheduleSync()
         if (_uiState.value.drafts[questionId] == text) {
             _uiState.value = _uiState.value.copy(drafts = _uiState.value.drafts - questionId)
         }
@@ -255,7 +340,8 @@ class ExamViewModel(
         val newDoubt = !isDoubtful(questionId)
         optimisticDoubt[questionId] = newDoubt
         viewModelScope.launch {
-            handle(repository.recordAnswer(questionId, sessionId, currentAnswer, newDoubt))
+            repository.recordAnswer(questionId, sessionId, currentAnswer, newDoubt)
+            scheduleSync()
         }
     }
 
@@ -268,7 +354,6 @@ class ExamViewModel(
 
     fun submitExam() {
         val state = _uiState.value
-        // Guard against double taps and against submitting a paper that never loaded.
         if (state.isSubmitting || state.isSubmitted || !state.canSubmit) return
 
         viewModelScope.launch { runSubmit() }
@@ -278,40 +363,40 @@ class ExamViewModel(
         _uiState.value = _uiState.value.copy(isSubmitting = true, submitError = null)
         return try {
             flushDrafts()
-            val report = repository.syncPending(sessionId)
-            // syncPending re-reads the queue, so `failed` is the truth at this moment.
-            val lost = report.closedMessage?.takeIf { it != WINDOW_CLOSED_MESSAGE }
-            val blocking = report.failed - report.rejected
-            if (lost != null) {
-                _uiState.value = _uiState.value.copy(isSubmitting = false, lostMessage = lost)
-                false
-            } else if (blocking > 0 && report.closedMessage == null) {
-                _uiState.value = _uiState.value.copy(
-                    isSubmitting = false,
-                    submitError = "${report.failed} jawaban belum terkirim. Coba lagi."
-                )
-                false
-            } else {
-                repository.submit(sessionId, violations)
-                onSubmitConfirmed(sessionId)
-                _uiState.value = _uiState.value.copy(
-                    isSubmitting = false,
-                    isSubmitted = true,
-                    unsentAnswers = report.failed
-                )
-                true
-            }
+            val result = repository.submit(sessionId, violations)
+            onSubmitConfirmed(sessionId)
+            _uiState.value = _uiState.value.copy(
+                isSubmitting = false,
+                isSubmitted = true,
+                unsentAnswers = if (result.answersStored) 0 else _uiState.value.sync.pendingCount,
+                deliveryWarning = if (result.answersStored) {
+                    _uiState.value.deliveryWarning
+                } else {
+                    ANSWERS_NOT_STORED_MESSAGE
+                }
+            )
+            true
         } catch (cancellation: kotlin.coroutines.cancellation.CancellationException) {
             throw cancellation
         } catch (error: Exception) {
-            val sessionLost = (error as? ApiException)?.takeIf { it.statusCode == 409 && it.message != WINDOW_CLOSED_MESSAGE }
+            val api = error as? ApiException
+            val sessionLost = api?.takeIf { it.statusCode == 409 && isSessionLost(it) }
             _uiState.value = if (sessionLost != null) {
                 _uiState.value.copy(isSubmitting = false, lostMessage = sessionLost.message)
-            } else _uiState.value.copy(
-                isSubmitting = false,
-                submitError = (error as? ApiException)?.message?.takeIf { it.isNotBlank() }
-                    ?: SUBMIT_ERROR_MESSAGE
-            )
+            } else if (api?.code == ApiErrorCode.MIN_SUBMIT) {
+                _uiState.value.copy(
+                    isSubmitting = false,
+                    submitGateSeconds = submitGate(_uiState.value.minSubmitMinutes),
+                    submitError = api.message
+                )
+            } else {
+                val unsent = _uiState.value.sync.pendingCount
+                _uiState.value.copy(
+                    isSubmitting = false,
+                    unsentAnswers = unsent,
+                    submitError = api?.message?.takeIf { it.isNotBlank() } ?: SUBMIT_ERROR_MESSAGE
+                )
+            }
             false
         }
     }
@@ -319,10 +404,15 @@ class ExamViewModel(
     companion object {
         const val EMPTY_PAPER_MESSAGE = "Soal ujian tidak tersedia. Periksa koneksi lalu coba lagi."
         const val WINDOW_CLOSED_MESSAGE = "Waktu pengiriman jawaban sudah habis"
+        const val ANSWERS_NOT_STORED_MESSAGE =
+            "Ujian sudah berakhir di server. Jawaban terakhir belum tersimpan."
         const val TEXT_DEBOUNCE_MS = 600L
         const val MAX_TEXT_LENGTH = 20_000
         const val AUTO_SUBMIT_RETRY_MS = 5_000L
         const val AUTO_SUBMIT_MAX_ATTEMPTS = 120
         const val SUBMIT_ERROR_MESSAGE = "Gagal mengumpulkan jawaban. Coba lagi."
+        const val TICK_MS = 1_000L
+        const val SYNC_INTERVAL_MS = 10_000L
+        const val SYNC_DEBOUNCE_MS = 1_500L
     }
 }

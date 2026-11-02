@@ -40,11 +40,13 @@ import id.sch.mts241alikhlash.cbt.ui.components.SectionedCard
 import id.sch.mts241alikhlash.cbt.ui.theme.DMSansFontFamily
 import id.sch.mts241alikhlash.cbt.ui.theme.WebTokens
 
-/** Covers the exam when the OS reports the device is not pinned. */
 @Composable
 fun KioskWarningOverlay(
     onRetry: () -> Unit,
-    onSupervisorAccess: () -> Unit = {}
+    onSupervisorAccess: () -> Unit = {},
+    canProceedUnpinned: Boolean = false,
+    onOpenPinSettings: () -> Unit = {},
+    onProceedUnpinned: () -> Unit = {}
 ) {
     Box(modifier = Modifier.fillMaxSize().background(WebTokens.Background)) {
         BrandWatermark(
@@ -99,6 +101,20 @@ fun KioskWarningOverlay(
             }
             Spacer(Modifier.height(16.dp))
             PrimaryButton(text = "Kunci Lagi", onClick = onRetry)
+            if (canProceedUnpinned) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = "Perangkat ini menolak kunci layar. Pilih salah satu:",
+                    fontFamily = DMSansFontFamily,
+                    fontSize = 12.sp,
+                    color = WebTokens.MutedForeground,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(10.dp))
+                PrimaryButton(text = "Buka Pengaturan Sematkan Layar", onClick = onOpenPinSettings)
+                Spacer(Modifier.height(10.dp))
+                PrimaryButton(text = "Lanjutkan dengan Mode Pengawasan Ketat", onClick = onProceedUnpinned)
+            }
         }
     }
 }

@@ -55,6 +55,18 @@ class SidebarStatusTest {
     }
 
     @Test
+    fun `the answer sync label is honest about what the server holds`() {
+        assertEquals(
+            "Tersimpan: 45 soal (Terkirim ke server: 45)",
+            answerSyncLabel(AnswerSyncSummary(totalAnswered = 45, confirmedCount = 45, pendingCount = 0))
+        )
+        assertEquals(
+            "Tersimpan di HP: 46 soal (Menunggu koneksi: 4)",
+            answerSyncLabel(AnswerSyncSummary(totalAnswered = 46, confirmedCount = 42, pendingCount = 4))
+        )
+    }
+
+    @Test
     fun `semester and academic year join, and are absent when both are`() {
         assertEquals("Ganjil · 2026/2027", semesterLabel("Ganjil", "2026/2027"))
         assertEquals("Ganjil", semesterLabel("Ganjil", null))

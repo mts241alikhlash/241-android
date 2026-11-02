@@ -14,11 +14,20 @@ interface AnswerDao {
     @Query("SELECT * FROM cached_answers WHERE sessionId = :sessionId AND questionId = :questionId LIMIT 1")
     suspend fun getAnswer(sessionId: String, questionId: String): CachedAnswerEntity?
 
-    @Query("SELECT * FROM cached_answers WHERE sessionId = :sessionId AND isSynced = 0")
-    suspend fun getUnsyncedAnswers(sessionId: String): List<CachedAnswerEntity>
+    @Query(
+        """
+        SELECT * FROM cached_answers
+        WHERE sessionId = :sessionId AND syncState != 'SERVER_CONFIRMED'
+        ORDER BY updatedAtMillis ASC
+        """
+    )
+    suspend fun getPendingAnswers(sessionId: String): List<CachedAnswerEntity>
 
-    @Query("SELECT COUNT(*) FROM cached_answers WHERE sessionId = :sessionId AND isSynced = 0")
-    suspend fun countUnsyncedAnswers(sessionId: String): Int
+    @Query("SELECT COUNT(*) FROM cached_answers WHERE sessionId = :sessionId AND syncState != 'SERVER_CONFIRMED'")
+    suspend fun countPendingAnswers(sessionId: String): Int
+
+    @Query("SELECT COUNT(*) FROM cached_answers WHERE sessionId = :sessionId AND answer != ''")
+    suspend fun countAnswered(sessionId: String): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun saveAnswer(answer: CachedAnswerEntity)
@@ -26,27 +35,62 @@ interface AnswerDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertIfAbsent(answer: CachedAnswerEntity): Long
 
-    /**
-     * Marks one exact answer revision as uploaded.
-     *
-     * The predicate is what makes the sync race safe: if the student changed the answer
-     * (or the row belongs to another session) while the upload was in flight, nothing is
-     * marked and the newer revision stays pending. Returns the number of rows updated.
-     */
     @Query(
         """
-        UPDATE cached_answers SET isSynced = 1
+        UPDATE cached_answers
+        SET syncState = 'SERVER_CONFIRMED', confirmedAtMillis = :confirmedAtMillis
         WHERE sessionId = :sessionId
           AND questionId = :questionId
-          AND answer = :answer
-          AND updatedAt = :updatedAt
-          AND isSynced = 0
+          AND clientId = :clientId
+          AND updatedAtMillis = :updatedAtMillis
+          AND syncState != 'SERVER_CONFIRMED'
         """
     )
-    suspend fun markSynced(
+    suspend fun markConfirmed(
         sessionId: String,
         questionId: String,
-        answer: String,
-        updatedAt: Long
+        clientId: String,
+        updatedAtMillis: Long,
+        confirmedAtMillis: Long
+    ): Int
+
+    @Query(
+        """
+        UPDATE cached_answers
+        SET syncState = 'SYNCING'
+        WHERE sessionId = :sessionId
+          AND questionId = :questionId
+          AND clientId = :clientId
+          AND syncState != 'SERVER_CONFIRMED'
+        """
+    )
+    suspend fun markSyncing(sessionId: String, questionId: String, clientId: String): Int
+
+    @Query(
+        """
+        UPDATE cached_answers
+        SET syncState = 'LOCAL_PENDING'
+        WHERE sessionId = :sessionId
+          AND questionId = :questionId
+          AND clientId = :clientId
+          AND syncState = 'SYNCING'
+        """
+    )
+    suspend fun releaseSyncing(sessionId: String, questionId: String, clientId: String): Int
+
+    @Query(
+        """
+        UPDATE cached_answers
+        SET clientId = :nextClientId
+        WHERE sessionId = :sessionId
+          AND questionId = :questionId
+          AND clientId = :clientId
+        """
+    )
+    suspend fun replaceClientId(
+        sessionId: String,
+        questionId: String,
+        clientId: String,
+        nextClientId: String
     ): Int
 }

@@ -1,67 +1,99 @@
 package id.sch.mts241alikhlash.cbt
 
-import android.app.ActivityManager
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.*
-import id.sch.mts241alikhlash.cbt.ui.ReloginDialog
+import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.lifecycleScope
-import id.sch.mts241alikhlash.cbt.data.auth.SupervisorResult
-import id.sch.mts241alikhlash.cbt.data.remote.userMessage
-import id.sch.mts241alikhlash.cbt.data.session.RestoreOutcome
-import id.sch.mts241alikhlash.cbt.data.session.startExamSession
-import id.sch.mts241alikhlash.cbt.ui.screens.HomeScreen
-import id.sch.mts241alikhlash.cbt.ui.screens.ProfileViewModel
-import id.sch.mts241alikhlash.cbt.ui.screens.ExamListViewModel
-import id.sch.mts241alikhlash.cbt.ui.screens.LoginScreen
-import id.sch.mts241alikhlash.cbt.ui.screens.LoginViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import id.sch.mts241alikhlash.cbt.proctor.ProctorFactory
-import id.sch.mts241alikhlash.cbt.kiosk.ExamDeviceAdminReceiver
-import id.sch.mts241alikhlash.cbt.kiosk.KioskPolicy
-import id.sch.mts241alikhlash.cbt.kiosk.ViolationPolicy
-import id.sch.mts241alikhlash.cbt.kiosk.ViolationStore
-import id.sch.mts241alikhlash.cbt.ui.KioskWarningOverlay
-import id.sch.mts241alikhlash.cbt.ui.SupervisorExitDialog
+import id.sch.mts241alikhlash.cbt.data.auth.SupervisorResult
+import id.sch.mts241alikhlash.cbt.data.local.ExamDatabase
+import id.sch.mts241alikhlash.cbt.data.remote.userMessage
+import id.sch.mts241alikhlash.cbt.data.session.RestoreOutcome
 import id.sch.mts241alikhlash.cbt.data.session.endExamSession
 import id.sch.mts241alikhlash.cbt.data.session.restoreExamSession
+import id.sch.mts241alikhlash.cbt.data.session.startExamSession
+import id.sch.mts241alikhlash.cbt.kiosk.ActiveInterference
+import id.sch.mts241alikhlash.cbt.kiosk.AudioAndDisplayGuard
+import id.sch.mts241alikhlash.cbt.kiosk.DndController
+import id.sch.mts241alikhlash.cbt.kiosk.ExamDeviceAdminReceiver
+import id.sch.mts241alikhlash.cbt.kiosk.InterferenceState
+import id.sch.mts241alikhlash.cbt.kiosk.InternalIntentGuard
+import id.sch.mts241alikhlash.cbt.kiosk.KioskPinRetryPolicy
+import id.sch.mts241alikhlash.cbt.kiosk.KioskPolicy
+import id.sch.mts241alikhlash.cbt.kiosk.SessionEventTracker
+import id.sch.mts241alikhlash.cbt.kiosk.ViolationPolicy
+import id.sch.mts241alikhlash.cbt.kiosk.ViolationStore
+import id.sch.mts241alikhlash.cbt.proctor.ProctorController
+import id.sch.mts241alikhlash.cbt.proctor.ProctorFlags
+import id.sch.mts241alikhlash.cbt.proctor.ProctorSnapshotApi
 import id.sch.mts241alikhlash.cbt.ui.AppRootState
 import id.sch.mts241alikhlash.cbt.ui.AssessmentAppRoot
+import id.sch.mts241alikhlash.cbt.ui.FocusShieldOverlay
+import id.sch.mts241alikhlash.cbt.ui.KioskWarningOverlay
+import id.sch.mts241alikhlash.cbt.ui.ReloginDialog
+import id.sch.mts241alikhlash.cbt.ui.SupervisorExitDialog
+import id.sch.mts241alikhlash.cbt.ui.components.batteryLevelNow
+import id.sch.mts241alikhlash.cbt.ui.components.isChargingNow
+import id.sch.mts241alikhlash.cbt.ui.components.isOnlineNow
+import id.sch.mts241alikhlash.cbt.ui.screens.ExamListViewModel
 import id.sch.mts241alikhlash.cbt.ui.screens.ExamScreen
 import id.sch.mts241alikhlash.cbt.ui.screens.ExamViewModel
+import id.sch.mts241alikhlash.cbt.ui.screens.HomeScreen
+import id.sch.mts241alikhlash.cbt.ui.screens.LoginScreen
+import id.sch.mts241alikhlash.cbt.ui.screens.LoginViewModel
+import id.sch.mts241alikhlash.cbt.ui.screens.ProfileViewModel
+import id.sch.mts241alikhlash.cbt.ui.theme.BrandSurface
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var violations: ViolationStore
+    private lateinit var dnd: DndController
+    private var audioGuard: AudioAndDisplayGuard? = null
+    private var audioGuardJob: kotlinx.coroutines.Job? = null
+    private var tracker by mutableStateOf<SessionEventTracker?>(null)
+    private var lastLocked: Boolean? = null
+    private val guard = InternalIntentGuard.shared
+    private val pinPolicy = KioskPinRetryPolicy()
+
     private var isExamActive = false
         set(value) {
             field = value
             (application as? CBTApplication)?.examActive = value
         }
+
     private val countedViolations = kotlinx.coroutines.flow.MutableStateFlow(0)
+    private val trackerViolations = kotlinx.coroutines.flow.MutableStateFlow(0)
+    private val activeInterference = kotlinx.coroutines.flow.MutableStateFlow(InterferenceState())
     private var showSupervisorExit by mutableStateOf(false)
     private var resumeCount by mutableIntStateOf(0)
     private var sessionRestored: Boolean? = null
-
-    /** True when the OS confirms the task is actually pinned; gates the exam UI. */
-    private val isPinned = mutableStateOf(false)
+    private val hasWindowFocus = mutableStateOf(true)
+    private var runningSessionId: String? = null
+    private val reentrySignal = mutableStateOf<String?>(null)
+    private val kioskGateOpen = mutableStateOf(false)
+    private val pinFallbackReady = mutableStateOf(false)
 
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val pinRecheck = Runnable { verifyPinState() }
+    private val pinRetryRecheck = Runnable { checkPinRetry() }
 
-    /**
-     * The OS offers no public callback when lock-task mode ends (the listener is
-     * @SystemApi), and a student can drop the pin while the app stays foreground.
-     * Sample while an exam runs so the gate closes immediately.
-     */
     private val pinWatch = object : Runnable {
         override fun run() {
             if (!isExamActive) return
@@ -70,24 +102,35 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun attachBaseContext(newBase: Context) {
+        val config = Configuration(newBase.resources.configuration)
+        config.fontScale = config.fontScale.coerceIn(MIN_FONT_SCALE, MAX_FONT_SCALE)
+        super.attachBaseContext(newBase.createConfigurationContext(config))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (!BuildConfig.DEBUG) {
-            window.setFlags(
-                WindowManager.LayoutParams.FLAG_SECURE,
-                WindowManager.LayoutParams.FLAG_SECURE
-            )
+        val surface = BrandSurface.toArgb()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(surface, surface),
+            navigationBarStyle = SystemBarStyle.light(surface, surface)
+        )
+
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_SECURE,
+            WindowManager.LayoutParams.FLAG_SECURE
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            runCatching { window.setHideOverlayWindows(true) }
         }
 
         val app = application as CBTApplication
         violations = ViolationStore(this)
+        dnd = DndController(this)
 
         setContent {
-            // Asked once, at first launch, not when an exam starts: a permission
-            // dialog over a running exam is the worst possible moment for it, and
-            // the answer here covers every later session.
-            id.sch.mts241alikhlash.cbt.proctor.RequestCameraOnLaunch()
+            id.sch.mts241alikhlash.cbt.proctor.RequestCameraOnLaunch(guard)
 
             var appState by remember { mutableStateOf(AppRootState()) }
             var restoreAttempt by remember { mutableStateOf(0) }
@@ -102,10 +145,28 @@ class MainActivity : ComponentActivity() {
                         validate = { id ->
                             app.examActive = true
                             app.repository.pullServerAnswers(id)
+                        },
+                        syncClock = { id ->
+                            app.examActive = true
+                            app.repository.loadPaper(id, forceRefresh = true).getOrThrow()
+                        },
+                        requiresTokenReentry = { id ->
+                            val upload = runCatching {
+                                app.repository.uploadSessionEvents(id)
+                            }.getOrNull()
+                            if (upload?.lockedByViolation == true) {
+                                runCatching {
+                                    app.sessionRepository.markReentryPending(id)
+                                }
+                                true
+                            } else {
+                                runCatching {
+                                    app.sessionRepository.reentryPending(id)
+                                }.getOrDefault(false)
+                            }
                         }
                     ) { result ->
                         result.exceptionOrNull()?.let {
-                            // Startup sync is best effort: report, never block the exam.
                             android.util.Log.w("MainActivity", "Startup answer sync failed", it)
                         }
                     }
@@ -118,6 +179,18 @@ class MainActivity : ComponentActivity() {
                             restoreComplete = true,
                             user = runCatching { app.authRepository.currentStudent() }.getOrNull(),
                             sessionId = outcome.session.sessionId,
+                            deadline = outcome.session.deadline
+                        )
+                    }
+
+                    is RestoreOutcome.TokenReentry -> {
+                        isExamActive = true
+                        sessionRestored = true
+                        startKioskMode()
+                        appState = AppRootState(
+                            restoreComplete = true,
+                            user = runCatching { app.authRepository.currentStudent() }.getOrNull(),
+                            reentrySessionId = outcome.session.sessionId,
                             deadline = outcome.session.deadline
                         )
                     }
@@ -148,6 +221,7 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(appState.sessionId) {
                 val running = appState.sessionId
+                runningSessionId = running
                 if (running != null && appState.activeExam == null) {
                     val exam = runCatching { app.catalogRepository.listExams() }.getOrNull()
                         ?.firstOrNull { it.sessionId == running }
@@ -157,13 +231,87 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            LaunchedEffect(reentrySignal.value) {
+                val pending = reentrySignal.value ?: return@LaunchedEffect
+                reentrySignal.value = null
+                if (appState.sessionId == pending) {
+                    appState = appState.copy(
+                        reentrySessionId = pending,
+                        reentryLoading = false,
+                        reentryError = null
+                    )
+                }
+            }
+
+            val interference by activeInterference.collectAsState()
+            val shieldInterference = interference.dominant
+            val trackedViolations by trackerViolations.collectAsState()
+            val focusHeld by hasWindowFocus
+            val gateOpen by kioskGateOpen
+            val fallbackReady by pinFallbackReady
+
             AssessmentAppRoot(
                 state = appState,
                 onRetryRestore = {
                     appState = appState.copy(restoreComplete = false)
                     restoreAttempt++
                 },
-                onBackToList = { appState = appState.copy(selectedExam = null, startError = null) },
+                onBackToList = {
+                    appState = appState.copy(
+                        selectedExam = null,
+                        readinessComplete = false,
+                        startError = null
+                    )
+                },
+                onReadinessConfirmed = { appState = appState.copy(readinessComplete = true) },
+                onResumeWithToken = { accessCode ->
+                    val sessionId = appState.reentrySessionId
+                    if (sessionId != null && !appState.reentryLoading) {
+                        appState = appState.copy(reentryLoading = true, reentryError = null)
+                        lifecycleScope.launch {
+                            val resumed = runCatching {
+                                app.repository.resumeSession(sessionId, accessCode)
+                            }
+                            val failure = resumed.exceptionOrNull()
+                            if (failure != null) {
+                                appState = appState.copy(
+                                    reentryLoading = false,
+                                    reentryError = failure.userMessage()
+                                )
+                                return@launch
+                            }
+                            val session = resumed.getOrThrow()
+                            session.deadlineMillis?.let {
+                                app.sessionRepository.retarget(sessionId, it)
+                            }
+                            val upload = runCatching {
+                                app.repository.uploadSessionEvents(sessionId)
+                            }.getOrNull()
+                            if (upload?.lockedByViolation == true) {
+                                appState = appState.copy(
+                                    reentryLoading = false,
+                                    reentryError = LOCKED_BY_VIOLATION_MESSAGE
+                                )
+                                return@launch
+                            }
+                            if (session.requiresTokenReentry || upload?.requiresTokenReentry == true) {
+                                app.sessionRepository.markReentryPending(sessionId)
+                                appState = appState.copy(
+                                    reentryLoading = false,
+                                    reentryError = null
+                                )
+                                return@launch
+                            }
+                            app.sessionRepository.clearReentryPending(sessionId)
+                            appState = appState.copy(
+                                reentryLoading = false,
+                                reentrySessionId = null,
+                                sessionId = sessionId,
+                                deadline = session.deadlineMillis ?: appState.deadline
+                            )
+                        }
+                    }
+                },
                 onStartExam = { accessCode ->
                     val exam = appState.selectedExam
                     if (exam != null && !appState.starting) {
@@ -196,6 +344,7 @@ class MainActivity : ComponentActivity() {
                             appState = appState.copy(
                                 starting = false,
                                 selectedExam = null,
+                                readinessComplete = false,
                                 activeExam = exam,
                                 sessionId = started.getOrThrow().sessionId,
                                 deadline = deadline
@@ -238,7 +387,14 @@ class MainActivity : ComponentActivity() {
                         listViewModel = listViewModel,
                         profileViewModel = profileViewModel,
                         notice = appState.notice,
-                        onSelect = { appState = appState.copy(selectedExam = it, startError = null, notice = null) },
+                        onSelect = {
+                            appState = appState.copy(
+                                selectedExam = it,
+                                readinessComplete = false,
+                                startError = null,
+                                notice = null
+                            )
+                        },
                         onLogout = {
                             lifecycleScope.launch {
                                 app.authRepository.logout()
@@ -248,13 +404,46 @@ class MainActivity : ComponentActivity() {
                     )
                 },
                 examContent = { sessionId, deadline ->
-                    if (isExamActive && !isPinned.value) {
+                    LaunchedEffect(sessionId) {
+                        violations.beginSession(sessionId)
+                        countedViolations.value = violations.counted()
+                        ExamDatabase.getInstance(applicationContext).sessionEventDao().prune(sessionId)
+                        tracker = SessionEventTracker(
+                            dao = ExamDatabase.getInstance(applicationContext).sessionEventDao(),
+                            sessionId = sessionId,
+                            scope = lifecycleScope,
+                            guard = guard
+                        ).also {
+                            val now = System.currentTimeMillis()
+                            it.onCallOrMicChanged(interference.callOrMic, now)
+                            it.onSecondaryDisplayChanged(interference.screenShare, now)
+                        }
+                    }
+                    val activeTracker = tracker
+                    LaunchedEffect(activeTracker) {
+                        activeTracker?.violationCount?.collect { trackerViolations.value = it }
+                    }
+                    if (isExamActive && !gateOpen) {
                         KioskWarningOverlay(
                             onRetry = {
                                 runCatching { startLockTask() }
-                                verifyPinState()
+                                mainHandler.removeCallbacks(pinRetryRecheck)
+                                mainHandler.postDelayed(pinRetryRecheck, 400)
                             },
-                            onSupervisorAccess = { showSupervisorExit = true }
+                            onSupervisorAccess = { showSupervisorExit = true },
+                            canProceedUnpinned = fallbackReady,
+                            onOpenPinSettings = {
+                                guard.markLaunchingInternalDialog()
+                                runCatching {
+                                    startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS))
+                                }
+                            },
+                            onProceedUnpinned = {
+                                pinPolicy.proceedUnpinned()
+                                pinFallbackReady.value = false
+                                kioskGateOpen.value = true
+                                tracker?.recordKioskMode(pinPolicy.kioskMode, System.currentTimeMillis())
+                            }
                         )
                         return@AssessmentAppRoot
                     }
@@ -267,79 +456,93 @@ class MainActivity : ComponentActivity() {
                                     sessionId = sessionId,
                                     deadline = deadline,
                                     restored = sessionRestored,
-                                    onSubmitConfirmed = { id -> app.sessionRepository.finishIfCurrent(id) }
+                                    clock = app.serverClock,
+                                    onSubmitConfirmed = { id -> app.sessionRepository.finishIfCurrent(id) },
+                                    isOnline = { applicationContext.isOnlineNow() },
+                                    batteryLevel = { applicationContext.batteryLevelNow() },
+                                    isCharging = { applicationContext.isChargingNow() }
                                 )
                             }
                         }
                     )
 
-                    LaunchedEffect(sessionId) {
-                        violations.beginSession(sessionId)
-                        countedViolations.value = violations.counted()
-                    }
                     val counted by countedViolations.collectAsState()
-                    LaunchedEffect(counted) { viewModel.recordViolations(counted) }
+                    LaunchedEffect(counted, trackedViolations) {
+                        viewModel.recordViolations(reportedViolationCount(counted, trackedViolations))
+                    }
                     val serverViolations by viewModel.uiState.collectAsState()
                     LaunchedEffect(serverViolations.serverViolations) {
                         violations.restore(serverViolations.serverViolations)
                         countedViolations.value = violations.counted()
                     }
 
-                    ExamScreen(
-                        viewModel = viewModel,
-                        sessionId = sessionId,
-                        proctor = remember { ProctorFactory.controller(applicationContext) },
-                        exam = appState.activeExam,
-                        baseUrl = BuildConfig.BASE_URL,
-                        imageLoader = app.imageLoader,
-                        onSupervisorExit = { showSupervisorExit = true },
-                        onSessionLost = { message ->
-                            lifecycleScope.launch {
-                                runCatching { app.sessionRepository.finishIfCurrent(sessionId) }
-                                isExamActive = false
-                                stopKioskMode()
-                                appState = appState.copy(
-                                    sessionId = null,
-                                    deadline = null,
-                                    selectedExam = null,
-                                    notice = message
-                                )
-                            }
-                        },
-                        onFinish = {
-                            // Teardown must finish before success is announced: if the
-                            // session survives, the next launch would resume a submitted
-                            // paper.
-                            lifecycleScope.launch {
-                                val ended = runCatching {
-                                    endExamSession(
-                                        sessionRepository = app.sessionRepository,
-                                        sessionId = sessionId,
-                                        clearQuestions = app.repository::clearQuestions
+                    Box {
+                        ExamScreen(
+                            viewModel = viewModel,
+                            sessionId = sessionId,
+                            proctor = remember {
+                                if (!ProctorFlags.ENABLED) {
+                                    null
+                                } else {
+                                    ProctorController.camera(
+                                        context = applicationContext,
+                                        api = app.retrofit.create(ProctorSnapshotApi::class.java),
+                                        isAnswerSyncBusy = { app.repository.isSyncingOrSubmitting },
                                     )
-                                }.getOrElse { error ->
-                                    android.util.Log.e("MainActivity", "Teardown failed", error)
-                                    false
                                 }
+                            },
+                            exam = appState.activeExam,
+                            baseUrl = BuildConfig.BASE_URL,
+                            imageLoader = app.imageLoader,
+                            onSupervisorExit = { showSupervisorExit = true },
+                            onSessionLost = { message ->
+                                lifecycleScope.launch {
+                                    runCatching { app.sessionRepository.finishIfCurrent(sessionId) }
+                                    isExamActive = false
+                                    stopKioskMode()
+                                    appState = appState.copy(
+                                        sessionId = null,
+                                        deadline = null,
+                                        selectedExam = null,
+                                        notice = message
+                                    )
+                                }
+                            },
+                            onFinish = {
+                                lifecycleScope.launch {
+                                    val ended = runCatching {
+                                        endExamSession(
+                                            sessionRepository = app.sessionRepository,
+                                            sessionId = sessionId,
+                                            clearQuestions = app.repository::clearQuestions
+                                        )
+                                    }.getOrElse { error ->
+                                        android.util.Log.e("MainActivity", "Teardown failed", error)
+                                        false
+                                    }
 
-                                isExamActive = false
-                                stopKioskMode()
-                                appState = appState.copy(sessionId = null, deadline = null, selectedExam = null)
+                                    isExamActive = false
+                                    stopKioskMode()
+                                    appState = appState.copy(sessionId = null, deadline = null, selectedExam = null)
 
-                                val unsent = viewModel.uiState.value.unsentAnswers
-                                Toast.makeText(
-                                    this@MainActivity,
-                                    when {
-                                        viewModel.uiState.value.violationExit -> ViolationPolicy.warning(ViolationPolicy.LIMIT + 1)
-                                        unsent > 0 -> "Ujian dikumpulkan, tetapi $unsent jawaban tidak sempat terkirim"
-                                        ended -> "Ujian berhasil dikumpulkan"
-                                        else -> "Ujian selesai, tetapi sesi gagal dibersihkan"
-                                    },
-                                    Toast.LENGTH_LONG
-                                ).show()
+                                    val unsent = viewModel.uiState.value.unsentAnswers
+                                    Toast.makeText(
+                                        this@MainActivity,
+                                        when {
+                                            viewModel.uiState.value.violationExit -> ViolationPolicy.warning(ViolationPolicy.LIMIT + 1)
+                                            unsent > 0 -> "Ujian dikumpulkan, tetapi $unsent jawaban tidak sempat terkirim"
+                                            ended -> "Ujian berhasil dikumpulkan"
+                                            else -> "Ujian selesai, tetapi sesi gagal dibersihkan"
+                                        },
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
                             }
+                        )
+                        if (isExamActive && (!focusHeld || shieldInterference != null)) {
+                            FocusShieldOverlay(interference = shieldInterference)
                         }
-                    )
+                    }
                 }
             )
 
@@ -382,39 +585,45 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * Supervisor escape hatch: drop the kiosk and leave the exam shell so a broken
-     * device can be recovered. Answers already saved stay on disk.
-     */
+    override fun onProvideAssistContent(outContent: android.app.assist.AssistContent?) = Unit
+
+    override fun onProvideAssistData(data: Bundle?) = Unit
+
+    private fun checkTokenReentry() {
+        if (!isExamActive) return
+        val running = runningSessionId ?: return
+        lifecycleScope.launch {
+            val pending = runCatching {
+                (application as CBTApplication).sessionRepository.reentryPending(running)
+            }.getOrDefault(false)
+            if (pending) reentrySignal.value = running
+        }
+    }
+
     private fun emergencyExit() {
         isExamActive = false
         mainHandler.removeCallbacks(pinWatch)
         mainHandler.removeCallbacks(pinRecheck)
+        mainHandler.removeCallbacks(pinRetryRecheck)
         runCatching { stopLockTask() }
         clearDeviceOwnerPolicies()
         applyExamWindowFlags()
+        dnd.restorePreviousDnd()
+        audioGuardJob?.cancel()
+        audioGuardJob = null
+        audioGuard?.stop()
+        audioGuard = null
+        activeInterference.value = InterferenceState()
         violations.record("supervisor_exit")
         finishAndRemoveTask()
     }
 
-    override fun onPause() {
-        super.onPause()
-        // Turning the screen off is not leaving the app; only count real exits.
-        val power = getSystemService(android.os.PowerManager::class.java)
-        val interactive = power?.isInteractive ?: true
-        if (isExamActive && interactive) {
-            violations.record("left_app")
-            warnAboutViolations()
-        }
-    }
-
     private fun warnAboutViolations() {
-        val counted = violations.counted()
-        countedViolations.value = counted
-        Toast.makeText(this, ViolationPolicy.warning(counted), Toast.LENGTH_LONG).show()
+        countedViolations.value = violations.counted()
+        val total = reportedViolationCount(countedViolations.value, trackerViolations.value)
+        Toast.makeText(this, ViolationPolicy.warning(total), Toast.LENGTH_LONG).show()
     }
 
-    /** Test seam: toggles exam-active state without touching the UI tree. */
     internal fun setExamActiveForTest(active: Boolean) {
         isExamActive = active
         applyExamWindowFlags()
@@ -430,13 +639,23 @@ class MainActivity : ComponentActivity() {
 
     private fun startKioskMode() {
         applyExamWindowFlags()
-        isPinned.value = false
+        kioskGateOpen.value = pinPolicy.gateOpen
         mainHandler.removeCallbacks(pinWatch)
         mainHandler.post(pinWatch)
-        runCatching {
-            // With Device Owner the system pins silently and blocks the escape
-            // gesture; without it Android always shows a dismissible dialog.
-            startLockTask()
+        runCatching { startLockTask() }
+        dnd.enableExamDnd()
+        if (audioGuard == null) {
+            val started = AudioAndDisplayGuard(this)
+            audioGuard = started
+            started.start()
+            audioGuardJob = lifecycleScope.launch {
+                started.state.collect { current ->
+                    activeInterference.value = current
+                    val now = System.currentTimeMillis()
+                    tracker?.onCallOrMicChanged(current.callOrMic, now)
+                    tracker?.onSecondaryDisplayChanged(current.screenShare, now)
+                }
+            }
         }
     }
 
@@ -445,7 +664,6 @@ class MainActivity : ComponentActivity() {
         return dpm.isDeviceOwnerApp(packageName)
     }
 
-    /** Hides the system UI chrome that would otherwise let a student escape. */
     private fun applyDeviceOwnerPolicies() {
         if (!isDeviceOwner()) return
         runCatching {
@@ -469,56 +687,106 @@ class MainActivity : ComponentActivity() {
 
     private fun stopKioskMode() {
         isExamActive = false
-        isPinned.value = false
+        kioskGateOpen.value = false
+        pinPolicy.reset()
+        lastLocked = null
         mainHandler.removeCallbacks(pinRecheck)
         mainHandler.removeCallbacks(pinWatch)
+        mainHandler.removeCallbacks(pinRetryRecheck)
         clearDeviceOwnerPolicies()
         applyExamWindowFlags()
-        runCatching {
-            stopLockTask()
-        }
+        runCatching { stopLockTask() }
+        dnd.restorePreviousDnd()
+        audioGuardJob?.cancel()
+        audioGuardJob = null
+        audioGuard?.stop()
+        audioGuard = null
+        activeInterference.value = InterferenceState()
+        tracker?.close()
+        tracker = null
+        trackerViolations.value = 0
     }
 
     override fun onResume() {
         super.onResume()
         resumeCount++
+        checkTokenReentry()
+        guard.consumeOnResume()
         if (isExamActive) {
             applyDeviceOwnerPolicies()
             applyExamWindowFlags()
-            // Lock-task pinning is dropped when the screen turns off or the task is
-            // backgrounded; re-arm it so returning to the app restores the kiosk.
             runCatching { startLockTask() }
-            // The pinning dialog answers asynchronously; sample now and again shortly.
             verifyPinState()
             mainHandler.removeCallbacks(pinRecheck)
             mainHandler.postDelayed(pinRecheck, 700)
         }
     }
 
+    override fun onStop() {
+        super.onStop()
+        if (!isExamActive) return
+        val interactive = getSystemService(android.os.PowerManager::class.java)?.isInteractive ?: true
+        tracker?.onActivityStopped(interactive, System.currentTimeMillis())
+        if (tracker?.requiresTokenReentry?.value == true) {
+            val running = runningSessionId ?: return
+            lifecycleScope.launch {
+                (application as CBTApplication).sessionRepository.markReentryPending(running)
+            }
+        }
+    }
+
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        // The pinning dialog steals focus; when it closes (accepted or rejected)
-        // the real state is finally observable.
+        this.hasWindowFocus.value = hasFocus
+        tracker?.onWindowFocusChanged(hasFocus, System.currentTimeMillis())
         if (hasFocus && isExamActive) verifyPinState()
     }
 
-    /**
-     * The system may silently refuse pinning (user tapped "No thanks", or an OEM
-     * dropped the lock). Never assume it worked: ask, then gate the exam.
-     */
+    override fun onDestroy() {
+        super.onDestroy()
+        tracker?.close()
+        tracker = null
+        audioGuardJob?.cancel()
+        audioGuardJob = null
+        audioGuard?.stop()
+        audioGuard = null
+        mainHandler.removeCallbacks(pinWatch)
+        mainHandler.removeCallbacks(pinRecheck)
+        mainHandler.removeCallbacks(pinRetryRecheck)
+    }
+
+    private fun checkPinRetry() {
+        val locked = KioskPolicy.isLocked(this)
+        pinPolicy.onRetryAttempt(locked)
+        pinFallbackReady.value = pinPolicy.canProceedUnpinned
+        recordPinLoss(locked)
+        kioskGateOpen.value = pinPolicy.gateOpen
+    }
+
     private fun verifyPinState() {
-        val am = getSystemService(ActivityManager::class.java)
-        val state = am?.lockTaskModeState ?: ActivityManager.LOCK_TASK_MODE_NONE
-        val secure = KioskPolicy.isSecure(state)
-        if (secure != isPinned.value) {
-            android.util.Log.i("MainActivity", "Pin state changed: secure=$secure (state=$state)")
-            // Losing the pin during an exam is an integrity event: the student either
-            // rejected the dialog or used the system escape gesture.
-            if (!secure && isExamActive) {
-                violations.record("pin_lost")
-                warnAboutViolations()
-            }
+        val locked = KioskPolicy.isLocked(this)
+        pinPolicy.onStateRefresh(locked)
+        pinFallbackReady.value = pinPolicy.canProceedUnpinned
+        recordPinLoss(locked)
+        kioskGateOpen.value = pinPolicy.gateOpen
+    }
+
+    internal fun reportedViolationCount(storeCount: Int, trackerCount: Int): Int =
+        storeCount + trackerCount
+
+    private fun recordPinLoss(locked: Boolean) {
+        val wasLocked = lastLocked
+        lastLocked = locked
+        if (!locked && wasLocked == true && isExamActive && !pinPolicy.isUnpinned) {
+            violations.record("pin_lost")
+            warnAboutViolations()
         }
-        isPinned.value = secure
+    }
+
+    companion object {
+        const val MIN_FONT_SCALE = 0.90f
+        const val MAX_FONT_SCALE = 1.15f
+        const val LOCKED_BY_VIOLATION_MESSAGE =
+            "Sesi terkunci karena pelanggaran. Hubungi Teknisi Ruangan."
     }
 }

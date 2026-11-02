@@ -16,6 +16,7 @@ import id.sch.mts241alikhlash.cbt.data.remote.ExamCatalogApiService
 import id.sch.mts241alikhlash.cbt.data.repository.ExamCatalogRepository
 import id.sch.mts241alikhlash.cbt.data.repository.ExamRepository
 import id.sch.mts241alikhlash.cbt.data.session.DataStoreSessionStore
+import id.sch.mts241alikhlash.cbt.data.session.ServerClock
 import id.sch.mts241alikhlash.cbt.data.session.SessionRepository
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -38,6 +39,8 @@ class CBTApplication : Application() {
     lateinit var supervisorVerifier: SupervisorVerifier
         private set
 
+    val serverClock: ServerClock = ServerClock()
+
     lateinit var catalogRepository: ExamCatalogRepository
     lateinit var profileRepository: id.sch.mts241alikhlash.cbt.data.repository.StudentProfileRepository
         private set
@@ -48,7 +51,6 @@ class CBTApplication : Application() {
     lateinit var examApi: ExamApiService
         private set
 
-    /** Exposed so a flavor-only feature can add endpoints without touching the shared service. */
     lateinit var retrofit: Retrofit
         private set
 
@@ -122,14 +124,22 @@ class CBTApplication : Application() {
         this.retrofit = retrofit
         catalogRepository = ExamCatalogRepository(
             api = retrofit.create(ExamCatalogApiService::class.java),
-            deviceId = { deviceId() }
+            deviceId = { deviceId() },
+            clock = serverClock
         )
         profileRepository = id.sch.mts241alikhlash.cbt.data.repository.StudentProfileRepository(
             retrofit.create(id.sch.mts241alikhlash.cbt.data.remote.StudentApiService::class.java)
         )
         val database = ExamDatabase.getInstance(this)
 
-        repository = ExamRepository(api, database.answerDao(), database.questionDao())
+        repository = ExamRepository(
+            api,
+            database.answerDao(),
+            database.questionDao(),
+            database.sessionEventDao(),
+            deviceId = { deviceId() },
+            onServerTime = serverClock::sync
+        )
     }
 
     private fun deviceId(): String =

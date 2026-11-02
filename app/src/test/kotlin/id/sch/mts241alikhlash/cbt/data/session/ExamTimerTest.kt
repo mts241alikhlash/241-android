@@ -29,7 +29,6 @@ class ExamTimerTest {
     @Test
     fun `sub-second remainders round up so the clock never understates the time`() {
         val deadline = ExamTimer.deadlineFrom(start)
-        // 5_398_500 ms left displays as 5_399 s, never 5_398 s.
         assertEquals(5_399L, ExamTimer.remainingSeconds(deadline, start + 1_500L))
     }
 
@@ -39,11 +38,6 @@ class ExamTimerTest {
         assertFalse(ExamTimer.isResumed(deadline, start))
     }
 
-    /**
-     * R2: reading the deadline back from DataStore and building the ViewModel costs a few
-     * milliseconds. A brand-new exam must still read 90:00 and must not announce itself as
-     * resumed just because the clock advanced during startup.
-     */
     @Test
     fun `startup latency does not mark a fresh session as resumed`() {
         val deadline = ExamTimer.deadlineFrom(start)
@@ -71,14 +65,12 @@ class ExamTimerTest {
     @Test
     fun `a cold start after the clock ran is marked resumed`() {
         val deadline = ExamTimer.deadlineFrom(start)
-        // App killed for 10 minutes, then relaunched.
         assertTrue(ExamTimer.isResumed(deadline, start + 600_000L))
     }
 
     @Test
     fun `a session resumed by minutes shows the banner`() {
         val deadline = ExamTimer.deadlineFrom(start)
-        // 45 minutes of the paper already spent.
         val now = start + 45L * 60L * 1000L
 
         assertTrue(ExamTimer.isResumed(deadline, now))
@@ -106,5 +98,49 @@ class ExamTimerTest {
         val start = 1_700_000_000_000L
 
         assertTrue(ExamTimer.isResumed(ExamTimer.deadlineFrom(start), start, restored = true))
+    }
+
+    @Test
+    fun `submit gate counts down to the minimum submit time`() {
+        val startedAt = "2026-11-01T01:00:00.000Z"
+        val deadline = "2026-11-01T02:30:00.000Z"
+
+        assertEquals(
+            900L,
+            ExamTimer.secondsUntilSubmitAllowed(startedAt, 20, deadline, 1_793_495_100_000L)
+        )
+    }
+
+    @Test
+    fun `submit gate is zero once the minimum submit time has passed`() {
+        val startedAt = "2026-11-01T01:00:00.000Z"
+        val deadline = "2026-11-01T02:30:00.000Z"
+
+        assertEquals(
+            0L,
+            ExamTimer.secondsUntilSubmitAllowed(startedAt, 20, deadline, 1_793_496_200_000L)
+        )
+    }
+
+    @Test
+    fun `submit gate is clamped by the deadline`() {
+        val startedAt = "2026-11-01T01:00:00.000Z"
+        val deadline = "2026-11-01T01:05:00.000Z"
+
+        assertEquals(
+            300L,
+            ExamTimer.secondsUntilSubmitAllowed(startedAt, 20, deadline, 1_793_494_800_000L)
+        )
+    }
+
+    @Test
+    fun `submit gate is zero when the schedule has no minimum`() {
+        val startedAt = "2026-11-01T01:00:00.000Z"
+        val deadline = "2026-11-01T02:30:00.000Z"
+
+        assertEquals(
+            0L,
+            ExamTimer.secondsUntilSubmitAllowed(startedAt, 0, deadline, 1_793_494_800_000L)
+        )
     }
 }

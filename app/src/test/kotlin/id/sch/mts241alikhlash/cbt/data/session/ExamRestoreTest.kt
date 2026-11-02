@@ -11,6 +11,7 @@ import org.junit.Test
 import java.io.IOException
 
 class ExamRestoreTest {
+    private var elapsed = 10_000L
 
     @Test
     fun `no persisted session yields NoSession`() = runTest {
@@ -147,13 +148,93 @@ class ExamRestoreTest {
             onSyncResult = { results.add(it) }
         )
 
-        // Restore already returned; the sync failure has not been reported yet.
         assertTrue(outcome is RestoreOutcome.Restored)
         assertTrue("sync must not block restore", results.isEmpty())
 
         advanceUntilIdle()
         assertEquals(1, results.size)
         assertTrue("sync failure is reported, not thrown", results.single().isFailure)
+    }
+
+    @Test
+    fun `restore syncs the server clock before the exam screen opens`() = runTest {
+        val repo = SessionRepository(StubStore("s1", 1_700_005_400_000L))
+        val clock = ServerClock { elapsed }
+        val synced = mutableListOf<String>()
+
+        restoreExamSession(
+            sessionRepository = repo,
+            scope = this,
+            syncPending = { SyncReport(0, 0) },
+            syncClock = { id ->
+                synced.add(id)
+                clock.sync("2026-11-01T01:00:00.000Z")
+            }
+        )
+
+        assertEquals(listOf("s1"), synced)
+        assertEquals(1_793_494_800_000L, clock.nowMillis())
+    }
+
+    @Test
+    fun `a clock sync that fails still restores the session`() = runTest {
+        val repo = SessionRepository(StubStore("s1", 1_700_005_400_000L))
+
+        val outcome = restoreExamSession(
+            sessionRepository = repo,
+            scope = this,
+            syncPending = { SyncReport(0, 0) },
+            syncClock = { throw IOException("offline") }
+        )
+
+        assertTrue(outcome is RestoreOutcome.Restored)
+        assertEquals("s1", repo.current())
+    }
+
+    @Test
+    fun `a session that left the app restores into the token screen`() = runTest {
+        val repo = SessionRepository(StubStore("s1", 1_700_005_400_000L))
+
+        val outcome = restoreExamSession(
+            sessionRepository = repo,
+            scope = this,
+            syncPending = { SyncReport(0, 0) },
+            requiresTokenReentry = { true }
+        )
+
+        assertEquals(
+            RestoreOutcome.TokenReentry(RestoredSession("s1", 1_700_005_400_000L)),
+            outcome
+        )
+        assertEquals("s1", repo.current())
+    }
+
+    @Test
+    fun `a session without a pending reentry opens the paper`() = runTest {
+        val repo = SessionRepository(StubStore("s1", 1_700_005_400_000L))
+
+        val outcome = restoreExamSession(
+            sessionRepository = repo,
+            scope = this,
+            syncPending = { SyncReport(0, 0) },
+            requiresTokenReentry = { false }
+        )
+
+        assertTrue(outcome is RestoreOutcome.Restored)
+    }
+
+    @Test
+    fun `a reentry check that fails opens the paper instead of blocking`() = runTest {
+        val repo = SessionRepository(StubStore("s1", 1_700_005_400_000L))
+
+        val outcome = restoreExamSession(
+            sessionRepository = repo,
+            scope = this,
+            syncPending = { SyncReport(0, 0) },
+            requiresTokenReentry = { throw IOException("offline") }
+        )
+
+        assertTrue(outcome is RestoreOutcome.Restored)
     }
 
     @Test

@@ -20,11 +20,6 @@ class ExamDatabaseMigrationTest {
         ExamDatabase::class.java
     )
 
-    /**
-     * The exported schemas are test fixtures wired into the debug/androidTest assets only,
-     * so the release APK never ships them. `testReleaseUnitTest` therefore has no schema
-     * JSON to validate against and must skip rather than fail.
-     */
     @Before
     fun requireSchemaAssets() {
         val assets = InstrumentationRegistry.getInstrumentation()
@@ -72,7 +67,6 @@ class ExamDatabaseMigrationTest {
             primaryKeyColumns.sortedBy { it.second }
         )
 
-        // v1 data must survive the migration.
         db.query("SELECT COUNT(*) FROM cached_answers").use { cursor ->
             cursor.moveToFirst()
             assertEquals(1, cursor.getInt(0))
@@ -90,7 +84,6 @@ class ExamDatabaseMigrationTest {
                 "(sessionId, id, number, type, bodyHtml, choicesJson, cachedAt) " +
                 "VALUES ('s1', 'q1', 1, 'multiple_choice', '<p>x</p>', NULL, 0)"
         )
-        // Same question id in a different session is a distinct row.
         db.execSQL(
             "INSERT INTO cached_questions " +
                 "(sessionId, id, number, type, bodyHtml, choicesJson, cachedAt) " +
@@ -143,6 +136,63 @@ class ExamDatabaseMigrationTest {
         db.query("SELECT points FROM cached_questions").use { cursor ->
             cursor.moveToFirst()
             assertEquals(2.5, cursor.getDouble(0), 0.0)
+        }
+        db.close()
+    }
+
+    @Test
+    fun `migration 3 to 4 adds an empty session_events table`() {
+        helper.createDatabase(TEST_DB, 3).close()
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 4, true, ExamDatabase.MIGRATION_3_4)
+
+        db.execSQL(
+            "INSERT INTO session_events " +
+                "(clientId, sessionId, type, isViolation, occurredAtMs, detail, isSynced) " +
+                "VALUES ('c1', 's1', 'LEFT_APP', 1, 1000, NULL, 0)"
+        )
+        db.query("SELECT COUNT(*) FROM session_events").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals(1, cursor.getInt(0))
+        }
+        db.close()
+    }
+
+    @Test
+    fun `migration 4 to 5 maps isSynced onto the sync state`() {
+        helper.createDatabase(TEST_DB, 4).apply {
+            execSQL(
+                "INSERT INTO cached_answers " +
+                    "(questionId, sessionId, answer, isDoubtful, isSynced, updatedAt) " +
+                    "VALUES ('q1', 's1', 'A', 0, 0, 1000)"
+            )
+            execSQL(
+                "INSERT INTO cached_answers " +
+                    "(questionId, sessionId, answer, isDoubtful, isSynced, updatedAt) " +
+                    "VALUES ('q2', 's1', 'B', 1, 1, 2000)"
+            )
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 5, true, ExamDatabase.MIGRATION_4_5)
+
+        db.query(
+            "SELECT questionId, syncState, updatedAtMillis, confirmedAtMillis, clientId " +
+                "FROM cached_answers ORDER BY questionId"
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("q1", cursor.getString(0))
+            assertEquals("LOCAL_PENDING", cursor.getString(1))
+            assertEquals(1000L, cursor.getLong(2))
+            assertTrue("an unsynced row has no confirmation stamp", cursor.isNull(3))
+            assertTrue("every row must carry a client id", cursor.getString(4).isNotBlank())
+
+            assertTrue(cursor.moveToNext())
+            assertEquals("q2", cursor.getString(0))
+            assertEquals("SERVER_CONFIRMED", cursor.getString(1))
+            assertEquals(2000L, cursor.getLong(2))
+            assertEquals(2000L, cursor.getLong(3))
+            assertEquals(false, cursor.moveToNext())
         }
         db.close()
     }

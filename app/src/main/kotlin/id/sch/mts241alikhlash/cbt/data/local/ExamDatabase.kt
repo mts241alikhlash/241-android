@@ -8,13 +8,14 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [CachedAnswerEntity::class, CachedQuestionEntity::class],
-    version = 3,
+    entities = [CachedAnswerEntity::class, CachedQuestionEntity::class, CachedSessionEventEntity::class],
+    version = 5,
     exportSchema = true
 )
 abstract class ExamDatabase : RoomDatabase() {
     abstract fun answerDao(): AnswerDao
     abstract fun questionDao(): QuestionDao
+    abstract fun sessionEventDao(): SessionEventDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -58,6 +59,64 @@ abstract class ExamDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `session_events` (
+                        `clientId` TEXT NOT NULL,
+                        `sessionId` TEXT NOT NULL,
+                        `type` TEXT NOT NULL,
+                        `isViolation` INTEGER NOT NULL,
+                        `occurredAtMs` INTEGER NOT NULL,
+                        `detail` TEXT,
+                        `isSynced` INTEGER NOT NULL,
+                        PRIMARY KEY(`clientId`)
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `cached_answers_new` (
+                        `questionId` TEXT NOT NULL,
+                        `sessionId` TEXT NOT NULL,
+                        `answer` TEXT NOT NULL,
+                        `isDoubtful` INTEGER NOT NULL,
+                        `clientId` TEXT NOT NULL,
+                        `syncState` TEXT NOT NULL,
+                        `updatedAtMillis` INTEGER NOT NULL,
+                        `confirmedAtMillis` INTEGER,
+                        PRIMARY KEY(`questionId`)
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO `cached_answers_new`
+                        (`questionId`, `sessionId`, `answer`, `isDoubtful`, `clientId`,
+                         `syncState`, `updatedAtMillis`, `confirmedAtMillis`)
+                    SELECT
+                        `questionId`,
+                        `sessionId`,
+                        `answer`,
+                        `isDoubtful`,
+                        lower(hex(randomblob(16))),
+                        CASE WHEN `isSynced` = 1 THEN 'SERVER_CONFIRMED' ELSE 'LOCAL_PENDING' END,
+                        `updatedAt`,
+                        CASE WHEN `isSynced` = 1 THEN `updatedAt` ELSE NULL END
+                    FROM `cached_answers`
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE `cached_answers`")
+                db.execSQL("ALTER TABLE `cached_answers_new` RENAME TO `cached_answers`")
+            }
+        }
+
         @Volatile
         private var INSTANCE: ExamDatabase? = null
 
@@ -67,7 +126,7 @@ abstract class ExamDatabase : RoomDatabase() {
                     context.applicationContext,
                     ExamDatabase::class.java,
                     "exam_cbt_db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .build()
                 INSTANCE = instance
                 instance

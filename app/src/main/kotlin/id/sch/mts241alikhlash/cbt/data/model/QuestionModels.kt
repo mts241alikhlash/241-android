@@ -20,18 +20,40 @@ data class PaperQuestionDto(
 )
 
 @Serializable
-data class SaveAnswerRequest(
+data class SaveAnswerItemDto(
     val questionId: String,
     val clientId: String,
     val answer: JsonObject
 )
 
 @Serializable
-data class SavedAnswerAckDto(
+data class SaveAnswersBatchRequest(
+    val answers: List<SaveAnswerItemDto>,
+    val pendingLocalCount: Int? = null,
+    val batteryLevel: Int? = null,
+    val isCharging: Boolean? = null
+)
+
+@Serializable
+data class ConfirmedAnswerDto(
     val questionId: String,
     val clientId: String,
-    val receivedAfterDeadline: Boolean,
-    val updatedAt: String
+    val updatedAt: String,
+    val receivedAfterDeadline: Boolean
+)
+
+@Serializable
+data class SkippedAnswerDto(
+    val questionId: String,
+    val clientId: String
+)
+
+@Serializable
+data class SaveAnswersBatchResultDto(
+    val confirmed: List<ConfirmedAnswerDto> = emptyList(),
+    val skipped: List<SkippedAnswerDto> = emptyList(),
+    val confirmedCount: Int = 0,
+    val serverTime: String? = null
 )
 
 @Serializable

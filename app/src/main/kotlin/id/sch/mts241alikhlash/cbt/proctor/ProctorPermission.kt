@@ -1,6 +1,7 @@
 package id.sch.mts241alikhlash.cbt.proctor
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -26,32 +27,44 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import id.sch.mts241alikhlash.cbt.ui.theme.WebTokens
 
-/** What the exam screen has to show about the camera permission right now. */
 enum class CameraPermissionState { GRANTED, ASK, DENIED, BLOCKED }
 
-/**
- * Asks for the camera permission when the exam screen opens and starts the stream
- * once it is held.
- *
- * The request has to happen while the exam screen is visible: from Android 14 a
- * `camera` foreground service cannot be created without the permission, and from
- * Android 11 it cannot be created from the background at all.
- *
- * A denial never blocks the exam. It does, however, have to be recoverable: a
- * student who taps "Don't allow" by accident gets a button to ask again, and once
- * Android stops showing the dialog (permanently denied) the button opens the app's
- * settings page instead of doing nothing.
- */
+fun Context.findActivity(): android.app.Activity? {
+    var current: Context? = this
+    while (current is android.content.ContextWrapper) {
+        if (current is android.app.Activity) return current
+        current = current.baseContext
+    }
+    return null
+}
+
+fun cameraPermissionState(context: Context, asked: Boolean): CameraPermissionState {
+    val held = ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.CAMERA,
+    ) == PackageManager.PERMISSION_GRANTED
+    if (held) return CameraPermissionState.GRANTED
+    if (!asked) return CameraPermissionState.DENIED
+    val activity = context.findActivity() ?: return CameraPermissionState.DENIED
+    return if (ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA)) {
+        CameraPermissionState.DENIED
+    } else {
+        CameraPermissionState.BLOCKED
+    }
+}
+
 @Composable
 fun rememberProctorPermission(
     sessionId: String,
     controller: ProctorController,
 ): CameraPermissionState {
     val context = LocalContext.current
+    val owner = LocalLifecycleOwner.current
     var state by remember { mutableStateOf(CameraPermissionState.ASK) }
 
     val launcher = rememberLauncherForActivityResult(
@@ -59,7 +72,7 @@ fun rememberProctorPermission(
     ) { granted ->
         if (granted) {
             state = CameraPermissionState.GRANTED
-            controller.start(sessionId)
+            controller.start(owner, sessionId)
         } else {
             val canAskAgain = ActivityCompat.shouldShowRequestPermissionRationale(
                 context as? android.app.Activity ?: return@rememberLauncherForActivityResult,
@@ -75,8 +88,6 @@ fun rememberProctorPermission(
     }
 
     LaunchedEffect(sessionId, controller) {
-        // `standard` declares no CAMERA permission; asking for one would be an
-        // instant denial and a pointless dialog.
         if (!ProctorFlags.ENABLED) return@LaunchedEffect
 
         val held = ContextCompat.checkSelfPermission(
@@ -84,11 +95,8 @@ fun rememberProctorPermission(
             Manifest.permission.CAMERA,
         ) == PackageManager.PERMISSION_GRANTED
 
-        // The launch-time request already asked once; asking again the instant the
-        // exam opens would be a second dialog for the same answer. Show the banner
-        // and let the student tap it.
         state = if (held) {
-            controller.start(sessionId)
+            controller.start(owner, sessionId)
             CameraPermissionState.GRANTED
         } else {
             CameraPermissionState.DENIED
@@ -98,12 +106,12 @@ fun rememberProctorPermission(
     return state
 }
 
-/** Asks again, or opens Settings when Android will no longer show the dialog. */
 fun requestCameraAgain(
     context: android.content.Context,
     state: CameraPermissionState,
     launch: () -> Unit,
 ) {
+    id.sch.mts241alikhlash.cbt.kiosk.InternalIntentGuard.shared.markLaunchingInternalDialog()
     if (state == CameraPermissionState.BLOCKED) {
         context.startActivity(
             Intent(
@@ -116,11 +124,6 @@ fun requestCameraAgain(
     }
 }
 
-/**
- * The banner the exam screen shows while the camera permission is missing. It is
- * deliberately visible: a student who cannot see why the camera is off cannot fix
- * it, and a supervisor sees the same seat red on the other side.
- */
 @Composable
 fun CameraPermissionBanner(
     state: CameraPermissionState,
