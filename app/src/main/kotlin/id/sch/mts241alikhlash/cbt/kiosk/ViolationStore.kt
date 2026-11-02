@@ -1,6 +1,7 @@
 package id.sch.mts241alikhlash.cbt.kiosk
 
 import android.content.Context
+import androidx.core.content.edit
 
 class ViolationStore(context: Context) {
 
@@ -16,23 +17,26 @@ class ViolationStore(context: Context) {
     fun restore(serverCount: Int) {
         val gap = serverCount - counted()
         if (gap > 0) {
-            prefs.edit().putInt(KEY_BASELINE, prefs.getInt(KEY_BASELINE, 0) + gap).apply()
+            prefs.edit { putInt(KEY_BASELINE, prefs.getInt(KEY_BASELINE, 0) + gap) }
         }
     }
 
     fun beginSession(sessionId: String) {
         if (prefs.getString(KEY_SESSION, null) == sessionId) return
-        prefs.edit().clear().putString(KEY_SESSION, sessionId).apply()
+        prefs.edit {
+            clear()
+            putString(KEY_SESSION, sessionId)
+        }
     }
 
     fun record(reason: String): Int {
         val total = count() + 1
         val entry = "${System.currentTimeMillis()}|$reason"
         val log = (listOf(entry) + entries()).take(MAX_ENTRIES)
-        prefs.edit()
-            .putInt(KEY_COUNT, total)
-            .putString(KEY_LOG, log.joinToString("\n"))
-            .apply()
+        prefs.edit {
+            putInt(KEY_COUNT, total)
+            putString(KEY_LOG, log.joinToString("\n"))
+        }
         return total
     }
 
@@ -44,7 +48,7 @@ class ViolationStore(context: Context) {
             .orEmpty()
 
     fun reset() {
-        prefs.edit().clear().apply()
+        prefs.edit { clear() }
     }
 
     private companion object {

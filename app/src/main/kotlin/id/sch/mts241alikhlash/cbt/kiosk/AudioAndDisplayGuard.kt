@@ -103,14 +103,7 @@ class AudioAndDisplayGuard(context: Context) {
             runCatching { manager.requestAudioFocus(request) }
             return
         }
-        runCatching {
-            @Suppress("DEPRECATION")
-            manager.requestAudioFocus(
-                { },
-                AudioManager.STREAM_SYSTEM,
-                AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE,
-            )
-        }
+        runCatching { requestLegacyFocus(manager) }
     }
 
     private fun abandonAudioFocus() {
@@ -118,12 +111,23 @@ class AudioAndDisplayGuard(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             focusRequest?.let { runCatching { manager.abandonAudioFocusRequest(it) } }
         } else {
-            runCatching {
-                @Suppress("DEPRECATION")
-                manager.abandonAudioFocus { }
-            }
+            runCatching { abandonLegacyFocus(manager) }
         }
         focusRequest = null
+    }
+
+    @Suppress("DEPRECATION")
+    private fun requestLegacyFocus(manager: AudioManager) {
+        manager.requestAudioFocus(
+            { },
+            AudioManager.STREAM_SYSTEM,
+            AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE,
+        )
+    }
+
+    @Suppress("DEPRECATION")
+    private fun abandonLegacyFocus(manager: AudioManager) {
+        manager.abandonAudioFocus { }
     }
 
     private fun evaluateMic(recordingActive: Boolean) {

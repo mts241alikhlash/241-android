@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
+import androidx.core.content.edit
 
 class DndController(context: Context) {
 
@@ -25,7 +26,7 @@ class DndController(context: Context) {
         val notifications = manager ?: return false
         if (!notifications.isNotificationPolicyAccessGranted) return false
         if (!prefs.contains(KEY_FILTER)) {
-            prefs.edit().putInt(KEY_FILTER, notifications.currentInterruptionFilter).apply()
+            prefs.edit { putInt(KEY_FILTER, notifications.currentInterruptionFilter) }
         }
         return runCatching {
             notifications.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
@@ -37,7 +38,7 @@ class DndController(context: Context) {
         if (!prefs.contains(KEY_FILTER)) return
         val previous = prefs.getInt(KEY_FILTER, NotificationManager.INTERRUPTION_FILTER_ALL)
         runCatching { notifications.setInterruptionFilter(previous) }
-        prefs.edit().remove(KEY_FILTER).apply()
+        prefs.edit { remove(KEY_FILTER) }
     }
 
     private companion object {

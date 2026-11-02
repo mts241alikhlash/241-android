@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
-import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -283,11 +282,7 @@ private fun ReadinessRow(
 
 private fun isAudioClear(context: Context): Boolean {
     val audio = context.getSystemService(AudioManager::class.java) ?: return true
-    val recording = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-        audio.activeRecordingConfigurations.isNotEmpty()
-    } else {
-        false
-    }
+    val recording = audio.activeRecordingConfigurations.isNotEmpty()
     return audio.mode == AudioManager.MODE_NORMAL && !recording
 }
 

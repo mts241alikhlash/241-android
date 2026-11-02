@@ -22,8 +22,8 @@ import id.sch.mts241alikhlash.cbt.ui.theme.DMSansFontFamily
 
 @Composable
 fun FocusShieldOverlay(
-    interference: ActiveInterference? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    interference: ActiveInterference? = null
 ) {
     Column(
         modifier = modifier

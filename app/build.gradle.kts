@@ -86,6 +86,21 @@ android {
     namespace = "id.sch.mts241alikhlash.cbt"
     compileSdk = 35
 
+    lint {
+        warningsAsErrors = true
+        disable += setOf(
+            "LockedOrientationActivity",
+            "NonResizeableActivity",
+            "DiscouragedApi",
+            "HardwareIds",
+            "OldTargetApi",
+            "GradleDependency",
+            "AndroidGradlePluginVersion",
+            "IconLauncherShape",
+        )
+        explainIssues = true
+    }
+
     defaultConfig {
         applicationId = "id.sch.mts241alikhlash.cbt"
         minSdk = 24
@@ -221,10 +236,10 @@ dependencies {
 
     debugImplementation(libs.androidx.ui.tooling)
 
-    testImplementation("junit:junit:4.13.2")
+    testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.androidx.room.testing)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.robolectric)
-    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation(libs.mockwebserver)
 }
