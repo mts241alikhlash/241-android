@@ -61,9 +61,8 @@ jobs:
           # build.gradle.kts reads these via providers.gradleProperty(), which only
           # sees env vars prefixed ORG_GRADLE_PROJECT_. A bare API_BASE_URL is ignored
           # and the release build silently falls back to https://exam-api.invalid/.
-          # The exam host takes over once exam-web is routed in production.
           FLAVOR: ${{ inputs.flavor || 'proctor' }}
-          ORG_GRADLE_PROJECT_API_BASE_URL: ${{ inputs.api_base_url || 'https://assessment.mts241alikhlash.sch.id/' }}
+          ORG_GRADLE_PROJECT_API_BASE_URL: ${{ inputs.api_base_url || 'https://exam.mts241alikhlash.sch.id/' }}
           RELEASE_STORE_FILE: ${{ runner.temp }}/release.jks
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
