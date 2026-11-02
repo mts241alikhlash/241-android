@@ -22,7 +22,7 @@ sealed interface ExamListUiState {
 fun examTypeLabel(type: String?): String? = when (type) {
     "UH" -> "UH"
     "QUIZ" -> "Quiz"
-    "TUGAS" -> "Tugas"
+    "ASSIGNMENT" -> "Tugas"
     "UTS" -> "UTS"
     "UAS" -> "UAS"
     else -> null

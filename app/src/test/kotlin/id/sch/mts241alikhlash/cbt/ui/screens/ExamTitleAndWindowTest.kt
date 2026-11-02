@@ -19,7 +19,7 @@ class ExamTitleAndWindowTest {
     fun `title joins the type label and the subject`() {
         assertEquals("UTS - IPA", exam("UTS", "IPA").displayTitle())
         assertEquals("Quiz - Bahasa Inggris", exam("QUIZ", "Bahasa Inggris").displayTitle())
-        assertEquals("Tugas - PAI", exam("TUGAS", "PAI").displayTitle())
+        assertEquals("Tugas - PAI", exam("ASSIGNMENT", "PAI").displayTitle())
     }
 
     @Test
@@ -77,7 +77,7 @@ class ExamTitleAndWindowTest {
     fun `type label covers the five types only`() {
         assertEquals("UH", examTypeLabel("UH"))
         assertEquals("Quiz", examTypeLabel("QUIZ"))
-        assertEquals("Tugas", examTypeLabel("TUGAS"))
+        assertEquals("Tugas", examTypeLabel("ASSIGNMENT"))
         assertEquals("UTS", examTypeLabel("UTS"))
         assertEquals("UAS", examTypeLabel("UAS"))
         assertNull(examTypeLabel("PTS"))

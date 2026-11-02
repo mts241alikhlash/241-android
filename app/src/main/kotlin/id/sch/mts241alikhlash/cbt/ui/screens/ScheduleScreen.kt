@@ -45,7 +45,7 @@ private data class ScheduleEntry(val exam: ExamSummaryDto, val window: ExamWindo
 
 private data class ScheduleGroup(val title: String, val entries: List<ScheduleEntry>)
 
-private val TYPE_ORDER = listOf("UTS", "UAS", "UH", "QUIZ", "TUGAS")
+private val TYPE_ORDER = listOf("UTS", "UAS", "UH", "QUIZ", "ASSIGNMENT")
 
 private fun groupsOf(entries: List<ScheduleEntry>): List<ScheduleGroup> {
     val known = TYPE_ORDER.mapNotNull { type ->
@@ -59,7 +59,7 @@ private fun groupsOf(entries: List<ScheduleEntry>): List<ScheduleGroup> {
 private fun examTypeName(type: String): String = when (type) {
     "UH" -> "Ulangan Harian"
     "QUIZ" -> "Quiz"
-    "TUGAS" -> "Tugas"
+    "ASSIGNMENT" -> "Tugas"
     else -> type
 }
 
