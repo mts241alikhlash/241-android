@@ -10,3 +10,6 @@ local.properties
 *.jks
 *.keystore
 keystore.properties
+
+# Subagent-driven-development workspace: task briefs and test logs.
+.superpowers/
