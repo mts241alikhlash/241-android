@@ -18,6 +18,8 @@ object ApiErrorCode {
     const val REBIND = "REBIND"
     const val MIN_SUBMIT = "MIN_SUBMIT"
     const val SESSION_LOST = "SESSION_LOST"
+    const val TOKEN_REENTRY_REQUIRED = "TOKEN_REENTRY_REQUIRED"
+    const val SESSION_LOCKED_BY_VIOLATION = "SESSION_LOCKED_BY_VIOLATION"
     const val WINDOW_CLOSED = "WINDOW_CLOSED"
 }
 
@@ -29,7 +31,42 @@ data class ApiEnvelope<T>(
     val code: String? = null
 )
 
-fun Throwable.userMessage(): String = (this as? ApiException)?.message ?: GENERIC_ERROR_MESSAGE
+fun Throwable.userMessage(): String {
+    val api = this as? ApiException ?: return GENERIC_ERROR_MESSAGE
+    messageFor(api.code)?.let { return it }
+    if (api.message.isNotBlank() && api.message != GENERIC_ERROR_MESSAGE) {
+        return api.message
+    }
+    return messageForStatus(api.statusCode) ?: GENERIC_ERROR_MESSAGE
+}
+
+private fun messageForStatus(statusCode: Int): String? = when (statusCode) {
+    401 -> "Sesi login Anda sudah berakhir. Masuk lagi untuk melanjutkan."
+    403 -> "Akun ini tidak berhak mengikuti ujian ini. Hubungi pengawas."
+    404 -> "Data ujian tidak ditemukan di server. Kembali ke daftar ujian."
+    409 -> "Ujian ini sudah berubah di server. Kembali ke daftar ujian lalu buka lagi."
+    429 -> "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi."
+    in 500..599 -> "Server sedang bermasalah. Coba lagi beberapa saat."
+    else -> null
+}
+
+private fun messageFor(code: String?): String? = when (code) {
+    ApiErrorCode.SESSION_LOST ->
+        "Sesi ujian ini sudah tidak ada di server. Kembali ke daftar ujian untuk memulai lagi."
+    ApiErrorCode.REBIND ->
+        "Ujian ini terikat ke perangkat lain. Minta pengawas melepas sesi dari perangkat lama."
+    ApiErrorCode.SHORTFALL ->
+        "Masih ada jawaban yang belum terkirim. Periksa koneksi lalu coba lagi."
+    ApiErrorCode.MIN_SUBMIT ->
+        "Ujian belum boleh dikumpulkan. Tunggu sampai waktu minimum terpenuhi."
+    ApiErrorCode.WINDOW_CLOSED ->
+        "Waktu pengumpulan sudah ditutup. Jawaban yang tersimpan tetap aman."
+    ApiErrorCode.TOKEN_REENTRY_REQUIRED ->
+        "Token ujian salah atau sudah berganti. Minta token terbaru kepada pengawas."
+    ApiErrorCode.SESSION_LOCKED_BY_VIOLATION ->
+        "Ujian ini dikunci karena pelanggaran. Hubungi Teknisi Ruangan."
+    else -> null
+}
 
 class ApiException(
     val statusCode: Int,

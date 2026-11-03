@@ -1,5 +1,6 @@
 package id.sch.mts241alikhlash.cbt.data.session
 
+import id.sch.mts241alikhlash.cbt.data.remote.ApiErrorCode
 import id.sch.mts241alikhlash.cbt.data.remote.ApiException
 import id.sch.mts241alikhlash.cbt.data.repository.SyncReport
 import kotlinx.coroutines.CoroutineScope
@@ -20,6 +21,8 @@ sealed interface RestoreOutcome {
 
 const val RESTORE_CHECK_TIMEOUT_MS = 3_000L
 const val RESTORE_ERROR_MESSAGE = "Gagal memulihkan sesi ujian. Coba lagi."
+const val LOST_SESSION_MESSAGE =
+    "Sesi ujian ini sudah tidak berlaku di server. Kembali ke daftar ujian untuk memulai lagi."
 
 suspend fun restoreExamSession(
     sessionRepository: SessionRepository,
@@ -101,7 +104,14 @@ private suspend fun sessionLostMessage(sessionId: String, validate: suspend (Str
     } catch (cancellation: CancellationException) {
         throw cancellation
     } catch (error: ApiException) {
-        if (error.statusCode == 409 || error.statusCode == 404) error.message else null
+        when {
+            error.code == ApiErrorCode.SESSION_LOST -> error.message
+            error.statusCode == 404 -> error.message
+            error.statusCode == 409 -> error.message
+            error.statusCode == 401 -> LOST_SESSION_MESSAGE
+            error.statusCode == 403 -> LOST_SESSION_MESSAGE
+            else -> null
+        }
     } catch (_: Exception) {
         null
     }

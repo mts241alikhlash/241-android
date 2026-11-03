@@ -45,22 +45,17 @@ interface ExamApiService {
     suspend fun recordSessionEvents(
         @Path("sessionId") sessionId: String,
         @Body request: RecordSessionEventsRequest
-    ): RecordSessionEventsResponse = RecordSessionEventsResponse()
+    ): RecordSessionEventsResponse
 
     @POST("student-exams/{sessionId}/resume")
     suspend fun resumeSession(
         @Path("sessionId") sessionId: String,
         @Body request: ResumeSessionRequest
-    ): ResumedSessionDto = ResumedSessionDto(
-        sessionId = sessionId,
-        status = "IN_PROGRESS",
-        deadline = "",
-        serverTime = ""
-    )
+    ): ResumedSessionDto
 
     @POST("student-exams/{sessionId}/violations")
     suspend fun reportViolations(
         @Path("sessionId") sessionId: String,
         @Body request: ViolationReport
-    ): ViolationCountDto = ViolationCountDto(request.count)
+    ): ViolationCountDto
 }

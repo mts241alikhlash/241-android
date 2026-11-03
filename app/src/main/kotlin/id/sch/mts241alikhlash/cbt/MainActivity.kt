@@ -23,6 +23,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import id.sch.mts241alikhlash.cbt.data.auth.SupervisorResult
 import id.sch.mts241alikhlash.cbt.data.local.ExamDatabase
+import id.sch.mts241alikhlash.cbt.data.remote.ApiErrorCode
+import id.sch.mts241alikhlash.cbt.data.remote.ApiException
 import id.sch.mts241alikhlash.cbt.data.remote.userMessage
 import id.sch.mts241alikhlash.cbt.data.session.RestoreOutcome
 import id.sch.mts241alikhlash.cbt.data.session.endExamSession
@@ -274,6 +276,24 @@ class MainActivity : ComponentActivity() {
                             }
                             val failure = resumed.exceptionOrNull()
                             if (failure != null) {
+                                val lost = (failure as? ApiException)?.let {
+                                    it.statusCode == 401 ||
+                                        it.statusCode == 404 ||
+                                        it.code == ApiErrorCode.SESSION_LOST
+                                } ?: false
+                                if (lost) {
+                                    app.sessionRepository.finishIfCurrent(sessionId)
+                                    app.examActive = false
+                                    appState = appState.copy(
+                                        reentryLoading = false,
+                                        reentryError = null,
+                                        reentrySessionId = null,
+                                        selectedExam = null,
+                                        readinessComplete = false,
+                                        startError = failure.userMessage()
+                                    )
+                                    return@launch
+                                }
                                 appState = appState.copy(
                                     reentryLoading = false,
                                     reentryError = failure.userMessage()
