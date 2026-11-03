@@ -184,6 +184,7 @@ android {
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        unitTests.isReturnDefaultValues = true
         // Paparazzi and Robolectric cannot share a JVM: Paparazzi's layoutlib bridge
         // fails to initialise once Robolectric has run in the same process.
         unitTests.all { it.forkEvery = 1 }

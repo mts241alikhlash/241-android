@@ -29,12 +29,14 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
@@ -65,7 +67,8 @@ fun TokenScreen(
     loading: Boolean = false,
     error: String? = null,
     onBack: (() -> Unit)? = null,
-    resumeMode: Boolean = false
+    resumeMode: Boolean = false,
+    onSupervisorExit: (() -> Unit)? = null
 ) {
     var token by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -82,6 +85,11 @@ fun TokenScreen(
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize().background(WebTokens.Background)) {
         val screenHeight = maxHeight
+        val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+        val scrollState = rememberScrollState()
+        LaunchedEffect(imeVisible) {
+            if (!imeVisible) scrollState.scrollTo(0)
+        }
         BrandWatermark(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -98,7 +106,7 @@ fun TokenScreen(
                         .union(WindowInsets.navigationBars)
                         .union(WindowInsets.ime)
                 )
-                .verticalScroll(rememberScrollState())
+                .then(if (imeVisible) Modifier.verticalScroll(scrollState) else Modifier)
                 .heightIn(min = screenHeight),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
@@ -195,6 +203,19 @@ fun TokenScreen(
                         )
                     }
                     Spacer(Modifier.height(4.dp))
+                    if (onSupervisorExit != null) {
+                        Text(
+                            text = "Keluar darurat (pengawas)",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            fontFamily = DMSansFontFamily,
+                            color = if (loading) WebTokens.MutedForeground else WebTokens.Primary,
+                            modifier = Modifier
+                                .clickable(enabled = !loading, onClick = onSupervisorExit)
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                        )
+                        Spacer(Modifier.height(4.dp))
+                    }
                     Text(
                         text = "Layar dikunci selama ujian berlangsung.",
                         fontSize = 12.sp,

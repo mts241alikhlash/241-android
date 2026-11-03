@@ -28,6 +28,8 @@ class ProctorControllerTest {
             started++
         }
 
+        override fun captureNow() = Unit
+
         override fun latestJpeg(): ByteArray? = frame
 
         override fun latestAt(): Long = frameAt

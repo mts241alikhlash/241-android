@@ -62,6 +62,7 @@ fun AssessmentAppRoot(
     onBackToList: () -> Unit = {},
     onResumeWithToken: (String) -> Unit = {},
     onReadinessConfirmed: () -> Unit = {},
+    onSupervisorExit: () -> Unit = {},
     readinessContent: @Composable (onReadyToProceed: () -> Unit) -> Unit = { ready ->
         DeviceReadinessScreen(onReadyToProceed = ready, onBack = onBackToList)
     },
@@ -92,7 +93,8 @@ fun AssessmentAppRoot(
                 onStartExam = onResumeWithToken,
                 loading = state.reentryLoading,
                 error = state.reentryError,
-                resumeMode = true
+                resumeMode = true,
+                onSupervisorExit = onSupervisorExit
             )
 
             state.sessionId != null -> examContent(state.sessionId, state.deadline)

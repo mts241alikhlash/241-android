@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 
 interface SnapshotSource {
     fun start(owner: LifecycleOwner, onBlocked: (String) -> Unit)
+    fun captureNow()
     fun latestJpeg(): ByteArray?
     fun latestAt(): Long
     fun clear()
@@ -25,6 +26,8 @@ private class CameraSnapshotSource(context: Context) : SnapshotSource {
 
     override fun start(owner: LifecycleOwner, onBlocked: (String) -> Unit) =
         capturer.start(owner, onBlocked)
+
+    override fun captureNow() = capturer.captureNow()
 
     override fun latestJpeg(): ByteArray? = capturer.latestJpeg()
 
@@ -39,9 +42,10 @@ class ProctorController(
     private val api: ProctorSnapshotApi,
     private val isAnswerSyncBusy: () -> Boolean,
     private val source: SnapshotSource,
+    private val log: (String) -> Unit = {},
 ) {
 
-    private val uploader = SnapshotUploader(api)
+    private val uploader = SnapshotUploader(api, log)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val scheduler = SnapshotScheduler(isAnswerSyncBusy)
     private var loop: Job? = null
@@ -91,6 +95,8 @@ class ProctorController(
     }
 
     suspend fun tick() {
+        source.captureNow()
+        delay(CAPTURE_WAIT_MS)
         val frameAt = source.latestAt()
         if (frameAt <= lastUploadedAt) return
         val jpeg = source.latestJpeg() ?: return
@@ -126,10 +132,17 @@ class ProctorController(
     }
 
     companion object {
+        private const val CAPTURE_WAIT_MS = 1_200L
+
         fun camera(
             context: Context,
             api: ProctorSnapshotApi,
             isAnswerSyncBusy: () -> Boolean,
-        ) = ProctorController(api, isAnswerSyncBusy, CameraSnapshotSource(context))
+        ) = ProctorController(
+            api,
+            isAnswerSyncBusy,
+            CameraSnapshotSource(context),
+            log = { message -> android.util.Log.w("ProctorUpload", message) },
+        )
     }
 }

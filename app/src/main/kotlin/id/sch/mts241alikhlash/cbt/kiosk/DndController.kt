@@ -26,7 +26,13 @@ class DndController(context: Context) {
         val notifications = manager ?: return false
         if (!notifications.isNotificationPolicyAccessGranted) return false
         if (!prefs.contains(KEY_FILTER)) {
-            prefs.edit { putInt(KEY_FILTER, notifications.currentInterruptionFilter) }
+            val current = notifications.currentInterruptionFilter
+            val baseline = if (current == NotificationManager.INTERRUPTION_FILTER_NONE) {
+                NotificationManager.INTERRUPTION_FILTER_ALL
+            } else {
+                current
+            }
+            prefs.edit { putInt(KEY_FILTER, baseline) }
         }
         return runCatching {
             notifications.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
@@ -35,8 +41,11 @@ class DndController(context: Context) {
 
     fun restorePreviousDnd() {
         val notifications = manager ?: return
-        if (!prefs.contains(KEY_FILTER)) return
-        val previous = prefs.getInt(KEY_FILTER, NotificationManager.INTERRUPTION_FILTER_ALL)
+        val previous = if (prefs.contains(KEY_FILTER)) {
+            prefs.getInt(KEY_FILTER, NotificationManager.INTERRUPTION_FILTER_ALL)
+        } else {
+            NotificationManager.INTERRUPTION_FILTER_ALL
+        }
         runCatching { notifications.setInterruptionFilter(previous) }
         prefs.edit { remove(KEY_FILTER) }
     }

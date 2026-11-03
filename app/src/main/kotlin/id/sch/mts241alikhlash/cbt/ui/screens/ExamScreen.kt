@@ -32,6 +32,8 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
@@ -131,7 +133,18 @@ fun ExamScreen(
     DisposableEffect(proctor) {
         onDispose { proctor?.stop() }
     }
-    androidx.compose.foundation.layout.Column {
+    androidx.compose.foundation.layout.Box {
+        androidx.compose.foundation.layout.Box(
+            modifier = Modifier
+                .align(androidx.compose.ui.Alignment.TopStart)
+                .size(64.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onLongPress = { onSupervisorExit() },
+                    )
+                },
+        )
+        androidx.compose.foundation.layout.Column {
         ExamContent(
         state = state,
         onAnswer = viewModel::selectAnswer,
@@ -149,6 +162,7 @@ fun ExamScreen(
         baseUrl = baseUrl,
         imageLoader = imageLoader
         )
+        }
     }
 }
 

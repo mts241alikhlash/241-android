@@ -54,6 +54,6 @@ class SnapshotScheduler(
 
     companion object {
         const val INTERVAL_MS = 15_000L
-        const val PERIODIC_TICKS = 40
+        const val PERIODIC_TICKS = 8
     }
 }

@@ -133,6 +133,7 @@ class MainActivity : ComponentActivity() {
         val app = application as CBTApplication
         violations = ViolationStore(this)
         dnd = DndController(this)
+        if (!isExamActive) dnd.restorePreviousDnd()
 
         setContent {
             id.sch.mts241alikhlash.cbt.proctor.RequestCameraOnLaunch(guard)
@@ -273,6 +274,7 @@ class MainActivity : ComponentActivity() {
                     )
                 },
                 onReadinessConfirmed = { appState = appState.copy(readinessComplete = true) },
+                onSupervisorExit = { showSupervisorExit = true },
                 onResumeWithToken = { accessCode ->
                     val sessionId = appState.reentrySessionId
                     if (sessionId != null && !appState.reentryLoading) {
@@ -806,6 +808,7 @@ class MainActivity : ComponentActivity() {
         audioGuardJob = null
         audioGuard?.stop()
         audioGuard = null
+        if (!isChangingConfigurations) dnd.restorePreviousDnd()
         mainHandler.removeCallbacks(pinWatch)
         mainHandler.removeCallbacks(pinRecheck)
         mainHandler.removeCallbacks(pinRetryRecheck)

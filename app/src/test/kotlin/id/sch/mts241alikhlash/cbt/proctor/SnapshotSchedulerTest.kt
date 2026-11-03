@@ -78,9 +78,9 @@ class SnapshotSchedulerTest {
     }
 
     @Test
-    fun `the cadence is fifteen seconds and forty ticks`() {
+    fun `the cadence is fifteen seconds and eight ticks`() {
         assertEquals(15_000L, SnapshotScheduler.INTERVAL_MS)
-        assertEquals(40, SnapshotScheduler.PERIODIC_TICKS)
+        assertEquals(8, SnapshotScheduler.PERIODIC_TICKS)
     }
 
     @Test

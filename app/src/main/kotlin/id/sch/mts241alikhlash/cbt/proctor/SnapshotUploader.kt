@@ -32,7 +32,10 @@ interface ProctorSnapshotApi {
     )
 }
 
-class SnapshotUploader(private val api: ProctorSnapshotApi) {
+class SnapshotUploader(
+    private val api: ProctorSnapshotApi,
+    private val log: (String) -> Unit = {},
+) {
 
     suspend fun upload(
         sessionId: String,
@@ -54,7 +57,8 @@ class SnapshotUploader(private val api: ProctorSnapshotApi) {
             true
         } catch (cancellation: CancellationException) {
             throw cancellation
-        } catch (_: Exception) {
+        } catch (failure: Exception) {
+            log("snapshot upload failed: ${failure.message}")
             false
         }
 
