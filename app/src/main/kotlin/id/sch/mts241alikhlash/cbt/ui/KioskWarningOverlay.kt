@@ -85,7 +85,7 @@ fun KioskWarningOverlay(
             )
             Spacer(Modifier.height(20.dp))
             SectionedCard {
-                SectionHeader("YANG PERLU DILAKUKAN")
+                SectionHeader("Yang Perlu Dilakukan")
                 Column(modifier = Modifier.padding(16.dp)) {
                     StepRow(1, "Panggil pengawas ujian.")
                     Spacer(Modifier.height(10.dp))

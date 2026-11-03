@@ -14,6 +14,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.toArgb
@@ -61,6 +64,7 @@ import id.sch.mts241alikhlash.cbt.ui.screens.LoginScreen
 import id.sch.mts241alikhlash.cbt.ui.screens.LoginViewModel
 import id.sch.mts241alikhlash.cbt.ui.screens.ProfileViewModel
 import id.sch.mts241alikhlash.cbt.ui.theme.BrandSurface
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -81,7 +85,6 @@ class MainActivity : ComponentActivity() {
         }
 
     private val countedViolations = kotlinx.coroutines.flow.MutableStateFlow(0)
-    private val trackerViolations = kotlinx.coroutines.flow.MutableStateFlow(0)
     private val activeInterference = kotlinx.coroutines.flow.MutableStateFlow(InterferenceState())
     private var showSupervisorExit by mutableStateOf(false)
     private var resumeCount by mutableIntStateOf(0)
@@ -157,6 +160,11 @@ class MainActivity : ComponentActivity() {
                                 app.repository.uploadSessionEvents(id)
                             }.getOrNull()
                             if (upload?.lockedByViolation == true) {
+                                runCatching {
+                                    app.sessionRepository.markReentryPending(id)
+                                }
+                                true
+                            } else if (upload?.requiresTokenReentry == true) {
                                 runCatching {
                                     app.sessionRepository.markReentryPending(id)
                                 }
@@ -247,7 +255,6 @@ class MainActivity : ComponentActivity() {
 
             val interference by activeInterference.collectAsState()
             val shieldInterference = interference.dominant
-            val trackedViolations by trackerViolations.collectAsState()
             val focusHeld by hasWindowFocus
             val gateOpen by kioskGateOpen
             val fallbackReady by pinFallbackReady
@@ -432,16 +439,31 @@ class MainActivity : ComponentActivity() {
                             dao = ExamDatabase.getInstance(applicationContext).sessionEventDao(),
                             sessionId = sessionId,
                             scope = lifecycleScope,
-                            guard = guard
+                            guard = guard,
+                            onViolationRecorded = {
+                                lifecycleScope.launch {
+                                    val upload = runCatching {
+                                        app.repository.uploadSessionEvents(sessionId)
+                                    }.getOrNull()
+                                    if (upload?.lockedByViolation == true) {
+                                        app.sessionRepository.markReentryPending(sessionId)
+                                    }
+                                }
+                            }
                         ).also {
                             val now = System.currentTimeMillis()
                             it.onCallOrMicChanged(interference.callOrMic, now)
                             it.onSecondaryDisplayChanged(interference.screenShare, now)
                         }
                     }
-                    val activeTracker = tracker
-                    LaunchedEffect(activeTracker) {
-                        activeTracker?.violationCount?.collect { trackerViolations.value = it }
+                    LaunchedEffect(sessionId) {
+                        while (true) {
+                            delay(15_000)
+                            val beat = app.repository.heartbeat(sessionId) ?: continue
+                            if (beat.lockedByViolation) {
+                                app.sessionRepository.markReentryPending(sessionId)
+                            }
+                        }
                     }
                     if (isExamActive && !gateOpen) {
                         KioskWarningOverlay(
@@ -487,8 +509,8 @@ class MainActivity : ComponentActivity() {
                     )
 
                     val counted by countedViolations.collectAsState()
-                    LaunchedEffect(counted, trackedViolations) {
-                        viewModel.recordViolations(reportedViolationCount(counted, trackedViolations))
+                    LaunchedEffect(counted) {
+                        viewModel.recordViolations(reportedViolationCount(counted))
                     }
                     val serverViolations by viewModel.uiState.collectAsState()
                     LaunchedEffect(serverViolations.serverViolations) {
@@ -640,7 +662,7 @@ class MainActivity : ComponentActivity() {
 
     private fun warnAboutViolations() {
         countedViolations.value = violations.counted()
-        val total = reportedViolationCount(countedViolations.value, trackerViolations.value)
+        val total = reportedViolationCount(countedViolations.value)
         Toast.makeText(this, ViolationPolicy.warning(total), Toast.LENGTH_LONG).show()
     }
 
@@ -652,9 +674,24 @@ class MainActivity : ComponentActivity() {
     private fun applyExamWindowFlags() {
         if (isExamActive) {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            hideSystemBars()
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            showSystemBars()
         }
+    }
+
+    private fun hideSystemBars() {
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    private fun showSystemBars() {
+        WindowCompat.getInsetsController(window, window.decorView)
+            .show(WindowInsetsCompat.Type.systemBars())
     }
 
     private fun startKioskMode() {
@@ -724,7 +761,6 @@ class MainActivity : ComponentActivity() {
         activeInterference.value = InterferenceState()
         tracker?.close()
         tracker = null
-        trackerViolations.value = 0
     }
 
     override fun onResume() {
@@ -791,8 +827,7 @@ class MainActivity : ComponentActivity() {
         kioskGateOpen.value = pinPolicy.gateOpen
     }
 
-    internal fun reportedViolationCount(storeCount: Int, trackerCount: Int): Int =
-        storeCount + trackerCount
+    internal fun reportedViolationCount(storeCount: Int): Int = storeCount
 
     private fun recordPinLoss(locked: Boolean) {
         val wasLocked = lastLocked

@@ -51,16 +51,11 @@ class ExamWindowFlagsTest {
     }
 
     @Test
-    fun `tracker events are merged into the reported count once`() {
+    fun `reported count is the store count alone`() {
         val activity = org.robolectric.Robolectric.buildActivity(MainActivity::class.java).setup().get()
-        val store = 1
-        val tracker = 2
 
-        val first = activity.reportedViolationCount(storeCount = store, trackerCount = tracker)
-        val afterWarning = activity.reportedViolationCount(storeCount = store, trackerCount = tracker)
-
-        assertEquals(3, first)
-        assertEquals(first, afterWarning)
+        assertEquals(2, activity.reportedViolationCount(storeCount = 2))
+        assertEquals(0, activity.reportedViolationCount(storeCount = 0))
         activity.finish()
     }
 

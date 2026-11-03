@@ -54,6 +54,7 @@ import id.sch.mts241alikhlash.cbt.ui.components.BrandWatermark
 import id.sch.mts241alikhlash.cbt.ui.components.FloatingTextField
 import id.sch.mts241alikhlash.cbt.ui.components.PrimaryButton
 import id.sch.mts241alikhlash.cbt.ui.components.pullUp
+import id.sch.mts241alikhlash.cbt.ui.components.CardHeader
 import id.sch.mts241alikhlash.cbt.ui.theme.DMSansFontFamily
 import id.sch.mts241alikhlash.cbt.ui.theme.WebTokens
 
@@ -229,18 +230,7 @@ private fun ExamDetailCard(exam: ExamSummaryDto) {
             .border(1.dp, WebTokens.Border, shape)
             .clip(shape)
     ) {
-        Text(
-            text = "DETAIL UJIAN",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = DMSansFontFamily,
-            letterSpacing = 1.2.sp,
-            color = WebTokens.Foreground.copy(alpha = 0.78f),
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(WebTokens.Foreground.copy(alpha = 0.03f))
-                .padding(horizontal = 16.dp, vertical = 10.dp)
-        )
+        CardHeader("Detail Ujian")
         Box(Modifier.fillMaxWidth().height(1.dp).background(WebTokens.Border))
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
             DetailRow("Ujian", exam.displayTitle(), strong = true)

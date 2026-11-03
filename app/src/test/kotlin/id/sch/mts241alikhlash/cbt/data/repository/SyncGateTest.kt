@@ -82,6 +82,11 @@ class SyncGateTest {
 }
 
 private class BlockingApi : ExamApiService {
+    override suspend fun sessionHeartbeat(
+        sessionId: String
+    ): id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse =
+        id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse()
+
     private val started = CompletableDeferred<Unit>()
     private val release = CompletableDeferred<Unit>()
 
@@ -126,6 +131,11 @@ private class BlockingApi : ExamApiService {
 }
 
 private class UploadingApi : ExamApiService {
+    override suspend fun sessionHeartbeat(
+        sessionId: String
+    ): id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse =
+        id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse()
+
     override suspend fun getQuestions(sessionId: String) = paperOf()
 
     override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()

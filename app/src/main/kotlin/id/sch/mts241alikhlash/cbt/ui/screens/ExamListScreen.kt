@@ -44,15 +44,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.sch.mts241alikhlash.cbt.data.model.ExamSummaryDto
 import id.sch.mts241alikhlash.cbt.ui.components.PrimaryButton
+import id.sch.mts241alikhlash.cbt.ui.components.CardHeader
 import id.sch.mts241alikhlash.cbt.ui.theme.DMSansFontFamily
 import id.sch.mts241alikhlash.cbt.ui.theme.WebTokens
 
 private data class ExamGroup(val title: String, val exams: List<ExamSummaryDto>)
 
 private fun groupExams(exams: List<ExamSummaryDto>): List<ExamGroup> = listOf(
-    ExamGroup("BISA DIKERJAKAN", exams.filter { it.isSelectable() }),
-    ExamGroup("AKAN DATANG", exams.filter { it.status == "UPCOMING" }),
-    ExamGroup("SELESAI", exams.filter { it.status == "FINISHED" })
+    ExamGroup("Bisa Dikerjakan", exams.filter { it.isSelectable() }),
+    ExamGroup("Akan Datang", exams.filter { it.status == "UPCOMING" }),
+    ExamGroup("Selesai", exams.filter { it.status == "FINISHED" })
 ).filter { it.exams.isNotEmpty() }
 
 @Composable
@@ -149,18 +150,7 @@ private fun GroupCard(
             .border(1.dp, WebTokens.Border, shape)
             .clip(shape)
     ) {
-        Text(
-            text = group.title,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = DMSansFontFamily,
-            letterSpacing = 1.2.sp,
-            color = WebTokens.Foreground.copy(alpha = 0.78f),
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(WebTokens.Foreground.copy(alpha = 0.03f))
-                .padding(horizontal = 14.dp, vertical = 10.dp)
-        )
+        CardHeader(group.title)
         group.exams.forEach { exam ->
             Box(Modifier.fillMaxWidth().height(1.dp).background(WebTokens.Border))
             ExamRow(

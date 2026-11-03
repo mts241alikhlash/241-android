@@ -49,6 +49,11 @@ class ExamSubmitFlowTest {
     private class FlowApi(
         var submitFailures: Int = 0
     ) : ExamApiService {
+        override suspend fun sessionHeartbeat(
+            sessionId: String
+        ): id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse =
+            id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse()
+
         val events = mutableListOf<String>()
         var submitCalls = 0
         val submits = mutableListOf<SubmitRequest>()
@@ -305,6 +310,11 @@ class ExamSubmitFlowTest {
     }
 
     private class FailingBatchApi(private val failure: Exception) : ExamApiService {
+    override suspend fun sessionHeartbeat(
+        sessionId: String
+    ): id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse =
+        id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse()
+
         override suspend fun getQuestions(sessionId: String) =
             paperOf(listOf(PaperQuestionDto("q1", 1, "MULTIPLE_CHOICE", "x", 1.0, choices("a", "b"))))
 

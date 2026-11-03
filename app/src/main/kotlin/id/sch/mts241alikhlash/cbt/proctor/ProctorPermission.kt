@@ -6,8 +6,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -67,26 +65,6 @@ fun rememberProctorPermission(
     val owner = LocalLifecycleOwner.current
     var state by remember { mutableStateOf(CameraPermissionState.ASK) }
 
-    val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        if (granted) {
-            state = CameraPermissionState.GRANTED
-            controller.start(owner, sessionId)
-        } else {
-            val canAskAgain = ActivityCompat.shouldShowRequestPermissionRationale(
-                context as? android.app.Activity ?: return@rememberLauncherForActivityResult,
-                Manifest.permission.CAMERA,
-            )
-            state = if (canAskAgain) {
-                CameraPermissionState.DENIED
-            } else {
-                CameraPermissionState.BLOCKED
-            }
-            controller.blocked(sessionId, "permission")
-        }
-    }
-
     LaunchedEffect(sessionId, controller) {
         if (!ProctorFlags.ENABLED) return@LaunchedEffect
 
@@ -99,6 +77,7 @@ fun rememberProctorPermission(
             controller.start(owner, sessionId)
             CameraPermissionState.GRANTED
         } else {
+            controller.blocked(sessionId, "permission")
             CameraPermissionState.DENIED
         }
     }

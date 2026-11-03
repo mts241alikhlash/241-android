@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.sch.mts241alikhlash.cbt.data.repository.StudentProfile
 import id.sch.mts241alikhlash.cbt.ui.components.PrimaryButton
+import id.sch.mts241alikhlash.cbt.ui.components.CardHeader
 import id.sch.mts241alikhlash.cbt.ui.theme.DMSansFontFamily
 import id.sch.mts241alikhlash.cbt.ui.theme.WebTokens
 
@@ -171,18 +172,7 @@ private fun Section(title: String, allRows: List<Pair<String, String?>>) {
             .border(1.dp, WebTokens.Border, shape)
             .clip(shape)
     ) {
-        Text(
-            text = title,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = DMSansFontFamily,
-            letterSpacing = 1.2.sp,
-            color = WebTokens.Foreground.copy(alpha = 0.78f),
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(WebTokens.Foreground.copy(alpha = 0.03f))
-                .padding(horizontal = 16.dp, vertical = 10.dp)
-        )
+        CardHeader(title)
         Box(Modifier.fillMaxWidth().height(1.dp).background(WebTokens.Border))
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             rows.forEach { (label, value) -> DetailRow(label, value) }

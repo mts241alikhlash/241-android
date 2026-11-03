@@ -140,13 +140,7 @@ fun AppDialog(
                         .padding(start = 16.dp, end = 48.dp, top = 2.dp, bottom = 2.dp),
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Text(
-                        text = title,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        fontFamily = DMSansFontFamily,
-                        color = WebTokens.Foreground
-                    )
+                    HeaderTitle(title)
                     if (description != null) {
                         Text(
                             text = description,

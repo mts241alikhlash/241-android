@@ -37,7 +37,10 @@ class LoginViewModelTest {
         viewModel.submit("guru", "secret")
 
         assertNull(viewModel.loggedIn.value)
-        assertEquals("Akun ini tidak dapat masuk di sini.", viewModel.state.value.error)
+        assertEquals(
+            "Akun ini tidak dapat masuk di sini.",
+            viewModel.state.value.identifierError
+        )
         assertFalse(viewModel.state.value.loading)
     }
 
@@ -54,14 +57,16 @@ class LoginViewModelTest {
         vm.submit("ahmad", "salah")
 
         assertNull(vm.loggedIn.value)
-        assertEquals("x", vm.state.value.error)
+        assertEquals("NIS atau kata sandi salah", vm.state.value.identifierError)
+        assertEquals("NIS atau kata sandi salah", vm.state.value.passwordError)
     }
 
     @Test
     fun blank_fields_are_rejected_without_calling_the_server() {
         viewModel.submit("  ", "")
 
-        assertEquals("Akun dan kata sandi wajib diisi", viewModel.state.value.error)
+        assertEquals("NIS wajib diisi", viewModel.state.value.identifierError)
+        assertEquals("Kata sandi wajib diisi", viewModel.state.value.passwordError)
         assertNull(viewModel.loggedIn.value)
     }
 

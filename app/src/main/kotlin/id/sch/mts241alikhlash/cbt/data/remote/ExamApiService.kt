@@ -2,6 +2,7 @@ package id.sch.mts241alikhlash.cbt.data.remote
 
 import id.sch.mts241alikhlash.cbt.data.model.PaperQuestionDto
 import id.sch.mts241alikhlash.cbt.data.model.RecordSessionEventsRequest
+import id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse
 import id.sch.mts241alikhlash.cbt.data.model.RecordSessionEventsResponse
 import id.sch.mts241alikhlash.cbt.data.model.ResumeSessionRequest
 import id.sch.mts241alikhlash.cbt.data.model.ResumedSessionDto
@@ -46,6 +47,11 @@ interface ExamApiService {
         @Path("sessionId") sessionId: String,
         @Body request: RecordSessionEventsRequest
     ): RecordSessionEventsResponse
+
+    @POST("student-exams/{sessionId}/heartbeat")
+    suspend fun sessionHeartbeat(
+        @Path("sessionId") sessionId: String
+    ): SessionHeartbeatResponse
 
     @POST("student-exams/{sessionId}/resume")
     suspend fun resumeSession(

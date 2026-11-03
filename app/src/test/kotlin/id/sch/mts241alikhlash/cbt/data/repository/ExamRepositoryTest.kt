@@ -308,6 +308,11 @@ private class BatchApi(
     private var submitError: ApiException? = null,
     private var failSubmitOnce: Boolean = false
 ) : ExamApiService {
+        override suspend fun sessionHeartbeat(
+            sessionId: String
+        ): id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse =
+            id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse()
+
     val batches = mutableListOf<SaveAnswersBatchRequest>()
     val submits = mutableListOf<SubmitRequest>()
     var gate: CompletableDeferred<Unit>? = null

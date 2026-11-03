@@ -186,6 +186,11 @@ open class StubExamApi : id.sch.mts241alikhlash.cbt.data.remote.ExamApiService {
     val batches = mutableListOf<SaveAnswersBatchRequest>()
     val submits = mutableListOf<id.sch.mts241alikhlash.cbt.data.model.SubmitRequest>()
 
+    override suspend fun sessionHeartbeat(
+        sessionId: String
+    ): id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse =
+        id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse()
+
     override suspend fun getQuestions(sessionId: String) = paperOf()
 
     override suspend fun getAnswers(sessionId: String): List<id.sch.mts241alikhlash.cbt.data.model.SavedAnswerDto> =

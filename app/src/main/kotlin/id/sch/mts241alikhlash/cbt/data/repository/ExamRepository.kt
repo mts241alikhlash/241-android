@@ -13,6 +13,7 @@ import id.sch.mts241alikhlash.cbt.data.model.PaperChoiceDto
 import id.sch.mts241alikhlash.cbt.data.model.PaperQuestionDto
 import id.sch.mts241alikhlash.cbt.data.model.SaveAnswerItemDto
 import id.sch.mts241alikhlash.cbt.data.model.RecordSessionEventsRequest
+import id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse
 import id.sch.mts241alikhlash.cbt.data.model.ResumeSessionRequest
 import id.sch.mts241alikhlash.cbt.data.model.SaveAnswersBatchRequest
 import id.sch.mts241alikhlash.cbt.data.model.SessionEventUploadItem
@@ -218,6 +219,16 @@ class ExamRepository(
             dao.markConfirmed(row.sessionId, row.questionId, row.clientId, row.updatedAtMillis, at)
         }
     }
+
+    suspend fun heartbeat(sessionId: String): SessionHeartbeatResponse? =
+        try {
+            guarded { api.sessionHeartbeat(sessionId) }
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Exception) {
+            log("Heartbeat failed for $sessionId", error)
+            null
+        }
 
     suspend fun reportViolations(sessionId: String, count: Int): Int? =
         try {

@@ -40,6 +40,7 @@ class SessionEventTracker(
     private val sessionId: String,
     private val scope: CoroutineScope,
     private val guard: InternalIntentGuard,
+    private val onViolationRecorded: (() -> Unit)? = null,
     private val clientId: () -> String = { UUID.randomUUID().toString() },
     private val nowMs: () -> Long = System::currentTimeMillis,
     writeDispatcher: CoroutineDispatcher = Dispatchers.IO
@@ -144,8 +145,13 @@ class SessionEventTracker(
             occurredAtMs = nowMs,
             detail = detail
         )
-        writeScope.launch { dao.insert(event.toEntity()) }
-        if (isViolation) _violationCount.value += 1
+        writeScope.launch {
+            dao.insert(event.toEntity())
+            if (isViolation) {
+                _violationCount.value += 1
+                onViolationRecorded?.invoke()
+            }
+        }
     }
 
     private fun RecordedSessionEvent.toEntity() = CachedSessionEventEntity(

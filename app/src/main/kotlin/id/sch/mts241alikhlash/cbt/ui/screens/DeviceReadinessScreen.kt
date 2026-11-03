@@ -20,6 +20,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -51,6 +58,9 @@ import id.sch.mts241alikhlash.cbt.proctor.ProctorFlags
 import id.sch.mts241alikhlash.cbt.proctor.cameraPermissionState
 import id.sch.mts241alikhlash.cbt.proctor.findActivity
 import id.sch.mts241alikhlash.cbt.proctor.requestCameraAgain
+import id.sch.mts241alikhlash.cbt.ui.components.ActionButton
+import id.sch.mts241alikhlash.cbt.ui.components.CardHeader
+import id.sch.mts241alikhlash.cbt.ui.components.ActionStyle
 import id.sch.mts241alikhlash.cbt.ui.components.PrimaryButton
 import id.sch.mts241alikhlash.cbt.ui.components.rememberIsOnline
 import id.sch.mts241alikhlash.cbt.ui.theme.BrandBackground
@@ -58,6 +68,7 @@ import id.sch.mts241alikhlash.cbt.ui.theme.BrandNavy
 import id.sch.mts241alikhlash.cbt.ui.theme.BrandSurface
 import id.sch.mts241alikhlash.cbt.ui.theme.BorderSubtle
 import id.sch.mts241alikhlash.cbt.ui.theme.DMSansFontFamily
+import id.sch.mts241alikhlash.cbt.ui.theme.DoubtfulOrange
 import id.sch.mts241alikhlash.cbt.ui.theme.StatusError
 import id.sch.mts241alikhlash.cbt.ui.theme.StatusSuccess
 import id.sch.mts241alikhlash.cbt.ui.theme.TextMuted
@@ -77,7 +88,7 @@ fun DeviceReadinessScreen(
 
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { }
+    ) { askedCamera = true }
 
     val cameraRequired = ProctorFlags.ENABLED
     val refresh: () -> Unit = {
@@ -113,59 +124,70 @@ fun DeviceReadinessScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(BrandBackground)
+            .windowInsetsPadding(
+                WindowInsets.statusBars
+                    .union(WindowInsets.displayCutout)
+                    .union(WindowInsets.navigationBars)
+                    .union(WindowInsets.ime)
+            )
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 24.dp)
+            .padding(horizontal = 20.dp, vertical = 20.dp)
     ) {
-        Text(
-            text = "Cek Kesiapan HP",
-            fontSize = 22.sp,
-            fontWeight = FontWeight.SemiBold,
-            fontFamily = DMSansFontFamily,
-            letterSpacing = (-0.4).sp,
-            color = TextPrimary
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = "Lengkapi empat syarat berikut sebelum memasukkan token ujian.",
-            fontSize = 13.sp,
-            fontFamily = DMSansFontFamily,
-            color = TextMuted
-        )
-        Spacer(Modifier.height(16.dp))
+        val readyCount = listOf(state.dndGranted, state.cameraGranted, state.audioClear, state.online)
+            .count { it }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(BrandSurface, RoundedCornerShape(10.dp))
-                .border(1.dp, BorderSubtle, RoundedCornerShape(10.dp))
-                .clip(RoundedCornerShape(10.dp))
+                .background(BrandSurface, RoundedCornerShape(12.dp))
+                .border(1.dp, BorderSubtle, RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(12.dp))
         ) {
+            CardHeader("Izin Perangkat")
+            RowDivider()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(BorderSubtle)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(readyCount / 4f)
+                            .height(3.dp)
+                            .background(if (readyCount == 4) StatusSuccess else DoubtfulOrange)
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = "$readyCount/4",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = DMSansFontFamily,
+                    color = if (readyCount == 4) StatusSuccess else DoubtfulOrange
+                )
+            }
             ReadinessRow(
                 title = "Mode Jangan Ganggu",
-                detail = if (state.dndGranted) {
-                    "Notifikasi dan dering akan dibisukan selama ujian."
-                } else {
-                    "Izinkan akses Jangan Ganggu agar notifikasi tidak mengganggu ujian."
-                },
                 ok = state.dndGranted,
-                actionLabel = if (state.dndGranted) null else "Aktifkan Izin Jangan Ganggu",
+                actionLabel = if (state.dndGranted) null else "Izinkan",
                 onAction = { openDndSettings(context, dnd) }
             )
             RowDivider()
             ReadinessRow(
                 title = "Izin Kamera Pengawas",
-                detail = when {
-                    !cameraRequired -> "Pengawasan kamera tidak aktif pada aplikasi ini."
-                    cameraState == CameraPermissionState.GRANTED -> "Kamera siap digunakan pengawas."
-                    cameraState == CameraPermissionState.BLOCKED -> "Izin kamera dimatikan. Buka Pengaturan, lalu izinkan Kamera."
-                    else -> "Izinkan kamera sebelum ujian dimulai."
-                },
                 ok = state.cameraGranted,
-                actionLabel = if (!cameraRequired || state.cameraGranted) null else {
-                    if (cameraState == CameraPermissionState.BLOCKED) "Buka Pengaturan" else "Izinkan Kamera"
-                },
+                actionLabel = if (!cameraRequired || state.cameraGranted) null else "Izinkan",
                 onAction = {
-                    requestCameraAgain(context, cameraState) {
-                        askedCamera = true
+                    if (cameraState == CameraPermissionState.BLOCKED) {
+                        openAppSettings(context)
+                    } else {
                         cameraLauncher.launch(Manifest.permission.CAMERA)
                     }
                 }
@@ -173,45 +195,37 @@ fun DeviceReadinessScreen(
             RowDivider()
             ReadinessRow(
                 title = "Bebas Panggilan & Mikrofon",
-                detail = if (state.audioClear) {
-                    "Tidak ada panggilan atau perekam suara yang aktif."
-                } else {
-                    "Matikan panggilan telepon atau perekam suara aplikasi lain terlebih dahulu."
-                },
                 ok = state.audioClear,
-                actionLabel = "Periksa Ulang",
+                actionLabel = if (state.audioClear) null else "Periksa Ulang",
                 onAction = refresh
             )
             RowDivider()
             ReadinessRow(
                 title = "Koneksi Internet",
-                detail = if (state.online) {
-                    "Terhubung ke jaringan."
-                } else {
-                    "Sambungkan HP ke internet sebelum melanjutkan."
-                },
                 ok = state.online,
-                actionLabel = "Periksa Ulang",
+                actionLabel = if (state.online) null else "Periksa Ulang",
                 onAction = refresh
             )
+            RowDivider()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
+            ) {
+                PrimaryButton(
+                    text = "Lanjutkan",
+                    onClick = onReadyToProceed,
+                    enabled = state.allReady
+                )
+                Spacer(Modifier.height(8.dp))
+                ActionButton(
+                    text = "Kembali ke daftar ujian",
+                    onClick = onBack,
+                    style = ActionStyle.Outline,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
-        Spacer(Modifier.height(20.dp))
-        PrimaryButton(
-            text = "Lanjutkan",
-            onClick = onReadyToProceed,
-            enabled = state.allReady
-        )
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = "Kembali ke daftar ujian",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            fontFamily = DMSansFontFamily,
-            color = BrandNavy,
-            modifier = Modifier
-                .clickable(onClick = onBack)
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-        )
     }
 }
 
@@ -223,59 +237,64 @@ private fun RowDivider() {
 @Composable
 private fun ReadinessRow(
     title: String,
-    detail: String,
     ok: Boolean,
     actionLabel: String?,
     onAction: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.Top
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (actionLabel != null) Modifier.clickable(onClick = onAction) else Modifier
+            )
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .padding(top = 5.dp)
-                .size(8.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(if (ok) StatusSuccess else StatusError)
-        )
-        Spacer(Modifier.width(10.dp))
-        Column(modifier = Modifier.weight(1f)) {
+                .size(22.dp)
+                .clip(RoundedCornerShape(11.dp))
+                .background(if (ok) StatusSuccess else StatusError.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center
+        ) {
             Text(
-                text = title,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
+                text = if (ok) "\u2713" else "!",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
                 fontFamily = DMSansFontFamily,
-                color = TextPrimary
+                color = if (ok) BrandSurface else StatusError
             )
-            Spacer(Modifier.height(2.dp))
+        }
+        Spacer(Modifier.width(12.dp))
+        Text(
+            text = title,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            fontFamily = DMSansFontFamily,
+            color = TextPrimary,
+            modifier = Modifier.weight(1f)
+        )
+        if (actionLabel != null) {
+            Spacer(Modifier.width(8.dp))
             Text(
-                text = detail,
-                fontSize = 12.sp,
+                text = "\u203A",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Normal,
                 fontFamily = DMSansFontFamily,
                 color = TextMuted
             )
-            if (actionLabel != null) {
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = actionLabel,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    fontFamily = DMSansFontFamily,
-                    color = BrandNavy,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .clickable(onClick = onAction)
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            }
         }
-        Text(
-            text = if (ok) "Siap" else "Belum",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            fontFamily = DMSansFontFamily,
-            color = if (ok) StatusSuccess else StatusError
+    }
+}
+
+private fun openAppSettings(context: Context) {
+    InternalIntentGuard.shared.markLaunchingInternalDialog()
+    runCatching {
+        context.startActivity(
+            Intent(
+                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                android.net.Uri.fromParts("package", context.packageName, null)
+            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         )
     }
 }

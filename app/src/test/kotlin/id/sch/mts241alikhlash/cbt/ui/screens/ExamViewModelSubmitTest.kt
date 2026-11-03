@@ -404,6 +404,11 @@ private class QuestionDaoStub : id.sch.mts241alikhlash.cbt.data.local.QuestionDa
 }
 
 private class BlockingSubmitApi : ExamApiService {
+    override suspend fun sessionHeartbeat(
+        sessionId: String
+    ): id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse =
+        id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse()
+
     private val started = CompletableDeferred<Unit>()
     private val release = CompletableDeferred<Unit>()
     var submitCalls = 0
@@ -450,6 +455,11 @@ private class BlockingSubmitApi : ExamApiService {
 }
 
 private class FailingApi : ExamApiService {
+    override suspend fun sessionHeartbeat(
+        sessionId: String
+    ): id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse =
+        id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse()
+
     override suspend fun getQuestions(sessionId: String) = paperOf(listOf(question("q1")))
 
     override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
@@ -484,6 +494,11 @@ private class FailingApi : ExamApiService {
 }
 
 private class FlakySubmitApi(private var failFirst: Int) : ExamApiService {
+    override suspend fun sessionHeartbeat(
+        sessionId: String
+    ): id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse =
+        id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse()
+
     var submitCalls = 0
         private set
 
@@ -527,6 +542,11 @@ private class FlakySubmitApi(private var failFirst: Int) : ExamApiService {
 }
 
 private class FailingQuestionsApi : ExamApiService {
+    override suspend fun sessionHeartbeat(
+        sessionId: String
+    ): id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse =
+        id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse()
+
     var questionCalls = 0
         private set
 
@@ -568,6 +588,11 @@ private class FailingQuestionsApi : ExamApiService {
 }
 
 private class BlockingQuestionsApi : ExamApiService {
+    override suspend fun sessionHeartbeat(
+        sessionId: String
+    ): id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse =
+        id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse()
+
     private val never = CompletableDeferred<Unit>()
     var submitCalls = 0
         private set
@@ -614,6 +639,11 @@ private class ViolationReportingApi(
     private val serverCount: Int = 0,
     private var failFirst: Int = 0
 ) : ExamApiService {
+    override suspend fun sessionHeartbeat(
+        sessionId: String
+    ): id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse =
+        id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse()
+
     val reported = mutableListOf<Int>()
 
     override suspend fun getQuestions(sessionId: String) = paperOf(listOf(question("q1")))

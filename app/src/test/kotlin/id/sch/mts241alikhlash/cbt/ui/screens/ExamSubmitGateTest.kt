@@ -42,6 +42,11 @@ class ExamSubmitGateTest {
         private val minSubmitMinutes: Int,
         private val submitResult: SubmittedSessionDto = SubmittedSessionDto("SUBMITTED")
     ) : ExamApiService {
+        override suspend fun sessionHeartbeat(
+            sessionId: String
+        ): id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse =
+            id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse()
+
         var submitCalls = 0
             private set
 

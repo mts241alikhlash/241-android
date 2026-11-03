@@ -163,6 +163,11 @@ private class OrderApi(
     private val error: Exception? = null,
     private val remote: List<SavedAnswerDto> = emptyList()
 ) : ExamApiService {
+        override suspend fun sessionHeartbeat(
+            sessionId: String
+        ): id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse =
+            id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse()
+
     val batches = mutableListOf<SaveAnswersBatchRequest>()
 
     override suspend fun getQuestions(sessionId: String) = paperOf()

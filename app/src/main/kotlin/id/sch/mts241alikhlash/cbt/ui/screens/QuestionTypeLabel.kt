@@ -16,13 +16,13 @@ import java.util.Locale
  */
 fun questionTypeLabel(type: String): String {
     val normalized = type.trim()
-    if (normalized.isEmpty()) return "SOAL"
+    if (normalized.isEmpty()) return "Soal"
     return when (normalized.lowercase(Locale.ROOT)) {
-        "multiple_choice" -> "PILIHAN GANDA"
-        "multiple_response" -> "PILIHAN GANDA KOMPLEKS"
-        "true_false" -> "BENAR / SALAH"
-        "essay" -> "URAIAN"
-        "short_answer" -> "JAWABAN SINGKAT"
-        else -> normalized.replace("_", " ").uppercase(Locale.ROOT)
+        "multiple_choice" -> "Pilihan Ganda"
+        "multiple_response" -> "Pilihan Ganda Kompleks"
+        "true_false" -> "Benar / Salah"
+        "essay" -> "Uraian"
+        "short_answer" -> "Jawaban Singkat"
+        else -> normalized.replace("_", " ").replaceFirstChar { it.uppercase(Locale.ROOT) }
     }
 }

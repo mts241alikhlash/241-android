@@ -81,6 +81,7 @@ import id.sch.mts241alikhlash.cbt.ui.components.ActionButton
 import id.sch.mts241alikhlash.cbt.ui.components.ActionStyle
 import id.sch.mts241alikhlash.cbt.ui.components.AppDialog
 import id.sch.mts241alikhlash.cbt.data.model.ExamSummaryDto
+import id.sch.mts241alikhlash.cbt.ui.components.CardHeader
 import id.sch.mts241alikhlash.cbt.ui.components.SectionHeader
 import id.sch.mts241alikhlash.cbt.ui.components.SectionedCard
 import androidx.compose.ui.unit.sp
@@ -123,33 +124,14 @@ fun ExamScreen(
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val owner = androidx.compose.ui.platform.LocalLifecycleOwner.current
-    val cameraPermission = if (proctor != null) {
+    if (proctor != null) {
         rememberProctorPermission(sessionId, proctor)
-    } else {
-        CameraPermissionState.ASK
     }
-    val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
-    ) { granted -> if (granted) proctor?.start(owner, sessionId) }
 
     DisposableEffect(proctor) {
         onDispose { proctor?.stop() }
     }
     androidx.compose.foundation.layout.Column {
-        if (proctor != null) {
-            id.sch.mts241alikhlash.cbt.proctor.CameraPermissionBanner(
-                state = cameraPermission,
-                onRequest = {
-                    id.sch.mts241alikhlash.cbt.proctor.requestCameraAgain(
-                        context,
-                        cameraPermission,
-                    ) { permissionLauncher.launch(android.Manifest.permission.CAMERA) }
-                },
-                modifier = Modifier.windowInsetsPadding(
-                    WindowInsets.statusBars.union(WindowInsets.displayCutout)
-                )
-            )
-        }
         ExamContent(
         state = state,
         onAnswer = viewModel::selectAnswer,
@@ -190,6 +172,28 @@ fun submitSummary(state: ExamUiState): SubmitSummary {
         unanswered = (total - answered).coerceAtLeast(0),
         pendingSync = state.pendingSync
     )
+}
+
+@Composable
+private fun SyncIndicator(summary: AnswerSyncSummary) {
+    if (summary.allConfirmed) return
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(7.dp)
+                .background(DoubtfulOrange, CircleShape)
+        )
+        Text(
+            text = "Menyinkronkan ${summary.pendingCount}",
+            fontFamily = DMSansFontFamily,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 11.sp,
+            color = DoubtfulOrange
+        )
+    }
 }
 
 @Composable
@@ -411,24 +415,6 @@ fun ExamContent(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        val sync = state.sync
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (sync.allConfirmed) StatusSuccessLight else DoubtfulOrangeLight,
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                if (sync.allConfirmed) StatusSuccess else DoubtfulOrange
-                            )
-                        ) {
-                            Text(
-                                text = answerSyncLabel(sync),
-                                fontFamily = DMSansFontFamily,
-                                fontWeight = FontWeight.Medium,
-                                fontSize = 11.sp,
-                                color = if (sync.allConfirmed) StatusSuccess else DoubtfulOrange,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
                         val minutes = state.remainingSeconds / 60
                         val seconds = state.remainingSeconds % 60
                         Surface(
@@ -611,7 +597,9 @@ fun ExamContent(
                     ) {
                         item {
                             SectionedCard {
-                                SectionHeader("SOAL ${state.currentIndex + 1}")
+                                SectionHeader("Soal ${state.currentIndex + 1}") {
+                                    SyncIndicator(state.sync)
+                                }
                                 Column(modifier = Modifier.padding(16.dp)) {
                                     HtmlContent(
                                         html = currentQ.bodyHtml,
@@ -620,7 +608,7 @@ fun ExamContent(
                                         imageLoader = imageLoader
                                     )
                                 }
-                                SectionHeader("JAWABAN", divider = true)
+                                SectionHeader("Jawaban", divider = true)
                                 Column(modifier = Modifier.padding(16.dp)) {
                                     QuestionAnswerInput(
                                         question = currentQ,
@@ -860,22 +848,7 @@ private fun QuestionListDialog(
                         .border(1.dp, BorderSubtle, shape)
                         .clip(shape)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(TextPrimary.copy(alpha = 0.03f))
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = questionTypeLabel(type),
-                            fontFamily = DMSansFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            letterSpacing = 1.2.sp,
-                            color = TextPrimary.copy(alpha = 0.78f)
-                        )
+                    CardHeader(title = questionTypeLabel(type)) {
                         Text(
                             text = "${items.count { answered(it.value) }} dari ${items.size}",
                             fontFamily = DMSansFontFamily,
@@ -980,22 +953,7 @@ private fun QuestionDetailCard(
             .border(1.dp, BorderSubtle, shape)
             .clip(shape)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(TextPrimary.copy(alpha = 0.03f))
-                .padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "DETAIL SOAL",
-                fontFamily = DMSansFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.sp,
-                letterSpacing = 1.2.sp,
-                color = TextPrimary.copy(alpha = 0.78f)
-            )
+        CardHeader(title = "Detail Soal") {
             Row(
                 modifier = Modifier
                     .height(32.dp)
@@ -1022,7 +980,7 @@ private fun QuestionDetailCard(
             exam?.let { DetailRow("Ujian", it.displayTitle(), strong = true) }
             DetailRow(
                 "Jenis soal",
-                questionTypeLabel(question.type).lowercase().replaceFirstChar { it.uppercase() },
+                questionTypeLabel(question.type),
                 strong = true
             )
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {

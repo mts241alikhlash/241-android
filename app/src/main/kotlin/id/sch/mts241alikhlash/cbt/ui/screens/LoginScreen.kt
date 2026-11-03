@@ -101,10 +101,18 @@ fun LoginScreen(viewModel: LoginViewModel) {
                     LoginCard(
                         loading = state.loading,
                         error = state.error,
+                        identifierError = state.identifierError,
+                        passwordError = state.passwordError,
                         identifier = identifier,
-                        onIdentifier = { identifier = it },
+                        onIdentifier = {
+                            identifier = it
+                            viewModel.clearFieldErrors()
+                        },
                         password = password,
-                        onPassword = { password = it },
+                        onPassword = {
+                            password = it
+                            viewModel.clearFieldErrors()
+                        },
                         onSubmit = { viewModel.submit(identifier, password) }
                     )
                     Spacer(modifier = Modifier.height(18.dp))
@@ -149,6 +157,8 @@ fun LoginScreen(viewModel: LoginViewModel) {
 private fun LoginCard(
     loading: Boolean,
     error: String?,
+    identifierError: String?,
+    passwordError: String?,
     identifier: String,
     onIdentifier: (String) -> Unit,
     password: String,
@@ -193,6 +203,7 @@ private fun LoginCard(
                 onValueChange = onIdentifier,
                 label = "NIS",
                 enabled = !loading,
+                error = identifierError,
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
             )
@@ -203,6 +214,7 @@ private fun LoginCard(
                 label = "Kata sandi",
                 enabled = !loading,
                 password = true,
+                error = passwordError,
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password,
@@ -216,6 +228,7 @@ private fun LoginCard(
                     color = WebTokens.Destructive,
                     fontSize = 12.sp,
                     fontFamily = DMSansFontFamily,
+                    textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
             }

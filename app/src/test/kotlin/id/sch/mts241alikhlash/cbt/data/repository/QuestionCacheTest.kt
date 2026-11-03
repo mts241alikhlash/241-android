@@ -348,6 +348,11 @@ private class FakeApi(
     private val questions: List<PaperQuestionDto> = emptyList(),
     private val failure: Throwable? = null
 ) : ExamApiService {
+        override suspend fun sessionHeartbeat(
+            sessionId: String
+        ): id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse =
+            id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse()
+
     override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
 
     override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto = SubmittedSessionDto("SUBMITTED")

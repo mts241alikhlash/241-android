@@ -57,6 +57,11 @@ class ExamDeliveryTest {
         var batchError: Exception? = null,
         var submitError: Exception? = null
     ) : ExamApiService {
+        override suspend fun sessionHeartbeat(
+            sessionId: String
+        ): id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse =
+            id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse()
+
         var submitCalls = 0
         var batchCalls = 0
 

@@ -199,6 +199,11 @@ private class EventsApi(
     private val lockedByViolation: Boolean = false,
     private val requiresTokenReentry: Boolean = false
 ) : ExamApiService {
+        override suspend fun sessionHeartbeat(
+            sessionId: String
+        ): id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse =
+            id.sch.mts241alikhlash.cbt.data.model.SessionHeartbeatResponse()
+
     val requests = mutableListOf<RecordSessionEventsRequest>()
     var resume: ResumeSessionRequest? = null
 

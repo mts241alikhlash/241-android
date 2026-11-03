@@ -36,6 +36,14 @@ data class RecordSessionEventsResponse(
 )
 
 @Serializable
+data class SessionHeartbeatResponse(
+    val lockedByViolation: Boolean = false,
+    val requiresTokenReentry: Boolean = false,
+    val absentSince: String? = null,
+    val serverTime: String? = null
+)
+
+@Serializable
 data class ResumeSessionRequest(
     val accessCode: String,
     val deviceId: String
