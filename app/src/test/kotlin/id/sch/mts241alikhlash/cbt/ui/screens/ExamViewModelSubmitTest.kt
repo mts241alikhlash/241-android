@@ -9,6 +9,10 @@ import id.sch.mts241alikhlash.cbt.batchAck
 import id.sch.mts241alikhlash.cbt.choices
 import id.sch.mts241alikhlash.cbt.data.local.AnswerSyncState
 import id.sch.mts241alikhlash.cbt.data.model.PaperQuestionDto
+import id.sch.mts241alikhlash.cbt.data.model.RecordSessionEventsRequest
+import id.sch.mts241alikhlash.cbt.data.model.RecordSessionEventsResponse
+import id.sch.mts241alikhlash.cbt.data.model.ResumeSessionRequest
+import id.sch.mts241alikhlash.cbt.data.model.ResumedSessionDto
 import id.sch.mts241alikhlash.cbt.data.model.SaveAnswersBatchRequest
 import id.sch.mts241alikhlash.cbt.data.model.SaveAnswersBatchResultDto
 import id.sch.mts241alikhlash.cbt.data.model.SessionPaperDto
@@ -423,6 +427,26 @@ private class BlockingSubmitApi : ExamApiService {
         release.await()
         return SubmittedSessionDto("SUBMITTED")
     }
+
+    override suspend fun recordSessionEvents(
+        sessionId: String,
+        request: RecordSessionEventsRequest
+    ): RecordSessionEventsResponse = RecordSessionEventsResponse()
+
+    override suspend fun resumeSession(
+        sessionId: String,
+        request: ResumeSessionRequest
+    ): ResumedSessionDto = ResumedSessionDto(
+        sessionId = sessionId,
+        status = "IN_PROGRESS",
+        deadline = "",
+        serverTime = ""
+    )
+
+    override suspend fun reportViolations(
+        sessionId: String,
+        request: ViolationReport
+    ): ViolationCountDto = ViolationCountDto(request.count)
 }
 
 private class FailingApi : ExamApiService {
@@ -437,6 +461,26 @@ private class FailingApi : ExamApiService {
 
     override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto =
         throw IOException("offline")
+
+    override suspend fun recordSessionEvents(
+        sessionId: String,
+        request: RecordSessionEventsRequest
+    ): RecordSessionEventsResponse = RecordSessionEventsResponse()
+
+    override suspend fun resumeSession(
+        sessionId: String,
+        request: ResumeSessionRequest
+    ): ResumedSessionDto = ResumedSessionDto(
+        sessionId = sessionId,
+        status = "IN_PROGRESS",
+        deadline = "",
+        serverTime = ""
+    )
+
+    override suspend fun reportViolations(
+        sessionId: String,
+        request: ViolationReport
+    ): ViolationCountDto = ViolationCountDto(request.count)
 }
 
 private class FlakySubmitApi(private var failFirst: Int) : ExamApiService {
@@ -460,6 +504,26 @@ private class FlakySubmitApi(private var failFirst: Int) : ExamApiService {
         }
         return SubmittedSessionDto("SUBMITTED")
     }
+
+    override suspend fun recordSessionEvents(
+        sessionId: String,
+        request: RecordSessionEventsRequest
+    ): RecordSessionEventsResponse = RecordSessionEventsResponse()
+
+    override suspend fun resumeSession(
+        sessionId: String,
+        request: ResumeSessionRequest
+    ): ResumedSessionDto = ResumedSessionDto(
+        sessionId = sessionId,
+        status = "IN_PROGRESS",
+        deadline = "",
+        serverTime = ""
+    )
+
+    override suspend fun reportViolations(
+        sessionId: String,
+        request: ViolationReport
+    ): ViolationCountDto = ViolationCountDto(request.count)
 }
 
 private class FailingQuestionsApi : ExamApiService {
@@ -481,6 +545,26 @@ private class FailingQuestionsApi : ExamApiService {
 
     override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto =
         SubmittedSessionDto("SUBMITTED")
+
+    override suspend fun recordSessionEvents(
+        sessionId: String,
+        request: RecordSessionEventsRequest
+    ): RecordSessionEventsResponse = RecordSessionEventsResponse()
+
+    override suspend fun resumeSession(
+        sessionId: String,
+        request: ResumeSessionRequest
+    ): ResumedSessionDto = ResumedSessionDto(
+        sessionId = sessionId,
+        status = "IN_PROGRESS",
+        deadline = "",
+        serverTime = ""
+    )
+
+    override suspend fun reportViolations(
+        sessionId: String,
+        request: ViolationReport
+    ): ViolationCountDto = ViolationCountDto(request.count)
 }
 
 private class BlockingQuestionsApi : ExamApiService {
@@ -504,6 +588,26 @@ private class BlockingQuestionsApi : ExamApiService {
         submitCalls++
         return SubmittedSessionDto("SUBMITTED")
     }
+
+    override suspend fun recordSessionEvents(
+        sessionId: String,
+        request: RecordSessionEventsRequest
+    ): RecordSessionEventsResponse = RecordSessionEventsResponse()
+
+    override suspend fun resumeSession(
+        sessionId: String,
+        request: ResumeSessionRequest
+    ): ResumedSessionDto = ResumedSessionDto(
+        sessionId = sessionId,
+        status = "IN_PROGRESS",
+        deadline = "",
+        serverTime = ""
+    )
+
+    override suspend fun reportViolations(
+        sessionId: String,
+        request: ViolationReport
+    ): ViolationCountDto = ViolationCountDto(request.count)
 }
 
 private class ViolationReportingApi(
@@ -535,6 +639,21 @@ private class ViolationReportingApi(
         if (request.count > 0) reported += request.count
         return ViolationCountDto(maxOf(serverCount, request.count))
     }
+
+    override suspend fun recordSessionEvents(
+        sessionId: String,
+        request: RecordSessionEventsRequest
+    ): RecordSessionEventsResponse = RecordSessionEventsResponse()
+
+    override suspend fun resumeSession(
+        sessionId: String,
+        request: ResumeSessionRequest
+    ): ResumedSessionDto = ResumedSessionDto(
+        sessionId = sessionId,
+        status = "IN_PROGRESS",
+        deadline = "",
+        serverTime = ""
+    )
 }
 
 private fun question(id: String) = PaperQuestionDto(

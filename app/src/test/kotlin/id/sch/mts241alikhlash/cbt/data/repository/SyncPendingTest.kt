@@ -5,11 +5,17 @@ import id.sch.mts241alikhlash.cbt.InMemoryAnswerDao
 import id.sch.mts241alikhlash.cbt.batchAck
 import id.sch.mts241alikhlash.cbt.paperOf
 import id.sch.mts241alikhlash.cbt.data.model.PaperQuestionDto
+import id.sch.mts241alikhlash.cbt.data.model.RecordSessionEventsRequest
+import id.sch.mts241alikhlash.cbt.data.model.RecordSessionEventsResponse
+import id.sch.mts241alikhlash.cbt.data.model.ResumeSessionRequest
+import id.sch.mts241alikhlash.cbt.data.model.ResumedSessionDto
 import id.sch.mts241alikhlash.cbt.data.model.SaveAnswersBatchRequest
 import id.sch.mts241alikhlash.cbt.data.model.SaveAnswersBatchResultDto
 import id.sch.mts241alikhlash.cbt.data.model.SavedAnswerDto
 import id.sch.mts241alikhlash.cbt.data.model.SubmitRequest
 import id.sch.mts241alikhlash.cbt.data.model.SubmittedSessionDto
+import id.sch.mts241alikhlash.cbt.data.model.ViolationCountDto
+import id.sch.mts241alikhlash.cbt.data.model.ViolationReport
 import id.sch.mts241alikhlash.cbt.data.remote.ExamApiService
 import id.sch.mts241alikhlash.cbt.pendingAnswer
 import kotlinx.coroutines.test.runTest
@@ -125,4 +131,24 @@ private class SyncFakeApi(
 
     override suspend fun submit(sessionId: String, request: SubmitRequest): SubmittedSessionDto =
         SubmittedSessionDto("SUBMITTED")
+
+    override suspend fun recordSessionEvents(
+        sessionId: String,
+        request: RecordSessionEventsRequest
+    ): RecordSessionEventsResponse = RecordSessionEventsResponse()
+
+    override suspend fun resumeSession(
+        sessionId: String,
+        request: ResumeSessionRequest
+    ): ResumedSessionDto = ResumedSessionDto(
+        sessionId = sessionId,
+        status = "IN_PROGRESS",
+        deadline = "",
+        serverTime = ""
+    )
+
+    override suspend fun reportViolations(
+        sessionId: String,
+        request: ViolationReport
+    ): ViolationCountDto = ViolationCountDto(request.count)
 }

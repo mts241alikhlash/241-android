@@ -3,10 +3,16 @@ package id.sch.mts241alikhlash.cbt
 import id.sch.mts241alikhlash.cbt.data.local.AnswerSyncState
 import id.sch.mts241alikhlash.cbt.data.local.CachedAnswerEntity
 import id.sch.mts241alikhlash.cbt.data.model.PaperChoiceDto
+import id.sch.mts241alikhlash.cbt.data.model.RecordSessionEventsRequest
+import id.sch.mts241alikhlash.cbt.data.model.RecordSessionEventsResponse
+import id.sch.mts241alikhlash.cbt.data.model.ResumeSessionRequest
+import id.sch.mts241alikhlash.cbt.data.model.ResumedSessionDto
 import id.sch.mts241alikhlash.cbt.data.model.SaveAnswerItemDto
 import id.sch.mts241alikhlash.cbt.data.model.SaveAnswersBatchRequest
 import id.sch.mts241alikhlash.cbt.data.model.SaveAnswersBatchResultDto
 import id.sch.mts241alikhlash.cbt.data.model.SkippedAnswerDto
+import id.sch.mts241alikhlash.cbt.data.model.ViolationCountDto
+import id.sch.mts241alikhlash.cbt.data.model.ViolationReport
 import id.sch.mts241alikhlash.cbt.data.model.ConfirmedAnswerDto
 import id.sch.mts241alikhlash.cbt.data.session.ServerClock
 import kotlinx.coroutines.test.TestCoroutineScheduler
@@ -200,6 +206,26 @@ open class StubExamApi : id.sch.mts241alikhlash.cbt.data.remote.ExamApiService {
         submits += request
         return id.sch.mts241alikhlash.cbt.data.model.SubmittedSessionDto("SUBMITTED")
     }
+
+    override suspend fun recordSessionEvents(
+        sessionId: String,
+        request: RecordSessionEventsRequest
+    ): RecordSessionEventsResponse = RecordSessionEventsResponse()
+
+    override suspend fun resumeSession(
+        sessionId: String,
+        request: ResumeSessionRequest
+    ): ResumedSessionDto = ResumedSessionDto(
+        sessionId = sessionId,
+        status = "IN_PROGRESS",
+        deadline = "",
+        serverTime = ""
+    )
+
+    override suspend fun reportViolations(
+        sessionId: String,
+        request: ViolationReport
+    ): ViolationCountDto = ViolationCountDto(request.count)
 }
 
 fun paperQuestion(questionId: String = "q1") = id.sch.mts241alikhlash.cbt.data.model.PaperQuestionDto(
