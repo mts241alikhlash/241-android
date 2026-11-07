@@ -8,6 +8,7 @@ import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.KeyEvent
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -51,11 +52,13 @@ import id.sch.mts241alikhlash.exam.kiosk.KioskPolicy
 import id.sch.mts241alikhlash.exam.kiosk.SessionEventTracker
 import id.sch.mts241alikhlash.exam.kiosk.ViolationPolicy
 import id.sch.mts241alikhlash.exam.kiosk.ViolationStore
+import id.sch.mts241alikhlash.exam.kiosk.blocksExamKey
 import id.sch.mts241alikhlash.exam.proctor.ProctorController
 import id.sch.mts241alikhlash.exam.proctor.ProctorFlags
 import id.sch.mts241alikhlash.exam.proctor.ProctorSnapshotApi
 import id.sch.mts241alikhlash.exam.ui.AppRootState
 import id.sch.mts241alikhlash.exam.ui.AssessmentAppRoot
+import id.sch.mts241alikhlash.exam.ui.ExamInputLockdown
 import id.sch.mts241alikhlash.exam.ui.FocusShieldOverlay
 import id.sch.mts241alikhlash.exam.ui.KioskWarningOverlay
 import id.sch.mts241alikhlash.exam.ui.ReloginDialog
@@ -616,46 +619,48 @@ class MainActivity : ComponentActivity() {
                     }
 
                     Box {
-                        ExamScreen(
-                            viewModel = viewModel,
-                            sessionId = sessionId,
-                            proctor = proctor,
-                            exam = appState.activeExam,
-                            baseUrl = BuildConfig.BASE_URL,
-                            imageLoader = app.imageLoader,
-                            onSupervisorExit = { showSupervisorExit = true },
-                            onSessionLost = { message ->
-                                lifecycleScope.launch {
-                                    runCatching { app.sessionRepository.finishIfCurrent(sessionId) }
-                                    releaseExamAndShowList(message)
-                                }
-                            },
-                            onFinish = {
-                                lifecycleScope.launch {
-                                    val ended =
-                                        runCatching {
-                                            endExamSession(
-                                                sessionRepository = app.sessionRepository,
-                                                sessionId = sessionId,
-                                                clearQuestions = app.repository::clearQuestions,
-                                            )
-                                        }.getOrElse { error ->
-                                            android.util.Log.e("MainActivity", "Teardown failed", error)
-                                            false
-                                        }
+                        ExamInputLockdown {
+                            ExamScreen(
+                                viewModel = viewModel,
+                                sessionId = sessionId,
+                                proctor = proctor,
+                                exam = appState.activeExam,
+                                baseUrl = BuildConfig.BASE_URL,
+                                imageLoader = app.imageLoader,
+                                onSupervisorExit = { showSupervisorExit = true },
+                                onSessionLost = { message ->
+                                    lifecycleScope.launch {
+                                        runCatching { app.sessionRepository.finishIfCurrent(sessionId) }
+                                        releaseExamAndShowList(message)
+                                    }
+                                },
+                                onFinish = {
+                                    lifecycleScope.launch {
+                                        val ended =
+                                            runCatching {
+                                                endExamSession(
+                                                    sessionRepository = app.sessionRepository,
+                                                    sessionId = sessionId,
+                                                    clearQuestions = app.repository::clearQuestions,
+                                                )
+                                            }.getOrElse { error ->
+                                                android.util.Log.e("MainActivity", "Teardown failed", error)
+                                                false
+                                            }
 
-                                    val unsent = viewModel.uiState.value.unsentAnswers
-                                    releaseExamAndShowList(
-                                        when {
-                                            viewModel.uiState.value.violationExit -> ViolationPolicy.warning(ViolationPolicy.LIMIT + 1)
-                                            unsent > 0 -> "Ujian dikumpulkan, tetapi $unsent jawaban tidak sempat terkirim"
-                                            ended -> "Ujian berhasil dikumpulkan"
-                                            else -> "Ujian selesai, tetapi sesi gagal dibersihkan"
-                                        },
-                                    )
-                                }
-                            },
-                        )
+                                        val unsent = viewModel.uiState.value.unsentAnswers
+                                        releaseExamAndShowList(
+                                            when {
+                                                viewModel.uiState.value.violationExit -> ViolationPolicy.warning(ViolationPolicy.LIMIT + 1)
+                                                unsent > 0 -> "Ujian dikumpulkan, tetapi $unsent jawaban tidak sempat terkirim"
+                                                ended -> "Ujian berhasil dikumpulkan"
+                                                else -> "Ujian selesai, tetapi sesi gagal dibersihkan"
+                                            },
+                                        )
+                                    }
+                                },
+                            )
+                        }
                         if (isExamActive && (!focusHeld || shieldInterference != null)) {
                             FocusShieldOverlay(interference = shieldInterference)
                         }
@@ -825,6 +830,7 @@ class MainActivity : ComponentActivity() {
             dpm.setLockTaskPackages(admin, arrayOf(packageName))
             dpm.setStatusBarDisabled(admin, true)
             dpm.setKeyguardDisabled(admin, true)
+            dpm.setLockTaskFeatures(admin, 0)
         }
     }
 
@@ -859,6 +865,11 @@ class MainActivity : ComponentActivity() {
         activeInterference.value = InterferenceState()
         tracker?.close()
         tracker = null
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (blocksExamKey(isExamActive, event.keyCode)) return true
+        return super.dispatchKeyEvent(event)
     }
 
     override fun onResume() {
