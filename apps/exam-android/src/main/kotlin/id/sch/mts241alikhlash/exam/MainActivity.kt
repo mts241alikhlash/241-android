@@ -98,6 +98,7 @@ class MainActivity : ComponentActivity() {
     private var showSupervisorExit by mutableStateOf(false)
     private var resumeCount by mutableIntStateOf(0)
     private var sessionRestored: Boolean? = null
+    private var appState by mutableStateOf(AppRootState())
     private val hasWindowFocus = mutableStateOf(true)
     private var runningSessionId: String? = null
     private val reentrySignal = mutableStateOf<String?>(null)
@@ -155,7 +156,6 @@ class MainActivity : ComponentActivity() {
             id.sch.mts241alikhlash.exam.proctor
                 .RequestCameraOnLaunch(guard)
 
-            var appState by remember { mutableStateOf(AppRootState()) }
             var restoreAttempt by remember { mutableStateOf(0) }
 
             LaunchedEffect(restoreAttempt) {
@@ -173,6 +173,11 @@ class MainActivity : ComponentActivity() {
                             syncClock = { id ->
                                 app.examActive = true
                                 app.repository.loadPaper(id, forceRefresh = true).getOrThrow()
+                            },
+                            isSessionFinished = { id ->
+                                app.catalogRepository
+                                    .listExams()
+                                    .any { it.sessionId == id && it.status == "FINISHED" }
                             },
                             requiresTokenReentry = { id ->
                                 val upload =
@@ -229,6 +234,18 @@ class MainActivity : ComponentActivity() {
 
                     is RestoreOutcome.SessionLost -> {
                         app.examActive = false
+                        val storedUser = runCatching { app.authRepository.currentStudent() }.getOrNull()
+                        appState =
+                            AppRootState(
+                                restoreComplete = true,
+                                user = storedUser,
+                                notice = outcome.message,
+                            )
+                    }
+
+                    is RestoreOutcome.AlreadyFinished -> {
+                        app.examActive = false
+                        violations.reset()
                         val storedUser = runCatching { app.authRepository.currentStudent() }.getOrNull()
                         appState =
                             AppRootState(
@@ -610,15 +627,7 @@ class MainActivity : ComponentActivity() {
                             onSessionLost = { message ->
                                 lifecycleScope.launch {
                                     runCatching { app.sessionRepository.finishIfCurrent(sessionId) }
-                                    isExamActive = false
-                                    stopKioskMode()
-                                    appState =
-                                        appState.copy(
-                                            sessionId = null,
-                                            deadline = null,
-                                            selectedExam = null,
-                                            notice = message,
-                                        )
+                                    releaseExamAndShowList(message)
                                 }
                             },
                             onFinish = {
@@ -635,22 +644,15 @@ class MainActivity : ComponentActivity() {
                                             false
                                         }
 
-                                    isExamActive = false
-                                    stopKioskMode()
-                                    appState = appState.copy(sessionId = null, deadline = null, selectedExam = null)
-
                                     val unsent = viewModel.uiState.value.unsentAnswers
-                                    Toast
-                                        .makeText(
-                                            this@MainActivity,
-                                            when {
-                                                viewModel.uiState.value.violationExit -> ViolationPolicy.warning(ViolationPolicy.LIMIT + 1)
-                                                unsent > 0 -> "Ujian dikumpulkan, tetapi $unsent jawaban tidak sempat terkirim"
-                                                ended -> "Ujian berhasil dikumpulkan"
-                                                else -> "Ujian selesai, tetapi sesi gagal dibersihkan"
-                                            },
-                                            Toast.LENGTH_LONG,
-                                        ).show()
+                                    releaseExamAndShowList(
+                                        when {
+                                            viewModel.uiState.value.violationExit -> ViolationPolicy.warning(ViolationPolicy.LIMIT + 1)
+                                            unsent > 0 -> "Ujian dikumpulkan, tetapi $unsent jawaban tidak sempat terkirim"
+                                            ended -> "Ujian berhasil dikumpulkan"
+                                            else -> "Ujian selesai, tetapi sesi gagal dibersihkan"
+                                        },
+                                    )
                                 }
                             },
                         )
@@ -718,19 +720,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun emergencyExit() {
-        isExamActive = false
-        mainHandler.removeCallbacks(pinWatch)
-        mainHandler.removeCallbacks(pinRecheck)
-        mainHandler.removeCallbacks(pinRetryRecheck)
-        runCatching { stopLockTask() }
-        clearDeviceOwnerPolicies()
-        applyExamWindowFlags()
-        dnd.restorePreviousDnd()
-        audioGuardJob?.cancel()
-        audioGuardJob = null
-        audioGuard?.stop()
-        audioGuard = null
-        activeInterference.value = InterferenceState()
+        releaseExamAndShowList()
         violations.record("supervisor_exit")
         finishAndRemoveTask()
     }
@@ -745,6 +735,14 @@ class MainActivity : ComponentActivity() {
         isExamActive = active
         applyExamWindowFlags()
     }
+
+    internal fun setRootStateForTest(state: AppRootState) {
+        appState = state
+    }
+
+    internal fun releaseExamForTest(notice: String? = null) = releaseExamAndShowList(notice)
+
+    internal fun rootStateForTest(): AppRootState = appState
 
     private fun applyExamWindowFlags() {
         if (isExamActive) {
@@ -800,6 +798,20 @@ class MainActivity : ComponentActivity() {
         if (paused) proctorController?.pause() else proctorController?.resume()
     }
 
+    private fun releaseExamAndShowList(notice: String? = null) {
+        val sessionId = appState.sessionId
+        isExamActive = false
+        reentrySignal.value = null
+        stopKioskMode()
+        violations.reset()
+        appState = appState.afterRelease(notice)
+        if (sessionId != null) {
+            lifecycleScope.launch {
+                runCatching { (application as ExamApplication).sessionRepository.clearReentryPending(sessionId) }
+            }
+        }
+    }
+
     private fun isDeviceOwner(): Boolean {
         val dpm = getSystemService(DevicePolicyManager::class.java) ?: return false
         return dpm.isDeviceOwnerApp(packageName)
@@ -829,6 +841,7 @@ class MainActivity : ComponentActivity() {
     private fun stopKioskMode() {
         isExamActive = false
         kioskGateOpen.value = false
+        pinFallbackReady.value = false
         pinPolicy.reset()
         lastLocked = null
         mainHandler.removeCallbacks(pinRecheck)

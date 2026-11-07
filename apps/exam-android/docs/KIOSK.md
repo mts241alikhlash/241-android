@@ -32,6 +32,14 @@ adb shell dumpsys device_policy | grep -i "device owner"
 - Hanya paket aplikasi ini yang boleh masuk lock task (`setLockTaskPackages`).
 - Saat ujian selesai, status bar dan keyguard dikembalikan.
 
+## Selesai ujian
+
+Semua akhir ujian — dikumpulkan siswa, waktu habis, batas pelanggaran, sesi hilang, atau keluar
+pengawas — melewati satu jalur pelepasan: keluar dari lock task, DND dikembalikan, state sesi
+dan catatan pelanggaran dibersihkan, lalu aplikasi mendarat di Daftar Ujian tanpa meminta token.
+Sesi yang di server sudah dikumpulkan (`status` ujian `FINISHED` di `GET /me/exams`) juga
+langsung kembali ke Daftar Ujian saat aplikasi dibuka lagi.
+
 ## Tanpa Device Owner
 
 Aplikasi tetap berjalan, tetapi:

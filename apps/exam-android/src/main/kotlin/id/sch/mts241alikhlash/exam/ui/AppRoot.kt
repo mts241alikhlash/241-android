@@ -47,7 +47,23 @@ data class AppRootState(
     val starting: Boolean = false,
     val startError: String? = null,
     val notice: String? = null,
-)
+) {
+    fun afterRelease(notice: String? = null): AppRootState =
+        copy(
+            restoreError = null,
+            sessionId = null,
+            deadline = null,
+            reentrySessionId = null,
+            reentryLoading = false,
+            reentryError = null,
+            selectedExam = null,
+            readinessComplete = false,
+            activeExam = null,
+            starting = false,
+            startError = null,
+            notice = notice,
+        )
+}
 
 @Composable
 fun AssessmentAppRoot(

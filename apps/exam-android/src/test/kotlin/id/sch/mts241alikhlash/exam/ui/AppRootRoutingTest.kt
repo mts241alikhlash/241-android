@@ -51,6 +51,22 @@ class AppRootRoutingTest {
     }
 
     @Test
+    fun root_shows_exam_list_after_the_exam_is_released() {
+        val released =
+            AppRootState(
+                restoreComplete = true,
+                user = user,
+                sessionId = "s1",
+                deadline = 1_700_000_000_000L,
+                reentrySessionId = "s1",
+                selectedExam = exam,
+                activeExam = exam,
+            ).afterRelease("Ujian berhasil dikumpulkan")
+
+        assertEquals("list", screenFor(released))
+    }
+
+    @Test
     fun root_shows_token_screen_when_exam_selected() {
         assertEquals(
             "token:e1",

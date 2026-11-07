@@ -5,6 +5,7 @@ import id.sch.mts241alikhlash.exam.data.repository.SyncReport
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
@@ -263,6 +264,60 @@ class ExamRestoreTest {
                 )
 
             assertTrue(outcome is RestoreOutcome.Restored)
+        }
+
+    @Test
+    fun `a session the server already collected goes to the list instead of the token screen`() =
+        runTest {
+            val repo = SessionRepository(ClearableStore("s1", 1_700_005_400_000L))
+
+            val outcome =
+                restoreExamSession(
+                    sessionRepository = repo,
+                    scope = this,
+                    syncPending = { SyncReport(0, 0) },
+                    isSessionFinished = { true },
+                    requiresTokenReentry = { true },
+                )
+
+            assertEquals(RestoreOutcome.AlreadyFinished(FINISHED_SESSION_MESSAGE), outcome)
+            assertNull(repo.current())
+        }
+
+    @Test
+    fun `a finished check that fails still restores the session`() =
+        runTest {
+            val repo = SessionRepository(StubStore("s1", 1_700_005_400_000L))
+
+            val outcome =
+                restoreExamSession(
+                    sessionRepository = repo,
+                    scope = this,
+                    syncPending = { SyncReport(0, 0) },
+                    isSessionFinished = { throw IOException("offline") },
+                )
+
+            assertTrue(outcome is RestoreOutcome.Restored)
+        }
+
+    @Test
+    fun `an unfinished session keeps its reentry behaviour`() =
+        runTest {
+            val repo = SessionRepository(StubStore("s1", 1_700_005_400_000L))
+
+            val outcome =
+                restoreExamSession(
+                    sessionRepository = repo,
+                    scope = this,
+                    syncPending = { SyncReport(0, 0) },
+                    isSessionFinished = { false },
+                    requiresTokenReentry = { true },
+                )
+
+            assertEquals(
+                RestoreOutcome.TokenReentry(RestoredSession("s1", 1_700_005_400_000L)),
+                outcome,
+            )
         }
 
     @Test
