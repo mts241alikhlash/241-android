@@ -7,13 +7,19 @@ object ViolationPolicy {
 
     fun counts(reason: String): Boolean = reason in COUNTED
 
-    fun exceeded(count: Int): Boolean = count > LIMIT
+    fun exceeded(
+        count: Int,
+        limit: Int = LIMIT,
+    ): Boolean = count > limit
 
-    fun warning(count: Int): String =
+    fun warning(
+        count: Int,
+        limit: Int = LIMIT,
+    ): String =
         when {
-            count > LIMIT -> "Ujian dikumpulkan karena keluar dari aplikasi lebih dari $LIMIT kali."
-            count == LIMIT ->
-                "Peringatan terakhir ($count dari $LIMIT): keluar sekali lagi dan ujian langsung dikumpulkan."
-            else -> "Peringatan $count dari $LIMIT: dilarang keluar dari aplikasi ujian."
+            count > limit -> "Ujian dikumpulkan karena keluar dari aplikasi lebih dari $limit kali."
+            count == limit ->
+                "Peringatan terakhir ($count dari $limit): keluar sekali lagi dan ujian langsung dikumpulkan."
+            else -> "Peringatan $count dari $limit: dilarang keluar dari aplikasi ujian."
         }
 }

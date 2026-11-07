@@ -13,6 +13,7 @@ suspend fun startExamSession(
 ): StartedSession {
     val started = catalog.startSession(examId, accessCode)
     sessions.start(started.sessionId, started.deadlineLocalMillis)
+    ExamRuntimePolicy.apply(started.policy)
     try {
         pullAnswers(started.sessionId)
     } catch (cancellation: CancellationException) {

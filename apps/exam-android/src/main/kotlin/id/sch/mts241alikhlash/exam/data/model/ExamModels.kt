@@ -33,10 +33,23 @@ data class SessionPaperDto(
 )
 
 @Serializable
+data class ExamPolicyDto(
+    val violationLimit: Int = 3,
+    val focusThresholdMs: Long = 10_000L,
+    val snapshotIntervalMs: Long = 15_000L,
+    val heartbeatIntervalMs: Long = 15_000L,
+    val gapRecordedMs: Long = 60_000L,
+    val gapTokenMs: Long = 300_000L,
+    val gapViolationFrom: Int = 2,
+    val tokenSlotSeconds: Int = 600,
+)
+
+@Serializable
 data class StartedSessionDto(
     val sessionId: String,
     val deadline: Long,
     val serverTime: Long,
+    val policy: ExamPolicyDto = ExamPolicyDto(),
 )
 
 @Serializable

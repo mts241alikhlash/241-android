@@ -137,4 +137,35 @@ class ExamDtoJsonTest {
             body,
         )
     }
+
+    @Test
+    fun started_session_carries_the_activity_policy() {
+        val dto =
+            json.decodeFromString<StartedSessionDto>(
+                """
+                {"sessionId":"s1","deadline":10,"serverTime":9,
+                 "policy":{"violationLimit":5,"focusThresholdMs":12000,
+                 "snapshotIntervalMs":30000,"heartbeatIntervalMs":15000,
+                 "gapRecordedMs":300000,"gapTokenMs":1800000,
+                 "gapViolationFrom":3,"tokenSlotSeconds":600}}
+                """.trimIndent(),
+            )
+
+        assertEquals(5, dto.policy.violationLimit)
+        assertEquals(12_000L, dto.policy.focusThresholdMs)
+        assertEquals(30_000L, dto.policy.snapshotIntervalMs)
+        assertEquals(3, dto.policy.gapViolationFrom)
+    }
+
+    @Test
+    fun started_session_without_a_policy_falls_back_to_the_safe_defaults() {
+        val dto =
+            json.decodeFromString<StartedSessionDto>(
+                """{"sessionId":"s1","deadline":10,"serverTime":9}""",
+            )
+
+        assertEquals(3, dto.policy.violationLimit)
+        assertEquals(10_000L, dto.policy.focusThresholdMs)
+        assertEquals(15_000L, dto.policy.snapshotIntervalMs)
+    }
 }

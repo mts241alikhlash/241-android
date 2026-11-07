@@ -36,6 +36,7 @@ import id.sch.mts241alikhlash.exam.data.local.ExamDatabase
 import id.sch.mts241alikhlash.exam.data.remote.ApiErrorCode
 import id.sch.mts241alikhlash.exam.data.remote.ApiException
 import id.sch.mts241alikhlash.exam.data.remote.userMessage
+import id.sch.mts241alikhlash.exam.data.session.ExamRuntimePolicy
 import id.sch.mts241alikhlash.exam.data.session.RestoreOutcome
 import id.sch.mts241alikhlash.exam.data.session.endExamSession
 import id.sch.mts241alikhlash.exam.data.session.restoreExamSession
@@ -501,6 +502,7 @@ class MainActivity : ComponentActivity() {
                         ExamDatabase.getInstance(applicationContext).sessionEventDao().prune(sessionId)
                         tracker =
                             SessionEventTracker(
+                                focusThresholdMs = ExamRuntimePolicy.current.focusThresholdMs,
                                 dao = ExamDatabase.getInstance(applicationContext).sessionEventDao(),
                                 sessionId = sessionId,
                                 scope = lifecycleScope,
@@ -525,7 +527,7 @@ class MainActivity : ComponentActivity() {
                     }
                     LaunchedEffect(sessionId) {
                         while (true) {
-                            delay(15_000)
+                            delay(ExamRuntimePolicy.current.heartbeatIntervalMs)
                             val beat = app.repository.heartbeat(sessionId) ?: continue
                             if (beat.lockedByViolation) {
                                 app.sessionRepository.markReentryPending(sessionId)
@@ -599,6 +601,7 @@ class MainActivity : ComponentActivity() {
                                 null
                             } else {
                                 ProctorController.camera(
+                                    intervalMs = ExamRuntimePolicy.current.snapshotIntervalMs,
                                     context = applicationContext,
                                     api = app.retrofit.create(ProctorSnapshotApi::class.java),
                                     isAnswerSyncBusy = { app.repository.isSyncingOrSubmitting },
@@ -890,6 +893,7 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         tracker?.close()
         tracker = null
+        ExamRuntimePolicy.reset()
         audioGuardJob?.cancel()
         audioGuardJob = null
         audioGuard?.stop()

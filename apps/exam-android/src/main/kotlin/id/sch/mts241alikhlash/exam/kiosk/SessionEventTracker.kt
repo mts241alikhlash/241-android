@@ -43,6 +43,7 @@ class SessionEventTracker(
     private val onViolationRecorded: (() -> Unit)? = null,
     private val clientId: () -> String = { UUID.randomUUID().toString() },
     private val nowMs: () -> Long = System::currentTimeMillis,
+    private val focusThresholdMs: Long = FOCUS_THRESHOLD_MS,
     writeDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     private val writeScope = CoroutineScope(SupervisorJob() + writeDispatcher)
@@ -97,7 +98,7 @@ class SessionEventTracker(
             overlayRecordedForFocusLoss = false
             focusLossJob =
                 scope.launch {
-                    delay(FOCUS_THRESHOLD_MS)
+                    delay(focusThresholdMs)
                     if (focusLostAtMs == null) return@launch
                     overlayRecordedForFocusLoss = true
                     focusLossJob = null

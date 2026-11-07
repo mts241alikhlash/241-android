@@ -1,5 +1,6 @@
 package id.sch.mts241alikhlash.exam.data.repository
 
+import id.sch.mts241alikhlash.exam.data.model.ExamPolicyDto
 import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
 import id.sch.mts241alikhlash.exam.data.model.StartSessionRequest
 import id.sch.mts241alikhlash.exam.data.remote.ExamCatalogApiService
@@ -9,6 +10,7 @@ import id.sch.mts241alikhlash.exam.data.session.ServerClock
 data class StartedSession(
     val sessionId: String,
     val deadlineLocalMillis: Long,
+    val policy: ExamPolicyDto = ExamPolicyDto(),
 )
 
 class ExamCatalogRepository(
@@ -30,6 +32,7 @@ class ExamCatalogRepository(
         return StartedSession(
             sessionId = started.sessionId,
             deadlineLocalMillis = started.deadline,
+            policy = started.policy,
         )
     }
 }
