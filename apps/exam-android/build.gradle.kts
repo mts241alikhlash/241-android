@@ -172,8 +172,6 @@ android {
     }
 }
 
-// CI runs the unqualified `check` task, which lints only the default variant; name the flavors here,
-// where the flavor list is known, so both are covered.
 tasks.named("check") { dependsOn("lintStandardDebug", "lintProctorDebug") }
 
 dependencies {

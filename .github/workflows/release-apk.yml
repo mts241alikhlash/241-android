@@ -6,8 +6,6 @@ name: Release APK
 #   ANDROID_KEYSTORE_PASSWORD  store password
 #   ANDROID_KEY_ALIAS          key alias
 #   ANDROID_KEY_PASSWORD       key password
-# API_BASE_URL comes from the workflow input; without it the app's own release default applies.
-# A tag is <app>@<version> for any module under apps/.
 
 on:
   push:
