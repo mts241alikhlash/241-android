@@ -1,5 +1,8 @@
+@file:OptIn(ExperimentalFoundationApi::class)
+
 package id.sch.mts241alikhlash.exam.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,6 +31,8 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -47,12 +52,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -96,6 +103,8 @@ import id.sch.mts241alikhlash.exam.ui.theme.SubmitGreen
 import id.sch.mts241alikhlash.exam.ui.theme.TextMuted
 import id.sch.mts241alikhlash.exam.ui.theme.TextPrimary
 import id.sch.mts241alikhlash.exam.ui.theme.TextSecondary
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun ExamScreen(
@@ -640,16 +649,32 @@ fun ExamContent(
                                     }
                                     SectionHeader("Jawaban", divider = true)
                                     Column(modifier = Modifier.padding(16.dp)) {
-                                        QuestionAnswerInput(
-                                            question = currentQ,
-                                            answer = state.answers[currentQ.id],
-                                            draft = state.drafts[currentQ.id],
-                                            enabled = state.canAnswer,
-                                            images = ImageContext(sessionId, baseUrl, imageLoader),
-                                            onAnswer = { onAnswer(currentQ.id, it) },
-                                            onToggleKey = { onToggleKey(currentQ.id, it) },
-                                            onTextChange = { onTextChange(currentQ.id, it) },
-                                        )
+                                        val answerIntoView = remember { BringIntoViewRequester() }
+                                        val answerScope = rememberCoroutineScope()
+                                        Box(
+                                            modifier =
+                                                Modifier
+                                                    .bringIntoViewRequester(answerIntoView)
+                                                    .onFocusChanged { focusState ->
+                                                        if (focusState.hasFocus) {
+                                                            answerScope.launch {
+                                                                delay(IME_SETTLE_MS)
+                                                                answerIntoView.bringIntoView()
+                                                            }
+                                                        }
+                                                    },
+                                        ) {
+                                            QuestionAnswerInput(
+                                                question = currentQ,
+                                                answer = state.answers[currentQ.id],
+                                                draft = state.drafts[currentQ.id],
+                                                enabled = state.canAnswer,
+                                                images = ImageContext(sessionId, baseUrl, imageLoader),
+                                                onAnswer = { onAnswer(currentQ.id, it) },
+                                                onToggleKey = { onToggleKey(currentQ.id, it) },
+                                                onTextChange = { onTextChange(currentQ.id, it) },
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -1124,3 +1149,5 @@ private fun ResumeNotice(onClose: () -> Unit) {
         }
     }
 }
+
+private const val IME_SETTLE_MS = 200L
