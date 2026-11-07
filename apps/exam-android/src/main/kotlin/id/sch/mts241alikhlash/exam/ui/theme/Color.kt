@@ -1,0 +1,25 @@
+package id.sch.mts241alikhlash.exam.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+val BrandNavy = Color(0xFF1A365D)
+val BrandNavyVariant = Color(0xFF0F2744)
+val BrandNavySubtle = Color(0xFFEEF4FF)
+val BrandGold = Color(0xFFC59B27)
+val BrandGoldLight = Color(0xFFFEF3C7)
+val BrandBackground = Color(0xFFF8FAFC)
+val BrandSurface = Color(0xFFFFFFFF)
+val BrandMuted = Color(0xFFF1F5F9)
+val TextPrimary = Color(0xFF0F172A)
+val TextSecondary = Color(0xFF334155)
+val TextMuted = Color(0xFF64748B)
+val BorderSubtle = Color(0xFFE2E8F0)
+val BorderInput = Color(0xFFCBD5E1)
+val BorderFocus = Color(0xFF1A365D)
+val DoubtfulOrange = Color(0xFFF59E0B)
+val DoubtfulOrangeLight = Color(0xFFFEF3C7)
+val StatusError = Color(0xFFDC2626)
+val StatusSuccess = Color(0xFF16A34A)
+val StatusSuccessLight = Color(0xFFDCFCE7)
+val SubmitGreen = Color(0xFF15803D)
+val SubmitGreenHover = Color(0xFF166534)

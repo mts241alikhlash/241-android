@@ -28,14 +28,10 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Unit tests (both flavors)
-        run: ./gradlew --no-daemon testStandardDebugUnitTest testProctorDebugUnitTest
-
-      - name: Android lint (both flavors)
-        run: ./gradlew --no-daemon lintStandardDebug lintProctorDebug
-
-      - name: Assemble debug APKs (both flavors)
-        run: ./gradlew --no-daemon assembleStandardDebug assembleProctorDebug
+      - name: Check (format, lint, unit tests, debug APKs)
+        # Unqualified task names run in every module that has them, so a new app in apps/ is covered
+        # without editing this file. An app wires its own extra lint tasks into `check`.
+        run: ./gradlew --no-daemon spotlessCheck assembleDebug check
 
       - name: Upload test reports
         if: failure()
@@ -43,6 +39,6 @@ jobs:
         with:
           name: test-reports
           path: |
-            app/build/reports/tests/**
-            app/build/reports/lint-results-*.html
+            apps/*/build/reports/tests/**
+            apps/*/build/reports/lint-results-*.html
           if-no-files-found: ignore

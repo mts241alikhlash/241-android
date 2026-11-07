@@ -6,20 +6,19 @@ name: Release APK
 #   ANDROID_KEYSTORE_PASSWORD  store password
 #   ANDROID_KEY_ALIAS          key alias
 #   ANDROID_KEY_PASSWORD       key password
-# API_BASE_URL defaults to production; override with the workflow input.
+# API_BASE_URL comes from the workflow input; without it the app's own release default applies.
+# A tag is <app>@<version> for any module under apps/.
 
 on:
   push:
     tags:
-      - 'v*'
+      - '*@*'
   workflow_dispatch:
     inputs:
       api_base_url:
-        description: 'API base URL baked into the APK'
-        required: false
-        default: 'https://exam.mts241alikhlash.sch.id/'
+        description: 'API base URL baked into the APK (defaults to the app module default)'
       tag:
-        description: 'Release tag (e.g. v1.0.0). Required for workflow_dispatch.'
+        description: 'Release tag (e.g. exam-android@0.1.0). Required for workflow_dispatch.'
         required: true
       flavor:
         description: 'Product flavor: standard (no camera permission) or proctor (snapshot proctoring)'
@@ -44,6 +43,28 @@ jobs:
           java-version: '17'
           cache: gradle
 
+      - name: Read app and version from tag
+        id: tag
+        run: |
+          set -euo pipefail
+          tag="${{ inputs.tag }}"
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then tag="$GITHUB_REF_NAME"; fi
+          case "$tag" in
+            *@*) ;;
+            *) echo "tag '$tag' must look like <app>@<version>" >&2; exit 1 ;;
+          esac
+          app="${tag%@*}"
+          version="${tag#*@}"
+          test -f "apps/$app/build.gradle.kts" || { echo "no module apps/$app" >&2; exit 1; }
+          declared=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' "apps/$app/build.gradle.kts")
+          if [ "$declared" != "$version" ]; then
+            echo "versionName '$declared' in apps/$app/build.gradle.kts differs from tag version '$version'" >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "app=$app" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Restore keystore
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -61,8 +82,9 @@ jobs:
           # build.gradle.kts reads these via providers.gradleProperty(), which only
           # sees env vars prefixed ORG_GRADLE_PROJECT_. A bare API_BASE_URL is ignored
           # and the release build silently falls back to https://exam-api.invalid/.
+          APP: ${{ steps.tag.outputs.app }}
           FLAVOR: ${{ inputs.flavor || 'proctor' }}
-          ORG_GRADLE_PROJECT_API_BASE_URL: ${{ inputs.api_base_url || 'https://exam.mts241alikhlash.sch.id/' }}
+          ORG_GRADLE_PROJECT_API_BASE_URL: ${{ inputs.api_base_url }}
           RELEASE_STORE_FILE: ${{ runner.temp }}/release.jks
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -70,38 +92,37 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x ./gradlew
-          ./gradlew ":app:assemble${FLAVOR^}Release" --no-daemon --stacktrace
+          ./gradlew ":apps:${APP}:assemble${FLAVOR^}Release" --no-daemon --stacktrace
 
       - name: Collect APK
         id: apk
         run: |
           set -euo pipefail
           flavor="${{ inputs.flavor || 'proctor' }}"
-          apk=$(find "app/build/outputs/apk/${flavor}/release" -name '*.apk' -type f | head -1)
+          app="${{ steps.tag.outputs.app }}"
+          apk=$(find "apps/${app}/build/outputs/apk/${flavor}/release" -name '*.apk' -type f | head -1)
           if [ -z "$apk" ]; then
             echo "no release APK produced" >&2
             exit 1
           fi
-          tag="${{ inputs.tag }}"
-          if [ "$GITHUB_REF_TYPE" = "tag" ]; then tag="$GITHUB_REF_NAME"; fi
-          name="mts241-exam-${flavor}-${tag}.apk"
+          name="241-${app}-${flavor}-${{ steps.tag.outputs.version }}.apk"
           cp "$apk" "$RUNNER_TEMP/$name"
           echo "path=$RUNNER_TEMP/$name" >> "$GITHUB_OUTPUT"
           echo "name=$name" >> "$GITHUB_OUTPUT"
 
-      - name: Guard against placeholder API URL
+      - name: Guard against a placeholder API URL
         env:
           APK: ${{ steps.apk.outputs.path }}
         run: |
           set -euo pipefail
           mkdir -p /tmp/apkdex && cd /tmp/apkdex
           unzip -o "$APK" 'classes*.dex' >/dev/null
-          if strings classes*.dex | grep -q 'exam-api.invalid'; then
-            echo "APK still points at the exam-api.invalid placeholder." >&2
-            echo "API_BASE_URL was not applied; check ORG_GRADLE_PROJECT_API_BASE_URL." >&2
+          if strings classes*.dex | grep -qE 'https://[a-z0-9.-]+\.invalid/?'; then
+            echo "the APK still points at a .invalid placeholder URL." >&2
+            echo "Set API_BASE_URL (workflow input) or give the app module a release default." >&2
             exit 1
           fi
-          strings classes*.dex | grep -oE 'https://[a-z0-9.-]*mts241alikhlash[a-z0-9./-]*' | sort -u | head -5
+          strings classes*.dex | grep -oE 'https://[a-z0-9.-]+[a-z0-9./-]*' | sort -u | head -5
 
       - uses: actions/upload-artifact@v4
         with:
@@ -113,7 +134,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
-          name: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
           files: ${{ steps.apk.outputs.path }}
           generate_release_notes: true

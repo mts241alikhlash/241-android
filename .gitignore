@@ -1,15 +1,19 @@
 build/
 **/build/
 .gradle/
+.kotlin/
 *.iml
 .idea/
 .DS_Store
 local.properties
 
-# Release signing material must never be committed. See docs/RELEASING.md.
+# Release signing material must never be committed. See docs/guides/release-apk.md.
 *.jks
 *.keystore
 keystore.properties
 
 # Subagent-driven-development workspace: task briefs and test logs.
 .superpowers/
+
+# Local agent notes: server and personal facts.
+AGENTS.local.md
