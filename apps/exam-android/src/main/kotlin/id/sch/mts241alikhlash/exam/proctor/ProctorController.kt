@@ -101,6 +101,10 @@ class ProctorController(
         owner.lifecycle.addObserver(lifecycleObserver)
         observer = lifecycleObserver
 
+        startLoop()
+    }
+
+    private fun startLoop() {
         loop =
             scope.launch {
                 while (isActive) {
@@ -108,6 +112,19 @@ class ProctorController(
                     delay(SnapshotScheduler.INTERVAL_MS)
                 }
             }
+    }
+
+    fun pause() {
+        loop?.cancel()
+        loop = null
+        source.clear()
+    }
+
+    fun resume() {
+        if (!ProctorFlags.ENABLED) return
+        if (loop?.isActive == true) return
+        if (owner == null || sessionId.isEmpty()) return
+        startLoop()
     }
 
     suspend fun tick() {

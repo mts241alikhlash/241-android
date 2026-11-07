@@ -13,6 +13,8 @@ import id.sch.mts241alikhlash.exam.data.session.ExamTimer
 import id.sch.mts241alikhlash.exam.data.session.ServerClock
 import id.sch.mts241alikhlash.exam.data.session.parseIsoMillis
 import id.sch.mts241alikhlash.exam.data.sync.SyncBackoff
+import id.sch.mts241alikhlash.exam.kiosk.CallSuspension
+import id.sch.mts241alikhlash.exam.kiosk.PendingSuspension
 import id.sch.mts241alikhlash.exam.kiosk.ViolationPolicy
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -70,6 +72,7 @@ class ExamViewModel(
     restored: Boolean? = null,
     private val clock: ServerClock = ServerClock(),
     private val onSubmitConfirmed: suspend (String) -> Unit = {},
+    private val onDeadlineExtended: suspend (Long) -> Unit = {},
     private val isOnline: () -> Boolean = { true },
     private val batteryLevel: () -> Int? = { null },
     private val isCharging: () -> Boolean? = { null },
@@ -88,12 +91,13 @@ class ExamViewModel(
         )
     val uiState: StateFlow<ExamUiState> = _uiState.asStateFlow()
 
-    private val timerDeadline: Long = deadline ?: ExamTimer.deadlineFrom(clock.nowMillis())
+    private var timerDeadline: Long = deadline ?: ExamTimer.deadlineFrom(clock.nowMillis())
     private var startedAtMillis: Long? = null
     private var timerJob: Job? = null
     private var debounceJob: Job? = null
     private var syncFailures = 0
     private var nextSyncAtMs = 0L
+    private val suspension = CallSuspension()
 
     init {
         loadQuestions()
@@ -263,6 +267,44 @@ class ExamViewModel(
         } else if (outcome.rejectedMessage != null) {
             _uiState.value = _uiState.value.copy(deliveryWarning = outcome.rejectedMessage)
         }
+    }
+
+    fun onCallOrMicChanged(
+        active: Boolean,
+        nowMs: Long,
+    ) {
+        if (_uiState.value.isSubmitted) return
+        if (active) {
+            suspension.begin(nowMs)
+            return
+        }
+        val pending = suspension.end(nowMs) ?: return
+        reportSuspension(pending)
+    }
+
+    private fun reportSuspension(pending: PendingSuspension) {
+        viewModelScope.launch {
+            var failures = 0
+            while (!_uiState.value.isSubmitted && _uiState.value.lostMessage == null) {
+                val result = repository.reportSuspension(sessionId, pending.seconds, pending.clientId)
+                val applied = result.getOrNull()
+                if (applied != null) {
+                    if (applied.deadlineMillis > timerDeadline) {
+                        timerDeadline = applied.deadlineMillis
+                        onDeadlineExtended(applied.deadlineMillis)
+                    }
+                    return@launch
+                }
+                if (!retryableSuspension(result.exceptionOrNull())) return@launch
+                failures += 1
+                delay(SyncBackoff.delayMs(failures, Random.nextDouble()))
+            }
+        }
+    }
+
+    private fun retryableSuspension(error: Throwable?): Boolean {
+        val api = error as? ApiException ?: return false
+        return api.statusCode == 0 || api.statusCode == 429 || api.statusCode >= 500
     }
 
     private var violations = 0

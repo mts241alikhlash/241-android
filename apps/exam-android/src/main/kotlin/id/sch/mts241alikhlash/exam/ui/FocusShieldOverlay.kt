@@ -38,7 +38,7 @@ fun FocusShieldOverlay(
         Text(
             text =
                 when (interference) {
-                    ActiveInterference.CALL_OR_MIC -> "Panggilan atau mikrofon aktif"
+                    ActiveInterference.CALL_OR_MIC -> "Ujian dijeda — ada panggilan"
                     ActiveInterference.SCREEN_SHARE -> "Berbagi layar terdeteksi"
                     null -> "Layar ujian disembunyikan"
                 },

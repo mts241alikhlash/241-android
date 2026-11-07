@@ -480,6 +480,11 @@ private class BlockingSubmitApi : ExamApiService {
         sessionId: String,
         request: ViolationReport,
     ): ViolationCountDto = ViolationCountDto(request.count)
+
+    override suspend fun reportSuspension(
+        sessionId: String,
+        request: id.sch.mts241alikhlash.exam.data.model.SuspensionRequest,
+    ): id.sch.mts241alikhlash.exam.data.model.SuspensionResponseDto = throw UnsupportedOperationException("not used")
 }
 
 private class FailingApi : ExamApiService {
@@ -523,6 +528,11 @@ private class FailingApi : ExamApiService {
         sessionId: String,
         request: ViolationReport,
     ): ViolationCountDto = ViolationCountDto(request.count)
+
+    override suspend fun reportSuspension(
+        sessionId: String,
+        request: id.sch.mts241alikhlash.exam.data.model.SuspensionRequest,
+    ): id.sch.mts241alikhlash.exam.data.model.SuspensionResponseDto = throw UnsupportedOperationException("not used")
 }
 
 private class FlakySubmitApi(
@@ -578,6 +588,11 @@ private class FlakySubmitApi(
         sessionId: String,
         request: ViolationReport,
     ): ViolationCountDto = ViolationCountDto(request.count)
+
+    override suspend fun reportSuspension(
+        sessionId: String,
+        request: id.sch.mts241alikhlash.exam.data.model.SuspensionRequest,
+    ): id.sch.mts241alikhlash.exam.data.model.SuspensionResponseDto = throw UnsupportedOperationException("not used")
 }
 
 private class FailingQuestionsApi : ExamApiService {
@@ -628,6 +643,11 @@ private class FailingQuestionsApi : ExamApiService {
         sessionId: String,
         request: ViolationReport,
     ): ViolationCountDto = ViolationCountDto(request.count)
+
+    override suspend fun reportSuspension(
+        sessionId: String,
+        request: id.sch.mts241alikhlash.exam.data.model.SuspensionRequest,
+    ): id.sch.mts241alikhlash.exam.data.model.SuspensionResponseDto = throw UnsupportedOperationException("not used")
 }
 
 private class BlockingQuestionsApi : ExamApiService {
@@ -681,6 +701,11 @@ private class BlockingQuestionsApi : ExamApiService {
         sessionId: String,
         request: ViolationReport,
     ): ViolationCountDto = ViolationCountDto(request.count)
+
+    override suspend fun reportSuspension(
+        sessionId: String,
+        request: id.sch.mts241alikhlash.exam.data.model.SuspensionRequest,
+    ): id.sch.mts241alikhlash.exam.data.model.SuspensionResponseDto = throw UnsupportedOperationException("not used")
 }
 
 private class ViolationReportingApi(
@@ -720,6 +745,11 @@ private class ViolationReportingApi(
         if (request.count > 0) reported += request.count
         return ViolationCountDto(maxOf(serverCount, request.count))
     }
+
+    override suspend fun reportSuspension(
+        sessionId: String,
+        request: id.sch.mts241alikhlash.exam.data.model.SuspensionRequest,
+    ): id.sch.mts241alikhlash.exam.data.model.SuspensionResponseDto = throw UnsupportedOperationException("not used")
 
     override suspend fun recordSessionEvents(
         sessionId: String,

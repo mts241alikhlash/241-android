@@ -59,6 +59,7 @@ class SessionEventTracker(
     private var callOrMicActive = false
     private var secondaryDisplayActive = false
     private var coveringWindow = false
+    private var suspended = false
 
     fun onCoveringWindowChanged(
         covering: Boolean,
@@ -121,12 +122,17 @@ class SessionEventTracker(
                 record(SessionEventType.PERMISSION_DIALOG, false, nowMs, DETAIL_PERMISSION_DIALOG)
             !isScreenInteractive ->
                 record(SessionEventType.SCREEN_OFF, false, nowMs, DETAIL_SCREEN_OFF)
+            suspended -> Unit
             overlayAlreadyCounted -> Unit
             else -> {
                 _requiresTokenReentry.value = true
                 record(SessionEventType.LEFT_APP, true, nowMs, DETAIL_LEFT_APP)
             }
         }
+    }
+
+    fun onSuspensionChanged(active: Boolean) {
+        suspended = active
     }
 
     fun onCallOrMicChanged(
