@@ -1,7 +1,5 @@
 package id.sch.mts241alikhlash.exam
 
-import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -44,7 +42,6 @@ import id.sch.mts241alikhlash.exam.data.session.restoreExamSession
 import id.sch.mts241alikhlash.exam.data.session.startExamSession
 import id.sch.mts241alikhlash.exam.kiosk.AudioAndDisplayGuard
 import id.sch.mts241alikhlash.exam.kiosk.DndController
-import id.sch.mts241alikhlash.exam.kiosk.ExamDeviceAdminReceiver
 import id.sch.mts241alikhlash.exam.kiosk.InterferenceState
 import id.sch.mts241alikhlash.exam.kiosk.InternalIntentGuard
 import id.sch.mts241alikhlash.exam.kiosk.KioskPinRetryPolicy
@@ -817,35 +814,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun isDeviceOwner(): Boolean {
-        val dpm = getSystemService(DevicePolicyManager::class.java) ?: return false
-        return dpm.isDeviceOwnerApp(packageName)
-    }
-
-    private fun applyDeviceOwnerPolicies() {
-        if (!isDeviceOwner()) return
-        runCatching {
-            val dpm = getSystemService(DevicePolicyManager::class.java)
-            val admin = ComponentName(this, ExamDeviceAdminReceiver::class.java)
-            dpm.setLockTaskPackages(admin, arrayOf(packageName))
-            dpm.setStatusBarDisabled(admin, true)
-            dpm.setKeyguardDisabled(admin, true)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                dpm.setLockTaskFeatures(admin, 0)
-            }
-        }
-    }
-
-    private fun clearDeviceOwnerPolicies() {
-        if (!isDeviceOwner()) return
-        runCatching {
-            val dpm = getSystemService(DevicePolicyManager::class.java)
-            val admin = ComponentName(this, ExamDeviceAdminReceiver::class.java)
-            dpm.setStatusBarDisabled(admin, false)
-            dpm.setKeyguardDisabled(admin, false)
-        }
-    }
-
     private fun stopKioskMode() {
         isExamActive = false
         kioskGateOpen.value = false
@@ -855,7 +823,6 @@ class MainActivity : ComponentActivity() {
         mainHandler.removeCallbacks(pinRecheck)
         mainHandler.removeCallbacks(pinWatch)
         mainHandler.removeCallbacks(pinRetryRecheck)
-        clearDeviceOwnerPolicies()
         applyExamWindowFlags()
         runCatching { stopLockTask() }
         dnd.restorePreviousDnd()
@@ -891,7 +858,6 @@ class MainActivity : ComponentActivity() {
         checkTokenReentry()
         guard.consumeOnResume()
         if (isExamActive) {
-            applyDeviceOwnerPolicies()
             applyExamWindowFlags()
             runCatching { startLockTask() }
             verifyPinState()
