@@ -52,8 +52,6 @@ class ExamSessionTeardownTest {
             var sessionIdDuringPurge: String? = "<not called>"
 
             endExamSession(sessionRepository, "s1") {
-                // Observing the store from inside the purge pins the ordering: a purge-first
-                // implementation would still see "s1" here.
                 sessionIdDuringPurge = store.load()
             }
 

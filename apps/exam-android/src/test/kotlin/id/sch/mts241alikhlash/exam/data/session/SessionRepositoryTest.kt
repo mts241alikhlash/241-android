@@ -63,7 +63,6 @@ class SessionRepositoryTest {
             repo.start("sess-1")
             val firstDeadline = repo.deadline()
 
-            // App restarted 20 minutes later and re-started the same paper.
             clock += 20L * 60L * 1000L
             repo.start("sess-1")
 

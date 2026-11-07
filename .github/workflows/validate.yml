@@ -29,8 +29,6 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Check (format, lint, unit tests, debug APKs)
-        # Unqualified task names run in every module that has them, so a new app in apps/ is covered
-        # without editing this file. An app wires its own extra lint tasks into `check`.
         run: ./gradlew --no-daemon spotlessCheck assembleDebug check
 
       - name: Upload test reports
