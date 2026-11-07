@@ -40,4 +40,14 @@ class ViolationPolicyTest {
             ViolationPolicy.warning(4),
         )
     }
+
+    @Test
+    fun `the activity policy can move the hand-in limit`() {
+        assertFalse(ViolationPolicy.exceeded(4, limit = 5))
+        assertTrue(ViolationPolicy.exceeded(6, limit = 5))
+        assertEquals(
+            "Peringatan terakhir (5 dari 5): keluar sekali lagi dan ujian langsung dikumpulkan.",
+            ViolationPolicy.warning(5, limit = 5),
+        )
+    }
 }

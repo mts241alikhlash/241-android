@@ -55,6 +55,7 @@ class ProctorController(
     private val isAnswerSyncBusy: () -> Boolean,
     private val source: SnapshotSource,
     private val log: (String) -> Unit = {},
+    private val intervalMs: Long = SnapshotScheduler.INTERVAL_MS,
 ) {
     private val uploader = SnapshotUploader(api, log)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -109,7 +110,7 @@ class ProctorController(
             scope.launch {
                 while (isActive) {
                     tick()
-                    delay(SnapshotScheduler.INTERVAL_MS)
+                    delay(intervalMs)
                 }
             }
     }
@@ -174,10 +175,12 @@ class ProctorController(
             context: Context,
             api: ProctorSnapshotApi,
             isAnswerSyncBusy: () -> Boolean,
+            intervalMs: Long = SnapshotScheduler.INTERVAL_MS,
         ) = ProctorController(
             api,
             isAnswerSyncBusy,
             CameraSnapshotSource(context),
+            intervalMs = intervalMs,
             log = { message -> android.util.Log.w("ProctorUpload", message) },
         )
     }

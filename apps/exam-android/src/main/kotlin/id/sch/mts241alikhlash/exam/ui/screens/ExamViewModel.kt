@@ -9,6 +9,7 @@ import id.sch.mts241alikhlash.exam.data.remote.ApiErrorCode
 import id.sch.mts241alikhlash.exam.data.remote.ApiException
 import id.sch.mts241alikhlash.exam.data.repository.ExamRepository
 import id.sch.mts241alikhlash.exam.data.repository.isSessionLost
+import id.sch.mts241alikhlash.exam.data.session.ExamRuntimePolicy
 import id.sch.mts241alikhlash.exam.data.session.ExamTimer
 import id.sch.mts241alikhlash.exam.data.session.ServerClock
 import id.sch.mts241alikhlash.exam.data.session.parseIsoMillis
@@ -332,7 +333,15 @@ class ExamViewModel(
     fun recordViolations(count: Int) {
         violations = maxOf(violations, count)
         reportViolations()
-        if (!ViolationPolicy.exceeded(violations) || violationSubmitStarted) return
+        if (
+            !ViolationPolicy.exceeded(
+                violations,
+                ExamRuntimePolicy.current.violationLimit,
+            ) ||
+            violationSubmitStarted
+        ) {
+            return
+        }
         val state = _uiState.value
         if (state.isSubmitted || state.lostMessage != null) return
         violationSubmitStarted = true
