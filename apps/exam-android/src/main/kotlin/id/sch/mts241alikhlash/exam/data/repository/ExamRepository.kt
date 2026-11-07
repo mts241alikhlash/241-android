@@ -13,6 +13,7 @@ import id.sch.mts241alikhlash.exam.data.model.PaperChoiceDto
 import id.sch.mts241alikhlash.exam.data.model.PaperQuestionDto
 import id.sch.mts241alikhlash.exam.data.model.RecordSessionEventsRequest
 import id.sch.mts241alikhlash.exam.data.model.ResumeSessionRequest
+import id.sch.mts241alikhlash.exam.data.model.SUSPENSION_REASON_CALL
 import id.sch.mts241alikhlash.exam.data.model.SaveAnswerItemDto
 import id.sch.mts241alikhlash.exam.data.model.SaveAnswersBatchRequest
 import id.sch.mts241alikhlash.exam.data.model.SessionEventUploadItem
@@ -20,6 +21,7 @@ import id.sch.mts241alikhlash.exam.data.model.SessionHeartbeatResponse
 import id.sch.mts241alikhlash.exam.data.model.SessionPaperDto
 import id.sch.mts241alikhlash.exam.data.model.SubmitRequest
 import id.sch.mts241alikhlash.exam.data.model.SubmittedSessionDto
+import id.sch.mts241alikhlash.exam.data.model.SuspensionRequest
 import id.sch.mts241alikhlash.exam.data.model.ViolationReport
 import id.sch.mts241alikhlash.exam.data.remote.ApiErrorCode
 import id.sch.mts241alikhlash.exam.data.remote.ApiException
@@ -53,6 +55,13 @@ data class SyncReport(
     val rejected: Int = 0,
     val closedMessage: String? = null,
     val closedCode: String? = null,
+)
+
+data class SuspensionResult(
+    val deadlineMillis: Long,
+    val finalizeAtMillis: Long?,
+    val extraMinutes: Int,
+    val suspendedSeconds: Int,
 )
 
 fun answerClientId(
@@ -244,6 +253,34 @@ class ExamRepository(
         } catch (error: Exception) {
             log("Heartbeat failed for $sessionId", error)
             null
+        }
+
+    suspend fun reportSuspension(
+        sessionId: String,
+        seconds: Int,
+        clientId: String,
+    ): Result<SuspensionResult> =
+        try {
+            val dto =
+                guarded {
+                    api.reportSuspension(
+                        sessionId,
+                        SuspensionRequest(SUSPENSION_REASON_CALL, seconds, clientId),
+                    )
+                }
+            Result.success(
+                SuspensionResult(
+                    deadlineMillis = parseIsoMillis(dto.deadline),
+                    finalizeAtMillis = dto.finalizeAt?.let { runCatching { parseIsoMillis(it) }.getOrNull() },
+                    extraMinutes = dto.extraMinutes,
+                    suspendedSeconds = dto.suspendedSeconds,
+                ),
+            )
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Exception) {
+            log("Failed to report a suspension for $sessionId", error)
+            Result.failure(error)
         }
 
     suspend fun reportViolations(

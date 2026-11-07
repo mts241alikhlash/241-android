@@ -12,6 +12,8 @@ import id.sch.mts241alikhlash.exam.data.model.SaveAnswerItemDto
 import id.sch.mts241alikhlash.exam.data.model.SaveAnswersBatchRequest
 import id.sch.mts241alikhlash.exam.data.model.SaveAnswersBatchResultDto
 import id.sch.mts241alikhlash.exam.data.model.SkippedAnswerDto
+import id.sch.mts241alikhlash.exam.data.model.SuspensionRequest
+import id.sch.mts241alikhlash.exam.data.model.SuspensionResponseDto
 import id.sch.mts241alikhlash.exam.data.model.ViolationCountDto
 import id.sch.mts241alikhlash.exam.data.model.ViolationReport
 import id.sch.mts241alikhlash.exam.data.session.ServerClock
@@ -196,6 +198,29 @@ class EmptyQuestionDao : id.sch.mts241alikhlash.exam.data.local.QuestionDao {
 open class StubExamApi : id.sch.mts241alikhlash.exam.data.remote.ExamApiService {
     val batches = mutableListOf<SaveAnswersBatchRequest>()
     val submits = mutableListOf<id.sch.mts241alikhlash.exam.data.model.SubmitRequest>()
+    val suspensions = mutableListOf<SuspensionRequest>()
+
+    var suspensionFailures: Int = 0
+    var suspensionDeadline: String = "2026-10-27T06:00:00Z"
+    var suspensionExtraMinutes: Int = 0
+
+    override suspend fun reportSuspension(
+        sessionId: String,
+        request: SuspensionRequest,
+    ): SuspensionResponseDto {
+        suspensions += request
+        if (suspensionFailures > 0) {
+            suspensionFailures -= 1
+            throw id.sch.mts241alikhlash.exam.data.remote
+                .ApiException(0, "offline")
+        }
+        return SuspensionResponseDto(
+            deadline = suspensionDeadline,
+            finalizeAt = suspensionDeadline,
+            extraMinutes = suspensionExtraMinutes,
+            suspendedSeconds = request.seconds,
+        )
+    }
 
     override suspend fun sessionHeartbeat(
         sessionId: String,

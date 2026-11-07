@@ -97,6 +97,28 @@ class ExamDtoJsonTest {
     }
 
     @Test
+    fun suspension_request_serializes_the_call_reason() {
+        val body =
+            json.encodeToString(
+                SuspensionRequest.serializer(),
+                SuspensionRequest(reason = SUSPENSION_REASON_CALL, seconds = 90, clientId = "c-1"),
+            )
+        assertEquals("""{"reason":"CALL","seconds":90,"clientId":"c-1"}""", body)
+    }
+
+    @Test
+    fun suspension_response_reads_the_extended_deadline() {
+        val dto =
+            json.decodeFromString<SuspensionResponseDto>(
+                """{"deadline":"2026-10-27T06:00:00.000Z","finalizeAt":"2026-10-27T06:10:00.000Z","extraMinutes":2,"suspendedSeconds":90}""",
+            )
+        assertEquals("2026-10-27T06:00:00.000Z", dto.deadline)
+        assertEquals("2026-10-27T06:10:00.000Z", dto.finalizeAt)
+        assertEquals(2, dto.extraMinutes)
+        assertEquals(90, dto.suspendedSeconds)
+    }
+
+    @Test
     fun submit_request_sends_pending_answers_and_the_expected_count() {
         val body =
             json.encodeToString(

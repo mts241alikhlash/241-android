@@ -11,6 +11,8 @@ import id.sch.mts241alikhlash.exam.data.model.SessionHeartbeatResponse
 import id.sch.mts241alikhlash.exam.data.model.SessionPaperDto
 import id.sch.mts241alikhlash.exam.data.model.SubmitRequest
 import id.sch.mts241alikhlash.exam.data.model.SubmittedSessionDto
+import id.sch.mts241alikhlash.exam.data.model.SuspensionRequest
+import id.sch.mts241alikhlash.exam.data.model.SuspensionResponseDto
 import id.sch.mts241alikhlash.exam.data.model.ViolationCountDto
 import id.sch.mts241alikhlash.exam.data.model.ViolationReport
 import retrofit2.http.Body
@@ -63,4 +65,10 @@ interface ExamApiService {
         @Path("sessionId") sessionId: String,
         @Body request: ViolationReport,
     ): ViolationCountDto
+
+    @POST("student-exams/{sessionId}/suspension")
+    suspend fun reportSuspension(
+        @Path("sessionId") sessionId: String,
+        @Body request: SuspensionRequest,
+    ): SuspensionResponseDto
 }
