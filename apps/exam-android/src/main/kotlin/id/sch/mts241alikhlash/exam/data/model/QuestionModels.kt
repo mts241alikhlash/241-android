@@ -32,6 +32,9 @@ data class SaveAnswersBatchRequest(
     val pendingLocalCount: Int? = null,
     val batteryLevel: Int? = null,
     val isCharging: Boolean? = null,
+    val dndGranted: Boolean? = null,
+    val lockTaskActive: Boolean? = null,
+    val batteryUnrestricted: Boolean? = null,
 )
 
 @Serializable

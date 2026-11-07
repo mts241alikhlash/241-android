@@ -85,10 +85,13 @@ class ExamDtoJsonTest {
                     pendingLocalCount = 4,
                     batteryLevel = 88,
                     isCharging = true,
+                    dndGranted = true,
+                    lockTaskActive = false,
+                    batteryUnrestricted = true,
                 ),
             )
         assertEquals(
-            """{"answers":[{"questionId":"q1","clientId":"c1","answer":{"key":"A"}}],"pendingLocalCount":4,"batteryLevel":88,"isCharging":true}""",
+            """{"answers":[{"questionId":"q1","clientId":"c1","answer":{"key":"A"}}],"pendingLocalCount":4,"batteryLevel":88,"isCharging":true,"dndGranted":true,"lockTaskActive":false,"batteryUnrestricted":true}""",
             body,
         )
     }

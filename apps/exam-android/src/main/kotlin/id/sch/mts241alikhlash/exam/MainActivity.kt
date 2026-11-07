@@ -60,7 +60,9 @@ import id.sch.mts241alikhlash.exam.ui.KioskWarningOverlay
 import id.sch.mts241alikhlash.exam.ui.ReloginDialog
 import id.sch.mts241alikhlash.exam.ui.SupervisorExitDialog
 import id.sch.mts241alikhlash.exam.ui.components.batteryLevelNow
+import id.sch.mts241alikhlash.exam.ui.components.isBatteryUnrestrictedNow
 import id.sch.mts241alikhlash.exam.ui.components.isChargingNow
+import id.sch.mts241alikhlash.exam.ui.components.isLockTaskActiveNow
 import id.sch.mts241alikhlash.exam.ui.components.isOnlineNow
 import id.sch.mts241alikhlash.exam.ui.screens.ExamListViewModel
 import id.sch.mts241alikhlash.exam.ui.screens.ExamScreen
@@ -550,6 +552,9 @@ class MainActivity : ComponentActivity() {
                                             isOnline = { applicationContext.isOnlineNow() },
                                             batteryLevel = { applicationContext.batteryLevelNow() },
                                             isCharging = { applicationContext.isChargingNow() },
+                                            dndGranted = { dnd.isAccessGrantedOrNull() },
+                                            lockTaskActive = { applicationContext.isLockTaskActiveNow() },
+                                            batteryUnrestricted = { applicationContext.isBatteryUnrestrictedNow() },
                                         )
                                     }
                                 },

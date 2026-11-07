@@ -309,12 +309,21 @@ class ExamRepository(
         sessionId: String,
         batteryLevel: Int? = null,
         isCharging: Boolean? = null,
-    ): SyncBatchOutcome = sending { syncPendingBatchLoop(sessionId, batteryLevel, isCharging) }
+        dndGranted: Boolean? = null,
+        lockTaskActive: Boolean? = null,
+        batteryUnrestricted: Boolean? = null,
+    ): SyncBatchOutcome =
+        sending {
+            syncPendingBatchLoop(sessionId, batteryLevel, isCharging, dndGranted, lockTaskActive, batteryUnrestricted)
+        }
 
     private suspend fun syncPendingBatchLoop(
         sessionId: String,
         batteryLevel: Int?,
         isCharging: Boolean?,
+        dndGranted: Boolean?,
+        lockTaskActive: Boolean?,
+        batteryUnrestricted: Boolean?,
     ): SyncBatchOutcome {
         var confirmed = 0
         var rejected = 0
@@ -342,6 +351,9 @@ class ExamRepository(
                                     pendingLocalCount = pending.size - chunk.size,
                                     batteryLevel = batteryLevel,
                                     isCharging = isCharging,
+                                    dndGranted = dndGranted,
+                                    lockTaskActive = lockTaskActive,
+                                    batteryUnrestricted = batteryUnrestricted,
                                 ),
                             )
                         }

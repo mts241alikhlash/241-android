@@ -29,6 +29,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -59,6 +60,29 @@ class ExamRepositoryTest {
             assertEquals(46, outcome.confirmed)
             assertEquals(0, outcome.pending)
             assertTrue(dao.rows.values.all { it.syncState == AnswerSyncState.SERVER_CONFIRMED })
+        }
+
+    @Test
+    fun `device readiness readings reach the batch exactly as read`() =
+        runTest {
+            val dao = InMemoryAnswerDao(pendingAnswer("q1"))
+            val api = BatchApi()
+
+            repo(api, dao).syncPendingBatch(
+                sessionId = "s1",
+                batteryLevel = 88,
+                isCharging = true,
+                dndGranted = true,
+                lockTaskActive = false,
+                batteryUnrestricted = null,
+            )
+
+            val request = api.batches.single()
+            assertEquals(88, request.batteryLevel)
+            assertEquals(true, request.isCharging)
+            assertEquals(true, request.dndGranted)
+            assertEquals(false, request.lockTaskActive)
+            assertNull(request.batteryUnrestricted)
         }
 
     @Test
