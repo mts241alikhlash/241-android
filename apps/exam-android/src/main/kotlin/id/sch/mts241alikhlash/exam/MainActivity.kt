@@ -830,7 +830,9 @@ class MainActivity : ComponentActivity() {
             dpm.setLockTaskPackages(admin, arrayOf(packageName))
             dpm.setStatusBarDisabled(admin, true)
             dpm.setKeyguardDisabled(admin, true)
-            dpm.setLockTaskFeatures(admin, 0)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                dpm.setLockTaskFeatures(admin, 0)
+            }
         }
     }
 
@@ -867,9 +869,20 @@ class MainActivity : ComponentActivity() {
         tracker = null
     }
 
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (blocksExamKey(isExamActive, event.keyCode)) return true
-        return super.dispatchKeyEvent(event)
+    override fun onKeyDown(
+        keyCode: Int,
+        event: KeyEvent?,
+    ): Boolean {
+        if (blocksExamKey(isExamActive, keyCode)) return true
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(
+        keyCode: Int,
+        event: KeyEvent?,
+    ): Boolean {
+        if (blocksExamKey(isExamActive, keyCode)) return true
+        return super.onKeyUp(keyCode, event)
     }
 
     override fun onResume() {
