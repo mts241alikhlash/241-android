@@ -1,5 +1,6 @@
 package id.sch.mts241alikhlash.exam.ui.components
 
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -7,6 +8,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.BatteryManager
+import android.os.PowerManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -57,5 +59,9 @@ fun Context.isChargingNow(): Boolean? =
         val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
         status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
     }
+
+fun Context.isLockTaskActiveNow(): Boolean? = getSystemService(ActivityManager::class.java)?.let { it.lockTaskModeState == ActivityManager.LOCK_TASK_MODE_LOCKED }
+
+fun Context.isBatteryUnrestrictedNow(): Boolean? = (getSystemService(Context.POWER_SERVICE) as? PowerManager)?.isIgnoringBatteryOptimizations(packageName)
 
 private fun ConnectivityManager.hasInternet(): Boolean = getNetworkCapabilities(activeNetwork)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true

@@ -73,6 +73,9 @@ class ExamViewModel(
     private val isOnline: () -> Boolean = { true },
     private val batteryLevel: () -> Int? = { null },
     private val isCharging: () -> Boolean? = { null },
+    private val dndGranted: () -> Boolean? = { null },
+    private val lockTaskActive: () -> Boolean? = { null },
+    private val batteryUnrestricted: () -> Boolean? = { null },
 ) : ViewModel() {
     private val _uiState =
         MutableStateFlow(
@@ -226,7 +229,14 @@ class ExamViewModel(
         if (!isOnline()) return
         val result =
             runCatching {
-                repository.syncPendingBatch(sessionId, batteryLevel(), isCharging())
+                repository.syncPendingBatch(
+                    sessionId = sessionId,
+                    batteryLevel = batteryLevel(),
+                    isCharging = isCharging(),
+                    dndGranted = dndGranted(),
+                    lockTaskActive = lockTaskActive(),
+                    batteryUnrestricted = batteryUnrestricted(),
+                )
             }
         val outcome = result.getOrNull()
         if (outcome == null) {

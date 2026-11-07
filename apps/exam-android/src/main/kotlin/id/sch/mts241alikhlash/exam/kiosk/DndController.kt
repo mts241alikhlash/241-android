@@ -14,7 +14,9 @@ class DndController(
     private val manager = appContext.getSystemService(NotificationManager::class.java)
     private val prefs = appContext.getSharedPreferences("exam_dnd", Context.MODE_PRIVATE)
 
-    fun isAccessGranted(): Boolean = manager?.isNotificationPolicyAccessGranted == true
+    fun isAccessGranted(): Boolean = isAccessGrantedOrNull() == true
+
+    fun isAccessGrantedOrNull(): Boolean? = manager?.isNotificationPolicyAccessGranted
 
     fun openPolicySettings(
         activity: Activity,
