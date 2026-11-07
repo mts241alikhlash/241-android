@@ -69,3 +69,20 @@ data class SubmittedSessionDto(
 data class CameraBlockedBody(
     val reason: String,
 )
+
+const val SUSPENSION_REASON_CALL = "CALL"
+
+@Serializable
+data class SuspensionRequest(
+    val reason: String,
+    val seconds: Int,
+    val clientId: String,
+)
+
+@Serializable
+data class SuspensionResponseDto(
+    val deadline: String,
+    val finalizeAt: String? = null,
+    val extraMinutes: Int = 0,
+    val suspendedSeconds: Int = 0,
+)

@@ -15,6 +15,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -80,6 +81,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var dnd: DndController
     private var audioGuard: AudioAndDisplayGuard? = null
     private var audioGuardJob: kotlinx.coroutines.Job? = null
+    private var proctorController: ProctorController? = null
     private var tracker by mutableStateOf<SessionEventTracker?>(null)
     private var lastLocked: Boolean? = null
     private val guard = InternalIntentGuard.shared
@@ -501,6 +503,7 @@ class MainActivity : ComponentActivity() {
                                 val now = System.currentTimeMillis()
                                 it.onCallOrMicChanged(interference.callOrMic, now)
                                 it.onSecondaryDisplayChanged(interference.screenShare, now)
+                                it.onSuspensionChanged(interference.callOrMic)
                             }
                     }
                     LaunchedEffect(sessionId) {
@@ -549,6 +552,9 @@ class MainActivity : ComponentActivity() {
                                             restored = sessionRestored,
                                             clock = app.serverClock,
                                             onSubmitConfirmed = { id -> app.sessionRepository.finishIfCurrent(id) },
+                                            onDeadlineExtended = { extended ->
+                                                app.sessionRepository.retarget(sessionId, extended)
+                                            },
                                             isOnline = { applicationContext.isOnlineNow() },
                                             batteryLevel = { applicationContext.batteryLevelNow() },
                                             isCharging = { applicationContext.isChargingNow() },
@@ -570,22 +576,33 @@ class MainActivity : ComponentActivity() {
                         countedViolations.value = violations.counted()
                     }
 
+                    val proctor =
+                        remember {
+                            if (!ProctorFlags.ENABLED) {
+                                null
+                            } else {
+                                ProctorController.camera(
+                                    context = applicationContext,
+                                    api = app.retrofit.create(ProctorSnapshotApi::class.java),
+                                    isAnswerSyncBusy = { app.repository.isSyncingOrSubmitting },
+                                )
+                            }
+                        }
+                    DisposableEffect(proctor) {
+                        proctorController = proctor
+                        onDispose { proctorController = null }
+                    }
+                    LaunchedEffect(sessionId, viewModel) {
+                        activeInterference.collect { current ->
+                            viewModel.onCallOrMicChanged(current.callOrMic, System.currentTimeMillis())
+                        }
+                    }
+
                     Box {
                         ExamScreen(
                             viewModel = viewModel,
                             sessionId = sessionId,
-                            proctor =
-                                remember {
-                                    if (!ProctorFlags.ENABLED) {
-                                        null
-                                    } else {
-                                        ProctorController.camera(
-                                            context = applicationContext,
-                                            api = app.retrofit.create(ProctorSnapshotApi::class.java),
-                                            isAnswerSyncBusy = { app.repository.isSyncingOrSubmitting },
-                                        )
-                                    }
-                                },
+                            proctor = proctor,
                             exam = appState.activeExam,
                             baseUrl = BuildConfig.BASE_URL,
                             imageLoader = app.imageLoader,
@@ -771,9 +788,16 @@ class MainActivity : ComponentActivity() {
                         val now = System.currentTimeMillis()
                         tracker?.onCallOrMicChanged(current.callOrMic, now)
                         tracker?.onSecondaryDisplayChanged(current.screenShare, now)
+                        onCallOrMic(current.callOrMic)
                     }
                 }
         }
+    }
+
+    private fun onCallOrMic(paused: Boolean) {
+        if (!isExamActive) return
+        tracker?.onSuspensionChanged(paused)
+        if (paused) proctorController?.pause() else proctorController?.resume()
     }
 
     private fun isDeviceOwner(): Boolean {
@@ -818,6 +842,7 @@ class MainActivity : ComponentActivity() {
         audioGuardJob = null
         audioGuard?.stop()
         audioGuard = null
+        proctorController = null
         activeInterference.value = InterferenceState()
         tracker?.close()
         tracker = null

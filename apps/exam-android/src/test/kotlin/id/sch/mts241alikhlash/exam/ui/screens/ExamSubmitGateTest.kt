@@ -98,6 +98,11 @@ class ExamSubmitGateTest {
             sessionId: String,
             request: ViolationReport,
         ): ViolationCountDto = ViolationCountDto(request.count)
+
+        override suspend fun reportSuspension(
+            sessionId: String,
+            request: id.sch.mts241alikhlash.exam.data.model.SuspensionRequest,
+        ): id.sch.mts241alikhlash.exam.data.model.SuspensionResponseDto = throw UnsupportedOperationException("not used")
     }
 
     private fun TestScope.viewModel(

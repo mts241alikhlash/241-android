@@ -147,6 +147,36 @@ class SessionEventTrackerTest {
         }
 
     @Test
+    fun `a stop during a suspension is not leaving the app`() =
+        runTest {
+            val tracker = tracker()
+            tracker.onSuspensionChanged(active = true)
+
+            tracker.onActivityStopped(isScreenInteractive = true, nowMs = 9_000)
+            runCurrent()
+
+            assertEquals(emptyList<String>(), dao.rows.map { it.type })
+            assertFalse(tracker.requiresTokenReentry.value)
+        }
+
+    @Test
+    fun `a stop after the suspension cleared leaves the app again`() =
+        runTest {
+            val tracker = tracker()
+
+            tracker.onSuspensionChanged(active = true)
+            tracker.onActivityStopped(isScreenInteractive = true, nowMs = 9_000)
+            tracker.onSuspensionChanged(active = false)
+            tracker.onActivityStopped(isScreenInteractive = true, nowMs = 10_000)
+            runCurrent()
+
+            val row = dao.rows.single()
+            assertEquals(SessionEventType.LEFT_APP.name, row.type)
+            assertTrue(row.isViolation)
+            assertTrue(tracker.requiresTokenReentry.value)
+        }
+
+    @Test
     fun `an unguarded stop while the screen is off logs a screen off event`() =
         runTest {
             val tracker = tracker()
