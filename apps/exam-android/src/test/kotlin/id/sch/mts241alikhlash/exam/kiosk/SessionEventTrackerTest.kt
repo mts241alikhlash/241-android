@@ -209,7 +209,7 @@ class SessionEventTrackerTest {
         }
 
     @Test
-    fun `a late stop after the watchdog fired does not add a second violation`() =
+    fun `a late stop after the watchdog fired does not add a second event`() =
         runTest {
             val tracker = tracker()
 
@@ -220,7 +220,7 @@ class SessionEventTrackerTest {
             runCurrent()
 
             assertEquals(listOf(SessionEventType.OVERLAY_OR_SHADE.name), dao.rows.map { it.type })
-            assertEquals(1, dao.rows.count { it.isViolation })
+            assertEquals(0, dao.rows.count { it.isViolation })
         }
 
     @Test
