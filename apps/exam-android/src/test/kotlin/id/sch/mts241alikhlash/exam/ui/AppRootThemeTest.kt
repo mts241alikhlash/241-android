@@ -13,14 +13,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 
-/**
- * R1: the app root must install the brand theme.
- *
- * The screen snapshots cannot catch a missing theme on their own — they can be regenerated
- * blindly. This test renders the real root and reads the colour scheme from *inside* the
- * composition it produces, so dropping `AssessmentTheme` from the root fails on readable
- * values rather than on a pixel diff.
- */
 class AppRootThemeTest {
     @get:Rule
     val paparazzi =
@@ -58,14 +50,11 @@ class AppRootThemeTest {
         )
     }
 
-    /** Reads the scheme the *root* installed, not one this test set up itself. */
     @Composable
     private fun CaptureScheme(into: MutableMap<String, Color>) {
         into["primary"] = MaterialTheme.colorScheme.primary
         into["onPrimary"] = MaterialTheme.colorScheme.onPrimary
         into["background"] = MaterialTheme.colorScheme.background
-        // Exactly what ButtonDefaults.buttonColors(containerColor = BrandNavy) resolves
-        // for its label; Color.Unspecified without a theme in scope.
         into["labelOnNavy"] = contentColorFor(BrandNavy)
     }
 }
