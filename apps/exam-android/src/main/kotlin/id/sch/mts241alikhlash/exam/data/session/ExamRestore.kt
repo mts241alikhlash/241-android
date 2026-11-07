@@ -25,6 +25,10 @@ sealed interface RestoreOutcome {
         val session: RestoredSession,
     ) : RestoreOutcome
 
+    data class AlreadyFinished(
+        val message: String,
+    ) : RestoreOutcome
+
     data class Failed(
         val message: String,
     ) : RestoreOutcome
@@ -38,6 +42,7 @@ const val RESTORE_CHECK_TIMEOUT_MS = 3_000L
 const val RESTORE_ERROR_MESSAGE = "Gagal memulihkan sesi ujian. Coba lagi."
 const val LOST_SESSION_MESSAGE =
     "Sesi ujian ini sudah tidak berlaku di server. Kembali ke daftar ujian untuk memulai lagi."
+const val FINISHED_SESSION_MESSAGE = "Ujian ini sudah dikumpulkan dan tidak bisa dibuka lagi."
 
 suspend fun restoreExamSession(
     sessionRepository: SessionRepository,
@@ -45,6 +50,7 @@ suspend fun restoreExamSession(
     syncPending: suspend (String) -> SyncReport,
     validate: suspend (String) -> Unit = {},
     syncClock: suspend (String) -> Unit = {},
+    isSessionFinished: suspend (String) -> Boolean = { false },
     requiresTokenReentry: suspend (String) -> Boolean = { false },
     onSyncResult: (Result<SyncReport>) -> Unit = {},
 ): RestoreOutcome {
@@ -62,6 +68,11 @@ suspend fun restoreExamSession(
     if (lost != null) {
         sessionRepository.finishIfCurrent(session.sessionId)
         return RestoreOutcome.SessionLost(lost)
+    }
+
+    if (sessionFinished(session.sessionId, isSessionFinished)) {
+        sessionRepository.finishIfCurrent(session.sessionId)
+        return RestoreOutcome.AlreadyFinished(FINISHED_SESSION_MESSAGE)
     }
 
     syncClockQuietly(session.sessionId, syncClock)
@@ -97,6 +108,18 @@ private suspend fun tokenReentryNeeded(
 ): Boolean =
     try {
         requiresTokenReentry(sessionId)
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (_: Exception) {
+        false
+    }
+
+private suspend fun sessionFinished(
+    sessionId: String,
+    isSessionFinished: suspend (String) -> Boolean,
+): Boolean =
+    try {
+        withTimeoutOrNull(RESTORE_CHECK_TIMEOUT_MS) { isSessionFinished(sessionId) } ?: false
     } catch (cancellation: CancellationException) {
         throw cancellation
     } catch (_: Exception) {

@@ -3,6 +3,10 @@ package id.sch.mts241alikhlash.exam
 import android.app.assist.AssistContent
 import android.os.Bundle
 import android.view.WindowManager
+import androidx.test.core.app.ApplicationProvider
+import id.sch.mts241alikhlash.exam.data.auth.AuthUser
+import id.sch.mts241alikhlash.exam.kiosk.ViolationStore
+import id.sch.mts241alikhlash.exam.ui.AppRootState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -41,6 +45,48 @@ class ExamWindowFlagsTest {
         assertTrue(
             "FLAG_SECURE must be set even in debug builds",
             flags and WindowManager.LayoutParams.FLAG_SECURE != 0,
+        )
+        activity.finish()
+    }
+
+    @Test
+    fun `releasing the exam returns to the list and resume does not lock again`() {
+        val controller = org.robolectric.Robolectric.buildActivity(MainActivity::class.java)
+        val activity = controller.setup().get()
+        val store = ViolationStore(ApplicationProvider.getApplicationContext())
+        store.beginSession("s1")
+        store.record("left_app")
+        activity.setExamActiveForTest(true)
+        activity.setRootStateForTest(
+            AppRootState(
+                restoreComplete = true,
+                user = AuthUser("u1", "Ahmad", setOf("STUDENT")),
+                sessionId = "s1",
+                deadline = 1_700_000_000_000L,
+                reentrySessionId = "s1",
+            ),
+        )
+
+        activity.releaseExamForTest("Ujian berhasil dikumpulkan")
+
+        val released = activity.rootStateForTest()
+        assertNull(released.sessionId)
+        assertNull(released.reentrySessionId)
+        assertNull(released.deadline)
+        assertEquals("Ujian berhasil dikumpulkan", released.notice)
+        assertEquals(0, store.count())
+        assertEquals(
+            "KEEP_SCREEN_ON must be cleared as soon as the exam ends",
+            0,
+            activity.window.attributes.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
+        )
+
+        controller.pause().resume()
+
+        assertEquals(
+            "resuming a released exam must not lock the screen on again",
+            0,
+            activity.window.attributes.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
         )
         activity.finish()
     }

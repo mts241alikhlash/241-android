@@ -47,6 +47,19 @@ class ViolationStoreTest {
     }
 
     @Test
+    fun `a finished exam leaves no count behind for the next one`() {
+        store.beginSession("s1")
+        store.record("left_app")
+        store.restore(3)
+
+        store.reset()
+
+        assertEquals(0, store.counted())
+        store.beginSession("s1")
+        assertEquals(0, store.counted())
+    }
+
+    @Test
     fun `the counted total leaves out what a supervisor allowed or refused`() {
         store.record("left_app")
         store.record("supervisor_exit")
