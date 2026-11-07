@@ -65,12 +65,15 @@ class SessionEventTrackerTest {
         }
 
     @Test
-    fun `focus returning before three seconds logs a brief focus loss`() =
+    fun `focus returning before the threshold logs a brief focus loss`() =
         runTest {
             val tracker = tracker()
 
             tracker.onWindowFocusChanged(hasFocus = false, nowMs = 5_000)
-            tracker.onWindowFocusChanged(hasFocus = true, nowMs = 5_000 + 2_999)
+            tracker.onWindowFocusChanged(
+                hasFocus = true,
+                nowMs = 5_000 + SessionEventTracker.FOCUS_THRESHOLD_MS - 1,
+            )
             runCurrent()
 
             val row = dao.rows.single()
@@ -79,22 +82,40 @@ class SessionEventTrackerTest {
         }
 
     @Test
-    fun `focus returning after three seconds logs an overlay violation`() =
+    fun `focus returning after the threshold logs an overlay warning`() =
         runTest {
             val tracker = tracker()
 
             tracker.onWindowFocusChanged(hasFocus = false, nowMs = 5_000)
-            tracker.onWindowFocusChanged(hasFocus = true, nowMs = 5_000 + 3_000)
+            tracker.onWindowFocusChanged(
+                hasFocus = true,
+                nowMs = 5_000 + SessionEventTracker.FOCUS_THRESHOLD_MS,
+            )
             runCurrent()
 
             val row = dao.rows.single()
             assertEquals(SessionEventType.OVERLAY_OR_SHADE.name, row.type)
-            assertTrue(row.isViolation)
-            assertEquals(1, dao.rows.count { it.isViolation })
+            assertFalse(row.isViolation)
+            assertEquals(0, dao.rows.count { it.isViolation })
         }
 
     @Test
-    fun `the watchdog records one overlay violation when focus never returns`() =
+    fun `a keyboard covering the window is not an overlay`() =
+        runTest {
+            val tracker = tracker()
+
+            tracker.onCoveringWindowChanged(covering = true, nowMs = 1_000)
+            tracker.onWindowFocusChanged(hasFocus = false, nowMs = 2_000)
+            advanceTimeBy(SessionEventTracker.FOCUS_THRESHOLD_MS * 2)
+            tracker.onCoveringWindowChanged(covering = false, nowMs = 30_000)
+            tracker.onWindowFocusChanged(hasFocus = true, nowMs = 31_000)
+            runCurrent()
+
+            assertEquals(emptyList<String>(), dao.rows.map { it.type })
+        }
+
+    @Test
+    fun `the watchdog records one overlay warning when focus never returns`() =
         runTest {
             val tracker = tracker()
 
@@ -104,7 +125,7 @@ class SessionEventTrackerTest {
 
             val row = dao.rows.single()
             assertEquals(SessionEventType.OVERLAY_OR_SHADE.name, row.type)
-            assertTrue(row.isViolation)
+            assertFalse(row.isViolation)
             assertEquals(42_000L, row.occurredAtMs)
         }
 

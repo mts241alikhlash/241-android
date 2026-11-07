@@ -12,6 +12,7 @@ import id.sch.mts241alikhlash.exam.data.repository.isSessionLost
 import id.sch.mts241alikhlash.exam.data.session.ExamTimer
 import id.sch.mts241alikhlash.exam.data.session.ServerClock
 import id.sch.mts241alikhlash.exam.data.session.parseIsoMillis
+import id.sch.mts241alikhlash.exam.data.sync.SyncBackoff
 import id.sch.mts241alikhlash.exam.kiosk.ViolationPolicy
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 
 data class AnswerSyncSummary(
     val totalAnswered: Int = 0,
@@ -87,6 +89,8 @@ class ExamViewModel(
     private var startedAtMillis: Long? = null
     private var timerJob: Job? = null
     private var debounceJob: Job? = null
+    private var syncFailures = 0
+    private var nextSyncAtMs = 0L
 
     init {
         loadQuestions()
@@ -218,11 +222,24 @@ class ExamViewModel(
     private suspend fun syncNow() {
         val state = _uiState.value
         if (state.isSubmitted || state.isSubmitting || state.sync.pendingCount == 0) return
+        if (clock.nowMillis() < nextSyncAtMs) return
         if (!isOnline()) return
-        val outcome =
+        val result =
             runCatching {
                 repository.syncPendingBatch(sessionId, batteryLevel(), isCharging())
-            }.getOrElse { return }
+            }
+        val outcome = result.getOrNull()
+        if (outcome == null) {
+            syncFailures += 1
+            nextSyncAtMs = clock.nowMillis() + SyncBackoff.delayMs(syncFailures, Random.nextDouble())
+            val error = result.exceptionOrNull()
+            if (error is ApiException && (error.statusCode == 403 || error.statusCode == 409)) {
+                _uiState.value = _uiState.value.copy(deliveryWarning = error.message)
+            }
+            return
+        }
+        syncFailures = 0
+        nextSyncAtMs = 0L
         val closed = outcome.closedMessage
         if (closed != null) {
             _uiState.value =

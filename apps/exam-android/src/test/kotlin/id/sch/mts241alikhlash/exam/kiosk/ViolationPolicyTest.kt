@@ -7,10 +7,10 @@ import org.junit.Test
 
 class ViolationPolicyTest {
     @Test
-    fun `leaving the app, losing the pin, overlays, and screen sharing count`() {
+    fun `leaving the app, losing the pin and screen sharing count, overlays only warn`() {
         assertTrue(ViolationPolicy.counts("left_app"))
         assertTrue(ViolationPolicy.counts("pin_lost"))
-        assertTrue(ViolationPolicy.counts("overlay_or_shade"))
+        assertFalse(ViolationPolicy.counts("overlay_or_shade"))
         assertTrue(ViolationPolicy.counts("screen_share_detected"))
         assertFalse(ViolationPolicy.counts("focus_lost_brief"))
         assertFalse(ViolationPolicy.counts("supervisor_exit"))

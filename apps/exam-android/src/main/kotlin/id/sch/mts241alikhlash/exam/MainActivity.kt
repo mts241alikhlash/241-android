@@ -23,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.toArgb
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -139,6 +140,12 @@ class MainActivity : ComponentActivity() {
         violations = ViolationStore(this)
         dnd = DndController(this)
         if (!isExamActive) dnd.restorePreviousDnd()
+
+        ViewCompat.setOnApplyWindowInsetsListener(window.decorView) { _, insets ->
+            val covering = insets.isVisible(WindowInsetsCompat.Type.ime())
+            tracker?.onCoveringWindowChanged(covering, System.currentTimeMillis())
+            insets
+        }
 
         setContent {
             id.sch.mts241alikhlash.exam.proctor

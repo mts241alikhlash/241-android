@@ -58,11 +58,25 @@ class SessionEventTracker(
     private var overlayRecordedForFocusLoss = false
     private var callOrMicActive = false
     private var secondaryDisplayActive = false
+    private var coveringWindow = false
+
+    fun onCoveringWindowChanged(
+        covering: Boolean,
+        nowMs: Long,
+    ) {
+        if (coveringWindow == covering) return
+        coveringWindow = covering
+        if (covering) clearFocusLoss()
+    }
 
     fun onWindowFocusChanged(
         hasFocus: Boolean,
         nowMs: Long,
     ) {
+        if (coveringWindow) {
+            clearFocusLoss()
+            return
+        }
         if (hasFocus) {
             val lostAtMs = focusLostAtMs ?: return
             val job = focusLossJob
@@ -74,7 +88,7 @@ class SessionEventTracker(
             if (elapsed < FOCUS_THRESHOLD_MS) {
                 record(SessionEventType.FOCUS_LOST_BRIEF, false, nowMs, DETAIL_FOCUS_LOST_BRIEF)
             } else {
-                record(SessionEventType.OVERLAY_OR_SHADE, true, nowMs, DETAIL_OVERLAY_OR_SHADE)
+                record(SessionEventType.OVERLAY_OR_SHADE, false, nowMs, DETAIL_OVERLAY_OR_SHADE)
             }
         } else {
             if (focusLostAtMs != null) return
@@ -88,7 +102,7 @@ class SessionEventTracker(
                     focusLossJob = null
                     record(
                         SessionEventType.OVERLAY_OR_SHADE,
-                        true,
+                        false,
                         nowMs(),
                         DETAIL_OVERLAY_OR_SHADE,
                     )
@@ -186,12 +200,12 @@ class SessionEventTracker(
         )
 
     companion object {
-        const val FOCUS_THRESHOLD_MS = 3_000L
+        const val FOCUS_THRESHOLD_MS = 10_000L
 
         private const val DETAIL_PERMISSION_DIALOG = "Dialog izin atau pengaturan dibuka aplikasi ujian"
         private const val DETAIL_SCREEN_OFF = "Layar perangkat dimatikan atau terkunci"
         private const val DETAIL_FOCUS_LOST_BRIEF = "Fokus jendela hilang sebentar"
-        private const val DETAIL_OVERLAY_OR_SHADE = "Fokus jendela hilang lebih dari 3 detik"
+        private const val DETAIL_OVERLAY_OR_SHADE = "Fokus jendela hilang lebih dari 10 detik"
         private const val DETAIL_CALL_OR_MIC = "Panggilan telepon atau perekam suara aktif"
         private const val DETAIL_SCREEN_SHARE = "Layar kedua atau mode presentasi terdeteksi"
         private const val DETAIL_LEFT_APP = "Siswa keluar dari aplikasi ujian"
