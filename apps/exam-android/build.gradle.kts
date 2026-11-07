@@ -137,6 +137,7 @@ android {
             val releaseUrl =
                 providers
                     .gradleProperty("API_BASE_URL")
+                    .filter { it.isNotBlank() }
                     .orElse("https://exam.mts241alikhlash.sch.id/")
                     .get()
                     .asBaseUrl()
