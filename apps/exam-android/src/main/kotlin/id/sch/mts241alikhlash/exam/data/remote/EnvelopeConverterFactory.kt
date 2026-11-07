@@ -13,8 +13,6 @@ class EnvelopeConverterFactory : Converter.Factory() {
         retrofit: Retrofit,
     ): Converter<ResponseBody, *>? {
         if (getRawType(type) == ApiEnvelope::class.java) return null
-        // A 204 answer has no envelope to unwrap; let Retrofit's built-in Unit
-        // converter read (and discard) the empty body.
         if (type == Unit::class.java || type == Void::class.java) return null
         val envelopeType = envelopeOf(type)
         val delegate = retrofit.nextResponseBodyConverter<ApiEnvelope<Any>>(this, envelopeType, annotations)

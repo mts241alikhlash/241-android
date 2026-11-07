@@ -15,9 +15,6 @@ fun String.requireHttps(): String {
 
 fun String.asBuildConfigString(): String = "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
-// Release signing credentials are read from -P Gradle properties or the matching
-// environment variables. No keystore, alias, or password is ever stored in the repo.
-// See docs/guides/release-apk.md.
 val releaseSigningProperties =
     listOf(
         "RELEASE_STORE_FILE",
@@ -34,7 +31,6 @@ val releaseStoreFilePath = releaseSigningValues["RELEASE_STORE_FILE"]
 val releaseStoreFile = releaseStoreFilePath?.let { file(it) }
 val hasReleaseStoreFile = releaseStoreFile?.exists() == true
 
-// A typo'd RELEASE_STORE_FILE must fail here, not later with AGP's generic error.
 val missingReleaseSigningInputs: List<String> =
     releaseSigningProperties.mapNotNull { name ->
         when {
@@ -46,16 +42,9 @@ val missingReleaseSigningInputs: List<String> =
     }
 val hasCompleteReleaseSigning = missingReleaseSigningInputs.isEmpty()
 
-// The tasks that actually emit or sign a release artifact. Only these need
-// credentials: `packageReleaseResources`, `bundleReleaseResources`,
-// `signingConfigWriterRelease`, `bundleReleaseClassesToCompileJar` and every
-// `*Test` task must run without them.
 val releaseArtifactTaskPattern =
     Regex("""^(package\w*Release(Bundle|UniversalApk)?|sign\w*ReleaseBundle)$""")
 
-// Fail fast when the *literal* packaging task was requested. This cannot be the only
-// guard: Gradle accepts task-name abbreviations (`aR`, `assembleRel`, bare `a`), which
-// never match here. The resolved task graph is validated below, after configuration.
 val releasePackagingRequested =
     gradle.startParameter.taskNames.any { requested ->
         requested.substringAfterLast(':').let { name ->
@@ -70,9 +59,6 @@ val releaseSigningErrorMessage =
         "Missing: ${missingReleaseSigningInputs.joinToString(", ")}. " +
         "See docs/guides/release-apk.md."
 
-// Authoritative guard: inspect the *resolved* graph so abbreviations and any future
-// alias that reaches a packaging task cannot ship an unsigned APK. Keyed on the tasks
-// that produce the artifact, so non-packaging release tasks stay credential-free.
 gradle.taskGraph.whenReady {
     val packagesRelease =
         allTasks.any { task ->
@@ -158,23 +144,15 @@ android {
     testOptions {
         unitTests.isIncludeAndroidResources = true
         unitTests.isReturnDefaultValues = true
-        // Paparazzi and Robolectric cannot share a JVM: Paparazzi's layoutlib bridge
-        // fails to initialise once Robolectric has run in the same process.
         unitTests.all { it.forkEvery = 1 }
     }
 
     sourceSets {
-        // Robolectric unit tests read the exported Room schemas from the merged assets.
-        // Only debug and androidTest carry them: the release APK must not ship test
-        // fixtures, so `ExamDatabaseMigrationTest` skips itself when they are absent
-        // (i.e. under `testReleaseUnitTest`).
         getByName("debug").assets.srcDir("$projectDir/schemas")
         getByName("androidTest").assets.srcDir("$projectDir/schemas")
     }
 }
 
-// CI runs the unqualified `check` task, which lints only the default variant; name the flavors here,
-// where the flavor list is known, so both are covered.
 tasks.named("check") { dependsOn("lintStandardDebug", "lintProctorDebug") }
 
 dependencies {

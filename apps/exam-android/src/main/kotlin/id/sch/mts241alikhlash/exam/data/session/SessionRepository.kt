@@ -8,12 +8,6 @@ class SessionRepository(
 
     suspend fun deadline(): Long? = store.loadDeadline()
 
-    /**
-     * Starts [id] with a fresh deadline.
-     *
-     * Re-starting the session that is already persisted keeps its original deadline:
-     * a process restart must not hand the student a brand-new 90 minutes.
-     */
     suspend fun start(
         id: String,
         deadline: Long = ExamTimer.deadlineFrom(now()),
@@ -54,12 +48,6 @@ class SessionRepository(
         store.clear()
     }
 
-    /**
-     * Clears the session only when it is still [sessionId].
-     *
-     * A teardown that was already in flight when a new exam started must not wipe the
-     * new session, so the check and the clear are done against the same read.
-     */
     suspend fun finishIfCurrent(sessionId: String?): Boolean {
         if (sessionId == null) return false
         if (store.load() != sessionId) return false

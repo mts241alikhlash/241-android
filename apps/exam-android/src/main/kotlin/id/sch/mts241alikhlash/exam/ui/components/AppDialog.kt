@@ -92,11 +92,6 @@ fun ActionButton(
     }
 }
 
-/**
- * The web's `DialogContent size="md"` with a standard header and footer: 8dp corners, a muted
- * header and footer separated by hairlines, a 16dp body and, when a footer has two actions,
- * the secondary on the left and the primary on the right.
- */
 @Composable
 fun AppDialog(
     title: String,

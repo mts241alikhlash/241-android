@@ -9,10 +9,6 @@ import kotlinx.coroutines.test.setMain
 import org.junit.rules.TestWatcher
 import org.junit.runner.Description
 
-/**
- * Replaces `Dispatchers.Main` (used by `viewModelScope`) with a test dispatcher so
- * ViewModels can be exercised in plain JVM unit tests without the Android framework.
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainDispatcherRule(
     val testDispatcher: TestDispatcher = UnconfinedTestDispatcher(),
