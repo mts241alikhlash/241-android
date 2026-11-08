@@ -15,16 +15,8 @@ object KioskPolicy {
     fun isLocked(activity: Activity): Boolean = isSecure(lockTaskState(activity))
 }
 
-class KioskPinRetryPolicy(
-    private val requiredFailures: Int = REQUIRED_FAILURES,
-) {
+class KioskPinRetryPolicy {
     var pinAttempts: Int = 0
-        private set
-
-    var canProceedUnpinned: Boolean = false
-        private set
-
-    var isUnpinned: Boolean = false
         private set
 
     var kioskMode: String = MODE_PINNED
@@ -36,42 +28,28 @@ class KioskPinRetryPolicy(
     fun onRetryAttempt(locked: Boolean): Boolean {
         if (locked) {
             pinAttempts = 0
-            canProceedUnpinned = false
             gateOpen = true
             return true
         }
-        pinAttempts = minOf(pinAttempts + 1, requiredFailures)
-        canProceedUnpinned = pinAttempts >= requiredFailures
-        gateOpen = isUnpinned
+        pinAttempts += 1
+        gateOpen = false
         return false
     }
 
     fun onStateRefresh(locked: Boolean) {
         if (locked) {
             pinAttempts = 0
-            canProceedUnpinned = false
         }
-        gateOpen = locked || isUnpinned
-    }
-
-    fun proceedUnpinned() {
-        isUnpinned = true
-        canProceedUnpinned = false
-        kioskMode = MODE_STRICT_UNPINNED
-        gateOpen = true
+        gateOpen = locked
     }
 
     fun reset() {
         pinAttempts = 0
-        canProceedUnpinned = false
-        isUnpinned = false
         kioskMode = MODE_PINNED
         gateOpen = false
     }
 
     companion object {
-        const val REQUIRED_FAILURES = 2
         const val MODE_PINNED = "PINNED"
-        const val MODE_STRICT_UNPINNED = "STRICT_UNPINNED"
     }
 }

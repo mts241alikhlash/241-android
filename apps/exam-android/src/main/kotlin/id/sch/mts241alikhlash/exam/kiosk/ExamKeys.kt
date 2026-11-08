@@ -7,6 +7,7 @@ val EXAM_BLOCKED_KEYS =
         KeyEvent.KEYCODE_VOLUME_UP,
         KeyEvent.KEYCODE_VOLUME_DOWN,
         KeyEvent.KEYCODE_VOLUME_MUTE,
+        KeyEvent.KEYCODE_BACK,
     )
 
 fun blocksExamKey(
