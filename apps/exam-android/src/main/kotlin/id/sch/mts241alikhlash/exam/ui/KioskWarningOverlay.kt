@@ -43,9 +43,7 @@ import id.sch.mts241alikhlash.exam.ui.theme.WebTokens
 fun KioskWarningOverlay(
     onRetry: () -> Unit,
     onSupervisorAccess: () -> Unit = {},
-    canProceedUnpinned: Boolean = false,
     onOpenPinSettings: () -> Unit = {},
-    onProceedUnpinned: () -> Unit = {},
 ) {
     Box(modifier = Modifier.fillMaxSize().background(WebTokens.Background)) {
         BrandWatermark(
@@ -68,7 +66,7 @@ fun KioskWarningOverlay(
             LockBadge(onLongPress = onSupervisorAccess)
             Spacer(Modifier.height(16.dp))
             Text(
-                text = "Perangkat Belum Terkunci",
+                text = "Layar Wajib Disematkan",
                 fontFamily = DMSansFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 22.sp,
@@ -78,7 +76,7 @@ fun KioskWarningOverlay(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "Ujian dijeda karena kunci layar ditolak.",
+                text = "Ujian hanya dapat diakses dalam mode sematkan layar (pinned).",
                 fontFamily = DMSansFontFamily,
                 fontSize = 13.sp,
                 color = WebTokens.MutedForeground,
@@ -86,11 +84,11 @@ fun KioskWarningOverlay(
             )
             Spacer(Modifier.height(20.dp))
             SectionedCard {
-                SectionHeader("Yang Perlu Dilakukan")
+                SectionHeader("Petunjuk Aktivasi")
                 Column(modifier = Modifier.padding(16.dp)) {
-                    StepRow(1, "Panggil pengawas ujian.")
+                    StepRow(1, "Pastikan 'Sematkan Layar' aktif di Pengaturan HP.")
                     Spacer(Modifier.height(10.dp))
-                    StepRow(2, "Ketuk \"Kunci Lagi\", lalu setujui kunci layar.")
+                    StepRow(2, "Ketuk 'Kunci Layar', lalu setujui konfirmasi sistem.")
                     Spacer(Modifier.height(14.dp))
                     Text(
                         text = "* Jawaban yang sudah tersimpan tetap aman.",
@@ -101,21 +99,9 @@ fun KioskWarningOverlay(
                 }
             }
             Spacer(Modifier.height(16.dp))
-            PrimaryButton(text = "Kunci Lagi", onClick = onRetry)
-            if (canProceedUnpinned) {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = "Perangkat ini menolak kunci layar. Pilih salah satu:",
-                    fontFamily = DMSansFontFamily,
-                    fontSize = 12.sp,
-                    color = WebTokens.MutedForeground,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(10.dp))
-                PrimaryButton(text = "Buka Pengaturan Sematkan Layar", onClick = onOpenPinSettings)
-                Spacer(Modifier.height(10.dp))
-                PrimaryButton(text = "Lanjutkan dengan Mode Pengawasan Ketat", onClick = onProceedUnpinned)
-            }
+            PrimaryButton(text = "Kunci Layar", onClick = onRetry)
+            Spacer(Modifier.height(10.dp))
+            PrimaryButton(text = "Buka Pengaturan Sematkan Layar", onClick = onOpenPinSettings)
         }
     }
 }

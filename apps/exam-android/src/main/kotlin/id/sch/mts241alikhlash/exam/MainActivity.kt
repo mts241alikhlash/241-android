@@ -104,7 +104,6 @@ class MainActivity : ComponentActivity() {
     private var runningSessionId: String? = null
     private val reentrySignal = mutableStateOf<String?>(null)
     private val kioskGateOpen = mutableStateOf(false)
-    private val pinFallbackReady = mutableStateOf(false)
 
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val pinRecheck = Runnable { verifyPinState() }
@@ -302,7 +301,6 @@ class MainActivity : ComponentActivity() {
             val shieldInterference = interference.dominant
             val focusHeld by hasWindowFocus
             val gateOpen by kioskGateOpen
-            val fallbackReady by pinFallbackReady
 
             AssessmentAppRoot(
                 state = appState,
@@ -542,18 +540,11 @@ class MainActivity : ComponentActivity() {
                                 mainHandler.postDelayed(pinRetryRecheck, 400)
                             },
                             onSupervisorAccess = { showSupervisorExit = true },
-                            canProceedUnpinned = fallbackReady,
                             onOpenPinSettings = {
                                 guard.markLaunchingInternalDialog()
                                 runCatching {
                                     startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS))
                                 }
-                            },
-                            onProceedUnpinned = {
-                                pinPolicy.proceedUnpinned()
-                                pinFallbackReady.value = false
-                                kioskGateOpen.value = true
-                                tracker?.recordKioskMode(pinPolicy.kioskMode, System.currentTimeMillis())
                             },
                         )
                         return@AssessmentAppRoot
@@ -820,7 +811,6 @@ class MainActivity : ComponentActivity() {
     private fun stopKioskMode() {
         isExamActive = false
         kioskGateOpen.value = false
-        pinFallbackReady.value = false
         pinPolicy.reset()
         lastLocked = null
         mainHandler.removeCallbacks(pinRecheck)
@@ -843,6 +833,15 @@ class MainActivity : ComponentActivity() {
         keyCode: Int,
         event: KeyEvent?,
     ): Boolean {
+        if (isExamActive && keyCode == KeyEvent.KEYCODE_BACK) {
+            Toast
+                .makeText(
+                    this,
+                    "Tombol kembali dinonaktifkan selama ujian berlangsung.",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            return true
+        }
         if (blocksExamKey(isExamActive, keyCode)) return true
         return super.onKeyDown(keyCode, event)
     }
@@ -907,7 +906,6 @@ class MainActivity : ComponentActivity() {
     private fun checkPinRetry() {
         val locked = KioskPolicy.isLocked(this)
         pinPolicy.onRetryAttempt(locked)
-        pinFallbackReady.value = pinPolicy.canProceedUnpinned
         recordPinLoss(locked)
         kioskGateOpen.value = pinPolicy.gateOpen
     }
@@ -915,7 +913,6 @@ class MainActivity : ComponentActivity() {
     private fun verifyPinState() {
         val locked = KioskPolicy.isLocked(this)
         pinPolicy.onStateRefresh(locked)
-        pinFallbackReady.value = pinPolicy.canProceedUnpinned
         recordPinLoss(locked)
         kioskGateOpen.value = pinPolicy.gateOpen
     }
@@ -925,7 +922,7 @@ class MainActivity : ComponentActivity() {
     private fun recordPinLoss(locked: Boolean) {
         val wasLocked = lastLocked
         lastLocked = locked
-        if (!locked && wasLocked == true && isExamActive && !pinPolicy.isUnpinned) {
+        if (!locked && wasLocked == true && isExamActive) {
             violations.record("pin_lost")
             warnAboutViolations()
         }
