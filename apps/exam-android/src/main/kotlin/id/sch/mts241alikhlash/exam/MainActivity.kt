@@ -474,7 +474,6 @@ class MainActivity : ComponentActivity() {
                                 },
                         )
                     HomeScreen(
-                        userName = appState.user?.name.orEmpty(),
                         listViewModel = listViewModel,
                         profileViewModel = profileViewModel,
                         notice = appState.notice,

@@ -67,7 +67,6 @@ import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
 import id.sch.mts241alikhlash.exam.ui.components.ActionButton
 import id.sch.mts241alikhlash.exam.ui.components.ActionStyle
 import id.sch.mts241alikhlash.exam.ui.components.AppDialog
-import id.sch.mts241alikhlash.exam.ui.components.rememberIsOnline
 import id.sch.mts241alikhlash.exam.ui.theme.DMSansFontFamily
 import id.sch.mts241alikhlash.exam.ui.theme.WebTokens
 import kotlinx.coroutines.launch
@@ -88,7 +87,6 @@ private enum class DrawerIcon { Exams, OtherWork, Schedule, Profile, Rules, Guid
 
 @Composable
 fun HomeScreen(
-    userName: String,
     listViewModel: ExamListViewModel,
     profileViewModel: ProfileViewModel,
     notice: String?,
@@ -98,8 +96,6 @@ fun HomeScreen(
     var section by rememberSaveable { mutableStateOf(HomeSection.ExamWork) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val profileState by profileViewModel.state.collectAsState()
-    val profile = (profileState as? ProfileUiState.Content)?.profile
     val listState by listViewModel.state.collectAsState()
     // shortcut: ISO-8601 UTC strings sort lexicographically, parse if the formats ever vary
     val activeExam =

@@ -91,15 +91,6 @@ fun AssessmentAppRoot(
     },
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    BackHandler(enabled = state.sessionId != null) {
-        android.widget.Toast
-            .makeText(
-                context,
-                "Tombol kembali dinonaktifkan selama ujian berlangsung.",
-                android.widget.Toast.LENGTH_SHORT,
-            ).show()
-    }
-
     BackHandler(enabled = state.sessionId == null && state.user != null && state.selectedExam != null) {
         if (!state.starting) onBackToList()
     }

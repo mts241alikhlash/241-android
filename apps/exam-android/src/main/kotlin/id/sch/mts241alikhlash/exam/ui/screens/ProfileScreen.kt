@@ -229,11 +229,3 @@ fun Avatar(
         )
     }
 }
-
-private fun examStatusLabel(status: String): String =
-    when (status) {
-        "IN_PROGRESS" -> "Sedang berlangsung"
-        "OPEN" -> "Sedang dibuka"
-        "UPCOMING" -> "Akan datang"
-        else -> "Selesai"
-    }
