@@ -864,6 +864,7 @@ class MainActivity : ComponentActivity() {
         if (isExamActive) {
             applyExamWindowFlags()
             runCatching { startLockTask() }
+            dnd.enableExamDnd()
             verifyPinState()
             mainHandler.removeCallbacks(pinRecheck)
             mainHandler.postDelayed(pinRecheck, 700)
