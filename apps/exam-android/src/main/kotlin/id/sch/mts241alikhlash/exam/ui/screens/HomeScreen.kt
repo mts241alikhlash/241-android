@@ -252,7 +252,7 @@ fun HomeScreen(
 
                     HomeSection.Rules ->
                         HelpScreen(
-                            topics = examRules,
+                            topics = examRules(),
                         )
 
                     HomeSection.Guide ->

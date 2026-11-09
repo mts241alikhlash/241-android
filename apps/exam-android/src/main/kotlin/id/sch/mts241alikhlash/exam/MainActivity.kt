@@ -644,7 +644,7 @@ class MainActivity : ComponentActivity() {
                                         val unsent = viewModel.uiState.value.unsentAnswers
                                         releaseExamAndShowList(
                                             when {
-                                                viewModel.uiState.value.violationExit -> ViolationPolicy.warning(ViolationPolicy.LIMIT + 1)
+                                                viewModel.uiState.value.violationExit -> ViolationPolicy.exitWarning()
                                                 unsent > 0 -> "Ujian dikumpulkan, tetapi $unsent jawaban tidak sempat terkirim"
                                                 ended -> "Ujian berhasil dikumpulkan"
                                                 else -> "Ujian selesai, tetapi sesi gagal dibersihkan"
@@ -726,7 +726,7 @@ class MainActivity : ComponentActivity() {
     private fun warnAboutViolations() {
         countedViolations.value = violations.counted()
         val total = reportedViolationCount(countedViolations.value)
-        Toast.makeText(this, ViolationPolicy.warning(total), Toast.LENGTH_LONG).show()
+        Toast.makeText(this, ViolationPolicy.warning(total, ViolationPolicy.currentLimit()), Toast.LENGTH_LONG).show()
     }
 
     internal fun setExamActiveForTest(active: Boolean) {

@@ -1,5 +1,7 @@
 package id.sch.mts241alikhlash.exam.kiosk
 
+import id.sch.mts241alikhlash.exam.data.model.ExamPolicyDto
+import id.sch.mts241alikhlash.exam.data.session.ExamRuntimePolicy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -49,5 +51,21 @@ class ViolationPolicyTest {
             "Peringatan terakhir (5 dari 5): keluar sekali lagi dan ujian langsung dikumpulkan.",
             ViolationPolicy.warning(5, limit = 5),
         )
+    }
+
+    @Test
+    fun `the copy follows the stashed runtime limit`() {
+        val previous = ExamRuntimePolicy.current
+        ExamRuntimePolicy.apply(ExamPolicyDto(violationLimit = 5))
+
+        try {
+            assertEquals(5, ViolationPolicy.currentLimit())
+            assertEquals(
+                "Ujian dikumpulkan karena keluar dari aplikasi lebih dari 5 kali.",
+                ViolationPolicy.exitWarning(),
+            )
+        } finally {
+            ExamRuntimePolicy.apply(previous)
+        }
     }
 }

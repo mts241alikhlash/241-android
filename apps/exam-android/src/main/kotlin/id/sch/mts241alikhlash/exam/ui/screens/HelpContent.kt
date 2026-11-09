@@ -7,13 +7,14 @@ data class HelpTopic(
     val points: List<String>,
 )
 
-val examRules: List<HelpTopic> =
-    listOf(
+fun examRules(): List<HelpTopic> {
+    val limit = ViolationPolicy.currentLimit()
+    return listOf(
         HelpTopic(
             "Yang paling penting",
             listOf(
                 "Jangan keluar dari aplikasi selama ujian atau tugas berlangsung. Setiap keluar atau kunci layar terlepas dihitung satu pelanggaran.",
-                "Batasnya ${ViolationPolicy.LIMIT} kali. Pelanggaran ke-${ViolationPolicy.LIMIT + 1} membuat lembar jawaban langsung dikumpulkan dan tidak bisa dilanjutkan.",
+                "Batasnya $limit kali. Pelanggaran ke-${limit + 1} membuat lembar jawaban langsung dikumpulkan dan tidak bisa dilanjutkan.",
                 "Jumlah pelanggaran tercatat di server. Menutup paksa aplikasi atau menghapus data aplikasi tidak mengembalikannya ke nol.",
             ),
         ),
@@ -50,6 +51,7 @@ val examRules: List<HelpTopic> =
             ),
         ),
     )
+}
 
 val appGuide: List<HelpTopic> =
     listOf(

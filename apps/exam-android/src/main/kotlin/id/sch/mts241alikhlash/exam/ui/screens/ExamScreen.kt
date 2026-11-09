@@ -325,8 +325,8 @@ fun ExamContent(
         ) {
             Text(
                 text =
-                    state.submitError?.let { "${ViolationPolicy.warning(ViolationPolicy.LIMIT + 1)} $it" }
-                        ?: "${ViolationPolicy.warning(ViolationPolicy.LIMIT + 1)} Jawaban dikirim seadanya.",
+                    state.submitError?.let { "${ViolationPolicy.exitWarning()} $it" }
+                        ?: "${ViolationPolicy.exitWarning()} Jawaban dikirim seadanya.",
                 fontFamily = DMSansFontFamily,
                 fontSize = 13.sp,
                 color = TextPrimary,
