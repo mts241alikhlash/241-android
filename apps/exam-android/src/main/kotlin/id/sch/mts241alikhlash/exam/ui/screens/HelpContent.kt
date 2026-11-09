@@ -61,11 +61,11 @@ val appGuide: List<HelpTopic> =
             ),
         ),
         HelpTopic(
-            "Daftar dan jadwal",
+            "Ujian dan jadwal",
             listOf(
-                "Daftar Ujian menampilkan pekerjaan yang sedang berlangsung, sudah dibuka, akan datang, dan selesai. Ketuk satu baris untuk melihat paket, tanggal, durasi, dan tombol mulai.",
+                "Menu Ujian menampilkan ujian yang sedang berlangsung, sudah dibuka, akan datang, dan selesai; menu Non-ujian menampilkan tugas di luar ujian. Ketuk satu baris untuk melihat paket, tanggal, durasi, dan tombol mulai.",
                 "Jadwal mengelompokkan pekerjaan per jenis: ulangan harian, quiz, tugas, dan ujian lainnya, lalu per hari. Ketuk satu baris untuk melihat detailnya.",
-                "Tombol muat ulang di kanan bawah Daftar Ujian memperbarui daftar.",
+                "Tombol muat ulang di kanan bawah Ujian dan Non-ujian memperbarui daftar.",
             ),
         ),
         HelpTopic(

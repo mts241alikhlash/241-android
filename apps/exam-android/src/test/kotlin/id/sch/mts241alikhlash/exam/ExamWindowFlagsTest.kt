@@ -35,16 +35,20 @@ class ExamWindowFlagsTest {
     }
 
     @Test
-    fun `secure flag is set unconditionally`() {
+    fun `secure flag follows the build type`() {
         val activity =
             org.robolectric.Robolectric
                 .buildActivity(MainActivity::class.java)
                 .setup()
                 .get()
-        val flags = activity.window.attributes.flags
-        assertTrue(
-            "FLAG_SECURE must be set even in debug builds",
-            flags and WindowManager.LayoutParams.FLAG_SECURE != 0,
+        assertEquals(
+            if (BuildConfig.DEBUG) {
+                "FLAG_SECURE is reserved for release builds"
+            } else {
+                "FLAG_SECURE must be set in release builds"
+            },
+            if (BuildConfig.DEBUG) 0 else WindowManager.LayoutParams.FLAG_SECURE,
+            activity.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE,
         )
         activity.finish()
     }
