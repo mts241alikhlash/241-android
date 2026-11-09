@@ -62,11 +62,19 @@ private fun groupExams(exams: List<ExamSummaryDto>): List<ExamGroup> =
 fun ExamListScreen(
     viewModel: ExamListViewModel,
     onSelect: (ExamSummaryDto) -> Unit,
+    examWork: Boolean,
     notice: String? = null,
 ) {
     val state by viewModel.state.collectAsState()
     var expandedId by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) { viewModel.reload() }
+    val emptyTitle = if (examWork) "Belum ada ujian" else "Belum ada non-ujian"
+    val emptyBody =
+        if (examWork) {
+            "Tidak ada ujian untuk Anda saat ini."
+        } else {
+            "Tidak ada tugas non-ujian untuk Anda saat ini."
+        }
 
     Column(modifier = Modifier.fillMaxSize()) {
         notice?.let {
@@ -92,8 +100,8 @@ fun ExamListScreen(
 
             ExamListUiState.Empty ->
                 Message(
-                    title = "Belum ada ujian",
-                    body = "Tidak ada ujian untuk Anda saat ini.",
+                    title = emptyTitle,
+                    body = emptyBody,
                     actionLabel = "Muat Ulang",
                     onAction = viewModel::refresh,
                 )
@@ -106,41 +114,52 @@ fun ExamListScreen(
                     onAction = viewModel::refresh,
                 )
 
-            is ExamListUiState.Content ->
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding =
-                        androidx.compose.foundation.layout
-                            .PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    current.staleMessage?.let { message ->
-                        item {
-                            Text(
-                                text = "$message Menampilkan daftar terakhir.",
-                                fontSize = 12.sp,
-                                fontFamily = DMSansFontFamily,
-                                color = WebTokens.MutedForeground,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .background(WebTokens.Card, RoundedCornerShape(8.dp))
-                                        .border(1.dp, WebTokens.Border, RoundedCornerShape(8.dp))
-                                        .padding(12.dp),
-                            )
+            is ExamListUiState.Content -> {
+                val exams = examMenuExams(current.exams, examWork)
+                if (exams.isEmpty()) {
+                    Message(
+                        title = emptyTitle,
+                        body = emptyBody,
+                        actionLabel = "Muat Ulang",
+                        onAction = viewModel::refresh,
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding =
+                            androidx.compose.foundation.layout
+                                .PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        current.staleMessage?.let { message ->
+                            item {
+                                Text(
+                                    text = "$message Menampilkan daftar terakhir.",
+                                    fontSize = 12.sp,
+                                    fontFamily = DMSansFontFamily,
+                                    color = WebTokens.MutedForeground,
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .background(WebTokens.Card, RoundedCornerShape(8.dp))
+                                            .border(1.dp, WebTokens.Border, RoundedCornerShape(8.dp))
+                                            .padding(12.dp),
+                                )
+                            }
                         }
-                    }
-                    groupExams(current.exams).forEach { group ->
-                        item(key = "group-${group.title}") {
-                            GroupCard(
-                                group = group,
-                                expandedId = expandedId,
-                                onToggle = { id -> expandedId = if (expandedId == id) null else id },
-                                onStart = onSelect,
-                            )
+                        groupExams(exams).forEach { group ->
+                            item(key = "group-${group.title}") {
+                                GroupCard(
+                                    group = group,
+                                    expandedId = expandedId,
+                                    onToggle = { id -> expandedId = if (expandedId == id) null else id },
+                                    onStart = onSelect,
+                                )
+                            }
                         }
                     }
                 }
+            }
         }
     }
 }

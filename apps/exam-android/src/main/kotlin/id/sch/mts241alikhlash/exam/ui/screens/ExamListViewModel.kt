@@ -46,6 +46,14 @@ fun ExamSummaryDto.displayTitle(): String {
 
 fun ExamSummaryDto.isSelectable(): Boolean = status == "OPEN" || status == "IN_PROGRESS"
 
+fun isExamWork(exam: ExamSummaryDto): Boolean =
+    exam.activityId != null || exam.eventId != null || exam.makeup
+
+fun examMenuExams(
+    exams: List<ExamSummaryDto>,
+    examWork: Boolean,
+): List<ExamSummaryDto> = exams.filter { isExamWork(it) == examWork }
+
 class ExamListViewModel(
     private val catalog: ExamCatalogRepository,
 ) : ViewModel() {

@@ -76,14 +76,15 @@ private enum class HomeSection(
     val title: String,
     val icon: DrawerIcon,
 ) {
-    Exams("Daftar Ujian", DrawerIcon.Exams),
+    ExamWork("Ujian", DrawerIcon.Exams),
+    OtherWork("Non-ujian", DrawerIcon.OtherWork),
     Schedule("Jadwal", DrawerIcon.Schedule),
     Profile("Profil Saya", DrawerIcon.Profile),
     Rules("Tata Tertib", DrawerIcon.Rules),
     Guide("Panduan Aplikasi", DrawerIcon.Guide),
 }
 
-private enum class DrawerIcon { Exams, Schedule, Profile, Rules, Guide, Logout }
+private enum class DrawerIcon { Exams, OtherWork, Schedule, Profile, Rules, Guide, Logout }
 
 @Composable
 fun HomeScreen(
@@ -94,7 +95,7 @@ fun HomeScreen(
     onSelect: (ExamSummaryDto) -> Unit,
     onLogout: () -> Unit,
 ) {
-    var section by rememberSaveable { mutableStateOf(HomeSection.Exams) }
+    var section by rememberSaveable { mutableStateOf(HomeSection.ExamWork) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val profileState by profileViewModel.state.collectAsState()
@@ -102,8 +103,8 @@ fun HomeScreen(
     val listState by listViewModel.state.collectAsState()
     var confirmLogout by remember { mutableStateOf(false) }
 
-    BackHandler(enabled = section != HomeSection.Exams && !drawerState.isOpen) {
-        section = HomeSection.Exams
+    BackHandler(enabled = section != HomeSection.ExamWork && !drawerState.isOpen) {
+        section = HomeSection.ExamWork
     }
 
     if (confirmLogout) {
@@ -223,10 +224,19 @@ fun HomeScreen(
                             .scale(1.35f),
                 )
                 when (section) {
-                    HomeSection.Exams ->
+                    HomeSection.ExamWork ->
                         ExamListScreen(
                             viewModel = listViewModel,
                             onSelect = onSelect,
+                            examWork = true,
+                            notice = notice,
+                        )
+
+                    HomeSection.OtherWork ->
+                        ExamListScreen(
+                            viewModel = listViewModel,
+                            onSelect = onSelect,
+                            examWork = false,
                             notice = notice,
                         )
 
@@ -244,7 +254,7 @@ fun HomeScreen(
                             topics = appGuide,
                         )
                 }
-                if (section == HomeSection.Exams) {
+                if (section == HomeSection.ExamWork || section == HomeSection.OtherWork) {
                     RefreshButton(
                         onClick = listViewModel::reload,
                         modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
@@ -455,6 +465,23 @@ private fun DrawerGlyph(
                 for (line in 0..2) {
                     val y = h * (0.34f + line * 0.18f)
                     drawLine(color, Offset(w * 0.3f, y), Offset(w * 0.7f, y), stroke.width, StrokeCap.Round)
+                }
+            }
+
+            DrawerIcon.OtherWork -> {
+                drawRoundRect(
+                    color,
+                    topLeft = Offset(w * 0.12f, h * 0.14f),
+                    size = Size(w * 0.76f, h * 0.76f),
+                    cornerRadius =
+                        androidx.compose.ui.geometry
+                            .CornerRadius(w * 0.12f),
+                    style = stroke,
+                )
+                for (line in 0..2) {
+                    val y = h * (0.34f + line * 0.18f)
+                    drawLine(color, Offset(w * 0.26f, y), Offset(w * 0.34f, y), stroke.width, StrokeCap.Round)
+                    drawLine(color, Offset(w * 0.44f, y), Offset(w * 0.74f, y), stroke.width, StrokeCap.Round)
                 }
             }
 

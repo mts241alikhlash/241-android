@@ -16,6 +16,14 @@ data class ExamSummaryDto(
     val type: String? = null,
     val participantNumber: String? = null,
     val minSubmitMinutes: Int = 0,
+    val activityId: String? = null,
+    val activityStatus: String? = null,
+    val eventId: String? = null,
+    val eventName: String? = null,
+    val lifecycle: String? = null,
+    val roomName: String? = null,
+    val seatNumber: Int? = null,
+    val makeup: Boolean = false,
 )
 
 @Serializable
