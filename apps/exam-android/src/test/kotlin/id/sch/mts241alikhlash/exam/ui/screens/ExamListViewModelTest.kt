@@ -121,6 +121,31 @@ class ExamListViewModelTest {
         assertFalse(exam("c", "UPCOMING").isSelectable())
         assertFalse(exam("d", "FINISHED").isSelectable())
     }
+
+    @Test
+    fun lifecycle_open_makes_a_finished_looking_status_startable() {
+        val open = exam("a", "FINISHED").copy(lifecycle = "OPEN")
+
+        assertTrue(open.isSelectable())
+        assertTrue(open.isExpandable())
+        assertEquals(listOf("Bisa Dikerjakan"), groupExams(listOf(open)).map { it.title })
+    }
+
+    @Test
+    fun lifecycle_finished_makes_an_open_looking_status_unstartable() {
+        val finished = exam("b", "OPEN").copy(lifecycle = "FINISHED")
+
+        assertFalse(finished.isSelectable())
+        assertFalse(finished.isExpandable())
+        assertEquals(listOf("Selesai"), groupExams(listOf(finished)).map { it.title })
+    }
+
+    @Test
+    fun an_old_server_without_lifecycle_still_uses_status() {
+        assertTrue(exam("a", "OPEN").isSelectable())
+        assertEquals(listOf("Selesai"), groupExams(listOf(exam("b", "FINISHED"))).map { it.title })
+        assertEquals(listOf("Akan Datang"), groupExams(listOf(exam("c", "UPCOMING"))).map { it.title })
+    }
 }
 
 class ExamStatusLabelTest {

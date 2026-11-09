@@ -46,16 +46,19 @@ import id.sch.mts241alikhlash.exam.ui.components.PrimaryButton
 import id.sch.mts241alikhlash.exam.ui.theme.DMSansFontFamily
 import id.sch.mts241alikhlash.exam.ui.theme.WebTokens
 
-private data class ExamGroup(
+internal data class ExamGroup(
     val title: String,
     val exams: List<ExamSummaryDto>,
 )
 
-private fun groupExams(exams: List<ExamSummaryDto>): List<ExamGroup> =
+internal fun groupExams(exams: List<ExamSummaryDto>): List<ExamGroup> =
     listOf(
         ExamGroup("Bisa Dikerjakan", exams.filter { it.isSelectable() }),
-        ExamGroup("Akan Datang", exams.filter { it.status == "UPCOMING" }),
-        ExamGroup("Selesai", exams.filter { it.status == "FINISHED" }),
+        ExamGroup(
+            "Akan Datang",
+            exams.filter { !it.isSelectable() && (it.lifecycle ?: it.status) == "UPCOMING" },
+        ),
+        ExamGroup("Selesai", exams.filter { (it.lifecycle ?: it.status) == "FINISHED" }),
     ).filter { it.exams.isNotEmpty() }
 
 @Composable
@@ -202,7 +205,7 @@ private fun ExamRow(
 ) {
     val selectable = exam.isSelectable()
     val rotation by animateFloatAsState(if (expanded) 180f else 0f, label = "chevron")
-    val expandable = exam.status != "FINISHED"
+    val expandable = exam.isExpandable()
     Column(
         modifier =
             Modifier

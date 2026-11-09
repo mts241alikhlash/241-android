@@ -44,7 +44,13 @@ fun ExamSummaryDto.displayTitle(): String {
     return if (label != null && subject != null) "$label - $subject" else title
 }
 
-fun ExamSummaryDto.isSelectable(): Boolean = status == "OPEN" || status == "IN_PROGRESS"
+fun ExamSummaryDto.isSelectable(): Boolean =
+    when (lifecycle) {
+        null -> status == "OPEN" || status == "IN_PROGRESS"
+        else -> lifecycle == "OPEN"
+    }
+
+fun ExamSummaryDto.isExpandable(): Boolean = (lifecycle ?: status) != "FINISHED"
 
 fun isExamWork(exam: ExamSummaryDto): Boolean =
     exam.activityId != null || exam.eventId != null || exam.makeup
