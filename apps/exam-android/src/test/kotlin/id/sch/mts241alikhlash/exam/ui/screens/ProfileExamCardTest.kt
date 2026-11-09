@@ -61,6 +61,15 @@ class ProfileExamCardTest {
     }
 
     @Test
+    fun `the earliest open exam wins the profile card`() {
+        val first = exam(lifecycle = "OPEN").copy(id = "e1", startsAt = "2026-11-09T01:00:00.000Z")
+        val second = exam(lifecycle = "OPEN").copy(id = "e2", startsAt = "2026-11-10T01:00:00.000Z")
+
+        assertEquals(first, profileCardExam(listOf(second, first)))
+        assertEquals(null, profileCardExam(listOf(exam(lifecycle = "FINISHED"))))
+    }
+
+    @Test
     fun `a room without a participant number drops only the participant row`() {
         val rows = profileExamRows(exam(lifecycle = "OPEN", roomName = "Ruang 3"))
 

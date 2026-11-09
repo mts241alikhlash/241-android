@@ -33,6 +33,7 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -97,12 +98,10 @@ fun HomeScreen(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val listState by listViewModel.state.collectAsState()
-    // shortcut: ISO-8601 UTC strings sort lexicographically, parse if the formats ever vary
-    val activeExam =
-        (listState as? ExamListUiState.Content)
-            ?.exams
-            ?.filter { it.lifecycle == "OPEN" }
-            ?.minByOrNull { it.startsAt }
+    val activeExam = profileCardExam((listState as? ExamListUiState.Content)?.exams.orEmpty())
+    LaunchedEffect(section) {
+        if (section == HomeSection.Profile) listViewModel.reload()
+    }
     var confirmLogout by remember { mutableStateOf(false) }
 
     BackHandler(enabled = section != HomeSection.ExamWork && !drawerState.isOpen) {

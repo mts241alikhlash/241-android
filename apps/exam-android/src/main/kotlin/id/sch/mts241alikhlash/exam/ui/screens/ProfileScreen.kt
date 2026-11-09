@@ -35,6 +35,10 @@ import id.sch.mts241alikhlash.exam.ui.components.PrimaryButton
 import id.sch.mts241alikhlash.exam.ui.theme.DMSansFontFamily
 import id.sch.mts241alikhlash.exam.ui.theme.WebTokens
 
+fun profileCardExam(exams: List<ExamSummaryDto>): ExamSummaryDto? =
+    // shortcut: ISO-8601 UTC strings sort lexicographically, parse if the formats ever vary
+    exams.filter { it.lifecycle == "OPEN" }.minByOrNull { it.startsAt }
+
 fun profileExamRows(exam: ExamSummaryDto?): List<Pair<String, String>> {
     if (exam?.lifecycle != "OPEN") return emptyList()
     val unset = "Belum ditetapkan"
