@@ -199,7 +199,8 @@ private fun SyncIndicator(summary: AnswerSyncSummary) {
         modifier =
             Modifier
                 .size(8.dp)
-                .background(DoubtfulOrange, CircleShape),
+                .background(DoubtfulOrange, CircleShape)
+                .semantics { contentDescription = "Menyinkronkan ${summary.pendingCount} jawaban" },
     )
 }
 
