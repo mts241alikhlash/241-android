@@ -101,7 +101,6 @@ import id.sch.mts241alikhlash.exam.ui.theme.StatusError
 import id.sch.mts241alikhlash.exam.ui.theme.StatusSuccess
 import id.sch.mts241alikhlash.exam.ui.theme.SubmitGreen
 import id.sch.mts241alikhlash.exam.ui.theme.TextMuted
-import id.sch.mts241alikhlash.exam.ui.theme.WebTokens
 import id.sch.mts241alikhlash.exam.ui.theme.TextPrimary
 import id.sch.mts241alikhlash.exam.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
@@ -203,7 +202,6 @@ private fun SyncIndicator(summary: AnswerSyncSummary) {
                 .semantics { contentDescription = "Menyinkronkan ${summary.pendingCount} jawaban" },
     )
 }
-
 
 @Composable
 private fun SubmitStat(

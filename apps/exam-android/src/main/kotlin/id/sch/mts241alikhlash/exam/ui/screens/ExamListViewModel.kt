@@ -52,8 +52,7 @@ fun ExamSummaryDto.isSelectable(): Boolean =
 
 fun ExamSummaryDto.isExpandable(): Boolean = (lifecycle ?: status) != "FINISHED"
 
-fun isExamWork(exam: ExamSummaryDto): Boolean =
-    exam.activityId != null || exam.eventId != null || exam.makeup
+fun isExamWork(exam: ExamSummaryDto): Boolean = exam.activityId != null || exam.eventId != null || exam.makeup
 
 fun examMenuExams(
     exams: List<ExamSummaryDto>,
