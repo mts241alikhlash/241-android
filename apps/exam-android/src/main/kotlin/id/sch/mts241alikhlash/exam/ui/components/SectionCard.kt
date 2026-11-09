@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -25,7 +26,7 @@ import id.sch.mts241alikhlash.exam.ui.theme.WebTokens
 
 private val HeaderFontSize = 14.sp
 private val HeaderWeight = FontWeight.SemiBold
-private val HeaderPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
+private val HeaderPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp)
 
 @Composable
 fun CardHeader(
@@ -37,6 +38,7 @@ fun CardHeader(
         modifier =
             modifier
                 .fillMaxWidth()
+                .heightIn(min = 40.dp)
                 .background(WebTokens.Foreground.copy(alpha = 0.03f))
                 .padding(HeaderPadding),
         verticalAlignment = Alignment.CenterVertically,

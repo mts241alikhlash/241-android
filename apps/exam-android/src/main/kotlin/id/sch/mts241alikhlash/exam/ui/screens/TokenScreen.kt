@@ -48,10 +48,21 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
+import id.sch.mts241alikhlash.exam.R
 import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
+import id.sch.mts241alikhlash.exam.ui.components.ActionButton
+import id.sch.mts241alikhlash.exam.ui.components.ActionStyle
 import id.sch.mts241alikhlash.exam.ui.components.BrandCardOverlap
 import id.sch.mts241alikhlash.exam.ui.components.BrandEmblem
-import id.sch.mts241alikhlash.exam.ui.components.BrandHero
+import id.sch.mts241alikhlash.exam.ui.components.BrandEmblemSize
 import id.sch.mts241alikhlash.exam.ui.components.BrandWatermark
 import id.sch.mts241alikhlash.exam.ui.components.CardHeader
 import id.sch.mts241alikhlash.exam.ui.components.FloatingTextField
@@ -59,6 +70,85 @@ import id.sch.mts241alikhlash.exam.ui.components.PrimaryButton
 import id.sch.mts241alikhlash.exam.ui.components.pullUp
 import id.sch.mts241alikhlash.exam.ui.theme.DMSansFontFamily
 import id.sch.mts241alikhlash.exam.ui.theme.WebTokens
+
+@Composable
+private fun TokenHero(
+    exam: ExamSummaryDto?,
+    resumeMode: Boolean,
+    height: Dp,
+) {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(height),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.bg),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+        )
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                WebTokens.Primary.copy(alpha = 0.82f),
+                                WebTokens.Primary.copy(alpha = 0.96f),
+                            ),
+                        ),
+                    ),
+        )
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(72.dp)
+                    .align(Alignment.BottomCenter)
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, WebTokens.Background))),
+        )
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(bottom = BrandCardOverlap + BrandEmblemSize / 2),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = if (resumeMode) "Lanjutkan ujian" else "Ujian digital",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium,
+                fontFamily = DMSansFontFamily,
+                letterSpacing = 1.8.sp,
+                color = WebTokens.PrimaryForeground.copy(alpha = 0.82f),
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = exam?.displayTitle() ?: "Masukkan token ujian",
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = DMSansFontFamily,
+                color = WebTokens.PrimaryForeground,
+                modifier = Modifier.padding(horizontal = 28.dp),
+            )
+            Spacer(Modifier.height(10.dp))
+            Box(
+                modifier =
+                    Modifier
+                        .width(28.dp)
+                        .height(2.dp)
+                        .background(WebTokens.BrandGold),
+            )
+        }
+    }
+}
 
 @Composable
 fun TokenScreen(
@@ -113,10 +203,10 @@ fun TokenScreen(
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                BrandHero(
-                    title = "241-exam",
-                    tagline = "SISTEM UJIAN DIGITAL",
-                    height = (screenHeight * 0.32f).coerceAtLeast(210.dp),
+                TokenHero(
+                    exam = exam,
+                    resumeMode = resumeMode,
+                    height = (screenHeight * 0.32f).coerceAtLeast(200.dp),
                 )
                 Column(
                     modifier =
@@ -210,18 +300,17 @@ fun TokenScreen(
                     }
                     Spacer(Modifier.height(4.dp))
                     if (onSupervisorExit != null) {
-                        Text(
+                        ActionButton(
                             text = "Keluar darurat (pengawas)",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            fontFamily = DMSansFontFamily,
-                            color = if (loading) WebTokens.MutedForeground else WebTokens.Primary,
+                            style = ActionStyle.Outline,
+                            enabled = !loading,
+                            onClick = onSupervisorExit,
                             modifier =
                                 Modifier
-                                    .clickable(enabled = !loading, onClick = onSupervisorExit)
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp),
                         )
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(8.dp))
                     }
                     Text(
                         text = "Layar dikunci selama ujian berlangsung.",

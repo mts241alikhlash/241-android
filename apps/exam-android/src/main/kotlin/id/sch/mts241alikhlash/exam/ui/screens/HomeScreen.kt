@@ -77,7 +77,7 @@ private enum class HomeSection(
     val icon: DrawerIcon,
 ) {
     Exams("Daftar Ujian", DrawerIcon.Exams),
-    Schedule("Jadwal Ujian", DrawerIcon.Schedule),
+    Schedule("Jadwal", DrawerIcon.Schedule),
     Profile("Profil Saya", DrawerIcon.Profile),
     Rules("Tata Tertib", DrawerIcon.Rules),
     Guide("Panduan Aplikasi", DrawerIcon.Guide),
@@ -100,20 +100,6 @@ fun HomeScreen(
     val profileState by profileViewModel.state.collectAsState()
     val profile = (profileState as? ProfileUiState.Content)?.profile
     val listState by listViewModel.state.collectAsState()
-    val participantNumber =
-        (listState as? ExamListUiState.Content)
-            ?.exams
-            ?.firstOrNull { it.participantNumber != null && it.status != "FINISHED" }
-            ?.participantNumber
-    val identityFields =
-        listOfNotNull(
-            profile?.let { "NIS" to it.nis },
-            profile?.classLabel?.let { "Kelas" to it },
-            semesterLabel(profile?.semester, profile?.academicYear)?.let { "Semester" to it },
-            participantNumber?.let { "No. peserta" to it },
-        )
-    val examStatus = (listState as? ExamListUiState.Content)?.exams?.let(::examStatusSummary)
-    val online = rememberIsOnline()
     var confirmLogout by remember { mutableStateOf(false) }
 
     BackHandler(enabled = section != HomeSection.Exams && !drawerState.isOpen) {
@@ -171,13 +157,7 @@ fun HomeScreen(
                                 .scale(1.3f),
                     )
                     Column(modifier = Modifier.fillMaxHeight()) {
-                        DrawerHeader(
-                            name = profile?.name ?: userName,
-                            initials = profile?.initials ?: userName.take(1).uppercase().ifEmpty { "?" },
-                            fields = identityFields,
-                            status = examStatus,
-                            online = online,
-                        )
+                        Spacer(Modifier.height(12.dp))
                         HomeSection.entries.forEach { entry ->
                             DrawerItem(
                                 label = entry.title,
@@ -383,96 +363,6 @@ private fun MenuGlyph() {
                 strokeWidth = stroke,
                 cap = StrokeCap.Round,
             )
-        }
-    }
-}
-
-@Composable
-private fun DrawerHeader(
-    name: String,
-    initials: String,
-    fields: List<Pair<String, String>>,
-    status: String?,
-    online: Boolean,
-) {
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(WebTokens.Primary)
-                .padding(start = 24.dp, end = 24.dp, top = 36.dp, bottom = 22.dp),
-    ) {
-        Row(verticalAlignment = Alignment.Top) {
-            Avatar(initials, size = 52)
-            Spacer(Modifier.width(14.dp))
-            Text(
-                text = name,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.SemiBold,
-                fontFamily = DMSansFontFamily,
-                letterSpacing = (-0.2).sp,
-                color = WebTokens.PrimaryForeground,
-                maxLines = 2,
-                modifier = Modifier.weight(1f).padding(top = 14.dp),
-            )
-            Spacer(Modifier.width(10.dp))
-            Row(
-                modifier = Modifier.padding(top = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (!online) {
-                    Text(
-                        text = "Offline",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        fontFamily = DMSansFontFamily,
-                        color = WebTokens.PrimaryForeground.copy(alpha = 0.85f),
-                    )
-                    Spacer(Modifier.width(6.dp))
-                }
-                Box(
-                    Modifier
-                        .size(8.dp)
-                        .background(if (online) Color(0xFF6EE7A0) else Color(0xFFFCA5A5), CircleShape),
-                )
-            }
-        }
-        if (status != null) {
-            Spacer(Modifier.height(14.dp))
-            Text(
-                text = status,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                fontFamily = DMSansFontFamily,
-                color = WebTokens.PrimaryForeground,
-                modifier =
-                    Modifier
-                        .background(WebTokens.PrimaryForeground.copy(alpha = 0.14f), RoundedCornerShape(50))
-                        .padding(horizontal = 12.dp, vertical = 5.dp),
-            )
-        }
-        if (fields.isNotEmpty()) Spacer(Modifier.height(16.dp))
-        fields.forEach { (label, value) ->
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = label,
-                    fontSize = 12.sp,
-                    fontFamily = DMSansFontFamily,
-                    color = WebTokens.PrimaryForeground.copy(alpha = 0.7f),
-                    modifier = Modifier.width(96.dp),
-                )
-                Text(
-                    text = value,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    fontFamily = DMSansFontFamily,
-                    color = WebTokens.PrimaryForeground,
-                    modifier = Modifier.weight(1f),
-                )
-            }
         }
     }
 }

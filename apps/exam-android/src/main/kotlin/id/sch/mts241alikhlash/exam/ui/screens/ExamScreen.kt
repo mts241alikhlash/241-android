@@ -101,6 +101,7 @@ import id.sch.mts241alikhlash.exam.ui.theme.StatusError
 import id.sch.mts241alikhlash.exam.ui.theme.StatusSuccess
 import id.sch.mts241alikhlash.exam.ui.theme.SubmitGreen
 import id.sch.mts241alikhlash.exam.ui.theme.TextMuted
+import id.sch.mts241alikhlash.exam.ui.theme.WebTokens
 import id.sch.mts241alikhlash.exam.ui.theme.TextPrimary
 import id.sch.mts241alikhlash.exam.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
@@ -194,22 +195,40 @@ fun submitSummary(state: ExamUiState): SubmitSummary {
 @Composable
 private fun SyncIndicator(summary: AnswerSyncSummary) {
     if (summary.allConfirmed) return
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    Box(
+        modifier =
+            Modifier
+                .size(8.dp)
+                .background(DoubtfulOrange, CircleShape),
+    )
+}
+
+
+@Composable
+private fun SubmitStat(
+    label: String,
+    count: Int,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier =
+            modifier
+                .background(BrandMuted, RoundedCornerShape(8.dp))
+                .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        Box(
-            modifier =
-                Modifier
-                    .size(7.dp)
-                    .background(DoubtfulOrange, CircleShape),
+        Text(
+            text = count.toString(),
+            fontFamily = DMSansFontFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 20.sp,
+            color = color,
         )
         Text(
-            text = "Menyinkronkan ${summary.pendingCount}",
+            text = label,
             fontFamily = DMSansFontFamily,
-            fontWeight = FontWeight.SemiBold,
             fontSize = 11.sp,
-            color = DoubtfulOrange,
+            color = TextMuted,
         )
     }
 }
@@ -261,6 +280,9 @@ fun ExamContent(
 ) {
     var showConfirmDialog by remember { mutableStateOf(false) }
     var showQuestionList by remember { mutableStateOf(false) }
+    // Opening the confirmation from inside the list dialog needs the touch sequence to end first,
+    // otherwise its scrim swallows the same tap.
+    val dialogScope = rememberCoroutineScope()
     var resumeNoticeDismissed by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.isResumed) {
         if (state.isResumed) {
@@ -290,16 +312,20 @@ fun ExamContent(
             title = "Ujian dikumpulkan",
             onDismiss = {},
             dismissible = false,
-            footerEnd =
-                if (!state.isSubmitting && state.submitError != null) {
-                    { ActionButton(text = "Coba lagi", onClick = onSubmit) }
-                } else {
-                    null
-                },
+            footerStart = {
+                ActionButton(
+                    text = "Kembali ke Daftar Ujian",
+                    style = ActionStyle.Outline,
+                    enabled = !state.isSubmitting,
+                    onClick = {
+                        onSessionLost("Ujian dikumpulkan karena pelanggaran. Hubungi Teknisi Ruangan.")
+                    },
+                )
+            },
         ) {
             Text(
                 text =
-                    state.submitError?.let { "${ViolationPolicy.warning(ViolationPolicy.LIMIT + 1)} $it Mencoba lagi." }
+                    state.submitError?.let { "${ViolationPolicy.warning(ViolationPolicy.LIMIT + 1)} $it" }
                         ?: "${ViolationPolicy.warning(ViolationPolicy.LIMIT + 1)} Jawaban dikirim seadanya.",
                 fontFamily = DMSansFontFamily,
                 fontSize = 13.sp,
@@ -334,12 +360,12 @@ fun ExamContent(
     if (showConfirmDialog && !state.violationExit) {
         val summary = submitSummary(state)
         AppDialog(
-            title = "Kumpulkan Lembar Ujian?",
+            title = "Kumpulkan jawaban?",
             onDismiss = { if (!state.isSubmitting) showConfirmDialog = false },
             dismissible = !state.isSubmitting,
             footerStart = {
                 ActionButton(
-                    text = "Periksa Kembali",
+                    text = "Periksa Lagi",
                     style = ActionStyle.Outline,
                     enabled = !state.isSubmitting,
                     onClick = { showConfirmDialog = false },
@@ -347,7 +373,7 @@ fun ExamContent(
             },
             footerEnd = {
                 ActionButton(
-                    text = "Ya, Kumpulkan",
+                    text = "Kumpulkan",
                     enabled = !state.isSubmitting,
                     onClick = {
                         showConfirmDialog = false
@@ -356,16 +382,25 @@ fun ExamContent(
                 )
             },
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                SubmitCountRow("Dijawab", summary.answered, StatusSuccess)
-                SubmitCountRow("Ragu-ragu", summary.doubtful, DoubtfulOrange)
-                SubmitCountRow("Belum dijawab", summary.unanswered, StatusError)
-                SubmitCountRow("Belum terkirim", summary.pendingSync, if (summary.pendingSync > 0) DoubtfulOrange else StatusSuccess)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SubmitStat("Dijawab", summary.answered, StatusSuccess, Modifier.weight(1f))
+                    SubmitStat("Ragu-ragu", summary.doubtful, DoubtfulOrange, Modifier.weight(1f))
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SubmitStat("Belum dijawab", summary.unanswered, StatusError, Modifier.weight(1f))
+                    SubmitStat(
+                        "Belum terkirim",
+                        summary.pendingSync,
+                        if (summary.pendingSync > 0) DoubtfulOrange else StatusSuccess,
+                        Modifier.weight(1f),
+                    )
+                }
                 Text(
-                    text = "Dari ${summary.total} soal. Setelah dikumpulkan, jawaban tidak dapat diubah kembali.",
+                    text = "Jawaban tidak dapat diubah setelah dikumpulkan.",
                     fontFamily = DMSansFontFamily,
                     fontSize = 12.sp,
-                    color = TextMuted,
+                    color = TextSecondary,
                 )
                 if (state.isSubmitting) {
                     Text(
@@ -402,6 +437,13 @@ fun ExamContent(
                 onGoToIndex(it)
             },
             onDismiss = { showQuestionList = false },
+            onSubmit = {
+                showQuestionList = false
+                dialogScope.launch {
+                    delay(150)
+                    showConfirmDialog = true
+                }
+            },
         )
     }
 
@@ -445,20 +487,13 @@ fun ExamContent(
                     ) {
                         val minutes = state.remainingSeconds / 60
                         val seconds = state.remainingSeconds % 60
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = BrandMuted,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle),
-                        ) {
-                            Text(
-                                text = "%02d:%02d".format(minutes, seconds),
-                                fontFamily = DMSansFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = if (state.remainingSeconds < 300) StatusError else TextPrimary,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                            )
-                        }
+                        Text(
+                            text = "%02d:%02d".format(minutes, seconds),
+                            fontFamily = DMSansFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 19.sp,
+                            color = if (state.remainingSeconds < 300) StatusError else TextPrimary,
+                        )
                     }
                 }
             }
@@ -620,11 +655,8 @@ fun ExamContent(
                         }
                         QuestionDetailCard(
                             state = state,
-                            question = currentQ,
-                            answeredCount = answeredCount,
                             exam = exam,
                             onOpenList = { showQuestionList = true },
-                            onSubmit = { showConfirmDialog = true },
                         )
                         Spacer(modifier = Modifier.height(12.dp))
 
@@ -740,17 +772,10 @@ private fun ExamErrorContent(
                 )
             }
             Spacer(modifier = Modifier.height(14.dp))
-            Text(
+            ActionButton(
                 text = "Keluar darurat (pengawas)",
-                fontFamily = DMSansFontFamily,
-                fontWeight = FontWeight.Medium,
-                fontSize = 12.sp,
-                color = TextMuted,
-                modifier =
-                    Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .clickable(onClick = onSupervisorExit)
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                style = ActionStyle.Outline,
+                onClick = onSupervisorExit,
             )
         }
     }
@@ -804,13 +829,6 @@ private fun ExamDoubtButton(
         contentPadding = PaddingValues(horizontal = 8.dp),
         modifier = modifier,
     ) {
-        Icon(
-            imageVector = Icons.Default.Warning,
-            contentDescription = null,
-            tint = if (isDoubt) DoubtfulOrange else TextMuted,
-            modifier = Modifier.size(14.dp),
-        )
-        Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = "Ragu-ragu",
             fontFamily = DMSansFontFamily,
@@ -881,6 +899,7 @@ private fun QuestionListDialog(
     state: ExamUiState,
     onGoToIndex: (Int) -> Unit,
     onDismiss: () -> Unit,
+    onSubmit: () -> Unit,
 ) {
     fun answered(q: PaperQuestionDto) = state.answers[q.id].isFilled() || !state.drafts[q.id].isNullOrBlank()
     val answeredCount = state.questions.count(::answered)
@@ -969,6 +988,13 @@ private fun QuestionListDialog(
                     }
                 }
             }
+            ActionButton(
+                text = if (state.isSubmitting) "Mengirim…" else "Selesai & Kumpulkan",
+                onClick = onSubmit,
+                style = ActionStyle.Outline,
+                enabled = state.canSubmit,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
@@ -998,100 +1024,50 @@ private fun LegendDot(
 @Composable
 private fun QuestionDetailCard(
     state: ExamUiState,
-    question: PaperQuestionDto,
-    answeredCount: Int,
     exam: ExamSummaryDto?,
     onOpenList: () -> Unit,
-    onSubmit: () -> Unit,
 ) {
     val shape = RoundedCornerShape(10.dp)
-    val isDoubt = state.doubtfuls.contains(question.id)
-    val isAnswered = state.answers[question.id].isFilled() || !state.drafts[question.id].isNullOrBlank()
-    val status =
-        when {
-            isDoubt -> "Ragu-ragu"
-            isAnswered -> "Sudah dijawab"
-            else -> "Belum dijawab"
-        }
-    val statusColor =
-        when {
-            isDoubt -> DoubtfulOrange
-            isAnswered -> StatusSuccess
-            else -> TextMuted
-        }
-    Column(
+    Row(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .background(BrandSurface, shape)
                 .border(1.dp, BorderSubtle, shape)
-                .clip(shape),
+                .clip(shape)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        CardHeader(title = "Detail Soal") {
-            Row(
-                modifier =
-                    Modifier
-                        .height(32.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(BrandSurface)
-                        .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
-                        .clickable(onClick = onOpenList)
-                        .padding(horizontal = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                QuestionGridGlyph()
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Daftar Soal",
-                    fontFamily = DMSansFontFamily,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 13.sp,
-                    color = BrandNavy,
-                )
-            }
-        }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-            exam?.let { DetailRow("Ujian", it.displayTitle(), strong = true) }
-            DetailRow(
-                "Jenis soal",
-                questionTypeLabel(question.type),
-                strong = true,
-            )
-            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
-                Text(
-                    text = "Status",
-                    fontFamily = DMSansFontFamily,
-                    fontSize = 12.sp,
-                    color = TextMuted,
-                    modifier = Modifier.width(88.dp),
-                )
-                Text(
-                    text = status,
-                    fontFamily = DMSansFontFamily,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 13.sp,
-                    color = statusColor,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            DetailRow("Terjawab", "$answeredCount dari ${state.questions.size} soal")
-            if (state.submitGateSeconds > 0L) {
-                Text(
-                    text = "Dapat dikumpulkan dalam ${state.submitGateMinutes} menit",
-                    fontFamily = DMSansFontFamily,
-                    fontSize = 11.sp,
-                    color = TextMuted,
-                    modifier = Modifier.padding(bottom = 6.dp),
-                )
-            }
-            Spacer(modifier = Modifier.height(10.dp))
-            ActionButton(
-                text = if (state.isSubmitting) "Mengirim…" else "Selesai & Kumpulkan",
-                onClick = onSubmit,
-                style = ActionStyle.Outline,
-                enabled = state.canSubmit,
-                modifier = Modifier.fillMaxWidth(),
+        Text(
+            text = exam?.displayTitle() ?: "-",
+            fontFamily = DMSansFontFamily,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 14.sp,
+            color = TextPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Row(
+            modifier =
+                Modifier
+                    .height(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(BrandSurface)
+                    .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
+                    .clickable(onClick = onOpenList)
+                    .padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            QuestionGridGlyph()
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Daftar Soal",
+                fontFamily = DMSansFontFamily,
+                fontWeight = FontWeight.Medium,
+                fontSize = 13.sp,
+                color = BrandNavy,
             )
         }
     }

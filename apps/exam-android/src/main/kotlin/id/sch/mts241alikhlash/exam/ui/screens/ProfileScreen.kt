@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
 import id.sch.mts241alikhlash.exam.data.repository.StudentProfile
 import id.sch.mts241alikhlash.exam.ui.components.CardHeader
 import id.sch.mts241alikhlash.exam.ui.components.PrimaryButton
@@ -118,7 +119,7 @@ private fun ProfileContent(profile: StudentProfile) {
             Spacer(Modifier.height(16.dp))
         }
         Section(
-            title = "DATA SISWA",
+            title = "Data siswa",
             allRows =
                 listOf(
                     "Nama lengkap" to profile.name,
@@ -128,27 +129,24 @@ private fun ProfileContent(profile: StudentProfile) {
                 ),
         )
         Section(
-            title = "DATA UJIAN",
+            title = "Data akun",
             allRows =
                 listOf(
                     "Username" to (profile.username ?: profile.nis),
-                    "No. peserta" to NOT_ASSIGNED,
-                    "Ruangan" to NOT_ASSIGNED,
-                    "Nomor meja" to NOT_ASSIGNED,
                 ),
         )
         Section(
-            title = "DATA KELAS",
+            title = "Data kelas",
             allRows =
                 listOf(
                     "Kelas" to profile.classLabel,
-                    "Tingkat" to profile.gradeName?.let { "Kelas $it" },
+                    "Tingkat" to profile.gradeName,
                     "Semester" to profile.semester,
                     "Tahun ajaran" to profile.academicYear,
                 ),
         )
         Section(
-            title = "DATA DIRI",
+            title = "Data diri",
             allRows =
                 listOf(
                     "Jenis kelamin" to profile.gender,
@@ -157,7 +155,7 @@ private fun ProfileContent(profile: StudentProfile) {
                 ),
         )
         Section(
-            title = "KONTAK",
+            title = "Kontak",
             allRows =
                 listOf(
                     "Email" to profile.email,
@@ -166,8 +164,6 @@ private fun ProfileContent(profile: StudentProfile) {
         )
     }
 }
-
-private const val NOT_ASSIGNED = "Belum ditentukan"
 
 @Composable
 private fun Section(
@@ -215,3 +211,11 @@ fun Avatar(
         )
     }
 }
+
+private fun examStatusLabel(status: String): String =
+    when (status) {
+        "IN_PROGRESS" -> "Sedang berlangsung"
+        "OPEN" -> "Sedang dibuka"
+        "UPCOMING" -> "Akan datang"
+        else -> "Selesai"
+    }

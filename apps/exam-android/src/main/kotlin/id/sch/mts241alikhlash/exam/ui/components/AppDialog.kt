@@ -118,6 +118,10 @@ fun AppDialog(
 
         val shape = RoundedCornerShape(WebTokens.Radius)
         val maxHeight = LocalConfiguration.current.screenHeightDp.dp - 32.dp
+        // Only a footer that carries buttons needs more breathing room than a plain caption row.
+        val footerHasButtons = footerStart != null || footerEnd != null
+        val footerMinHeight = if (footerHasButtons) 56.dp else 40.dp
+        val footerVertical = if (footerHasButtons) 8.dp else 2.dp
         Column(
             modifier =
                 modifier
@@ -196,9 +200,9 @@ fun AppDialog(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 40.dp)
+                            .heightIn(min = footerMinHeight)
                             .background(WebTokens.Foreground.copy(alpha = 0.03f))
-                            .padding(horizontal = 16.dp, vertical = 2.dp),
+                            .padding(horizontal = 16.dp, vertical = footerVertical),
                     horizontalArrangement =
                         if (footerStart != null && footerEnd != null) {
                             Arrangement.SpaceBetween

@@ -91,7 +91,7 @@ fun LoginScreen(viewModel: LoginViewModel) {
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                BrandHero(title = "241-exam", tagline = "SISTEM UJIAN DIGITAL", height = (screenHeight * HERO_SHARE).coerceAtLeast(HERO_MIN_HEIGHT))
+                BrandHero(title = "241-exam", tagline = "Ujian Digital", height = (screenHeight * HERO_SHARE).coerceAtLeast(HERO_MIN_HEIGHT))
                 Column(
                     modifier =
                         Modifier

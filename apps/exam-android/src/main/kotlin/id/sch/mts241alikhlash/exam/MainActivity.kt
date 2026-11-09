@@ -133,10 +133,12 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.light(surface, surface),
         )
 
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_SECURE,
-            WindowManager.LayoutParams.FLAG_SECURE,
-        )
+        if (!BuildConfig.DEBUG) {
+            window.setFlags(
+                WindowManager.LayoutParams.FLAG_SECURE,
+                WindowManager.LayoutParams.FLAG_SECURE,
+            )
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             runCatching { window.setHideOverlayWindows(true) }
         }
@@ -870,6 +872,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
+        // Leaving the pinned app (swipe+hold) must not leave the device on Do Not Disturb.
+        if (!isChangingConfigurations && !KioskPolicy.isLocked(this)) dnd.restorePreviousDnd()
         if (!isExamActive) return
         val interactive = getSystemService(android.os.PowerManager::class.java)?.isInteractive ?: true
         tracker?.onActivityStopped(interactive, System.currentTimeMillis())

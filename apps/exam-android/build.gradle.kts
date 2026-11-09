@@ -110,6 +110,7 @@ android {
 
     buildTypes {
         debug {
+            applicationIdSuffix = ".debug"
             val debugUrl =
                 providers
                     .gradleProperty("API_BASE_URL_DEBUG")
