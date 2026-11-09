@@ -101,6 +101,12 @@ fun HomeScreen(
     val profileState by profileViewModel.state.collectAsState()
     val profile = (profileState as? ProfileUiState.Content)?.profile
     val listState by listViewModel.state.collectAsState()
+    // shortcut: ISO-8601 UTC strings sort lexicographically, parse if the formats ever vary
+    val activeExam =
+        (listState as? ExamListUiState.Content)
+            ?.exams
+            ?.filter { it.lifecycle == "OPEN" }
+            ?.minByOrNull { it.startsAt }
     var confirmLogout by remember { mutableStateOf(false) }
 
     BackHandler(enabled = section != HomeSection.ExamWork && !drawerState.isOpen) {
@@ -242,7 +248,7 @@ fun HomeScreen(
 
                     HomeSection.Schedule -> ScheduleScreen(listViewModel)
 
-                    HomeSection.Profile -> ProfileScreen(profileViewModel)
+                    HomeSection.Profile -> ProfileScreen(profileViewModel, activeExam)
 
                     HomeSection.Rules ->
                         HelpScreen(

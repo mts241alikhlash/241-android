@@ -35,8 +35,22 @@ import id.sch.mts241alikhlash.exam.ui.components.PrimaryButton
 import id.sch.mts241alikhlash.exam.ui.theme.DMSansFontFamily
 import id.sch.mts241alikhlash.exam.ui.theme.WebTokens
 
+fun profileExamRows(exam: ExamSummaryDto?): List<Pair<String, String>> {
+    if (exam?.lifecycle != "OPEN") return emptyList()
+    val unset = "Belum ditetapkan"
+    return listOfNotNull(
+        exam.eventName?.takeIf { it.isNotBlank() }?.let { "Ujian" to it },
+        "Ruangan" to (exam.roomName?.takeIf { it.isNotBlank() } ?: unset),
+        exam.participantNumber?.takeIf { it.isNotBlank() }?.let { "No. peserta" to it },
+        "No. meja" to (exam.seatNumber?.toString() ?: unset),
+    )
+}
+
 @Composable
-fun ProfileScreen(viewModel: ProfileViewModel) {
+fun ProfileScreen(
+    viewModel: ProfileViewModel,
+    exam: ExamSummaryDto?,
+) {
     val state by viewModel.state.collectAsState()
     when (val current = state) {
         ProfileUiState.Loading ->
@@ -69,12 +83,15 @@ fun ProfileScreen(viewModel: ProfileViewModel) {
                 PrimaryButton(text = "Coba Lagi", onClick = viewModel::load, modifier = Modifier.width(160.dp))
             }
 
-        is ProfileUiState.Content -> ProfileContent(current.profile)
+        is ProfileUiState.Content -> ProfileContent(current.profile, exam)
     }
 }
 
 @Composable
-private fun ProfileContent(profile: StudentProfile) {
+private fun ProfileContent(
+    profile: StudentProfile,
+    exam: ExamSummaryDto?,
+) {
     Column(
         modifier =
             Modifier
@@ -118,6 +135,7 @@ private fun ProfileContent(profile: StudentProfile) {
             )
             Spacer(Modifier.height(16.dp))
         }
+        Section(title = "Ujian aktif", allRows = profileExamRows(exam))
         Section(
             title = "Data siswa",
             allRows =
