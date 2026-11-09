@@ -90,7 +90,6 @@ fun AssessmentAppRoot(
         )
     },
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
     BackHandler(enabled = state.sessionId == null && state.user != null && state.selectedExam != null) {
         if (!state.starting) onBackToList()
     }
