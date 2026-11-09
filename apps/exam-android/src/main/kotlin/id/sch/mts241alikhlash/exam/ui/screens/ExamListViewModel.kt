@@ -52,7 +52,9 @@ fun ExamSummaryDto.isSelectable(): Boolean =
 
 fun ExamSummaryDto.isExpandable(): Boolean = (lifecycle ?: status) != "FINISHED"
 
-fun isExamWork(exam: ExamSummaryDto): Boolean = exam.activityId != null || exam.eventId != null || exam.makeup
+private val EXAM_WORK_TYPES = setOf("UTS", "UAS")
+
+fun isExamWork(exam: ExamSummaryDto): Boolean = exam.makeup || exam.type in EXAM_WORK_TYPES
 
 fun examMenuExams(
     exams: List<ExamSummaryDto>,
