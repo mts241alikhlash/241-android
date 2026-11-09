@@ -897,7 +897,7 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         tracker?.close()
         tracker = null
-        ExamRuntimePolicy.reset()
+        if (!isChangingConfigurations) ExamRuntimePolicy.reset()
         audioGuardJob?.cancel()
         audioGuardJob = null
         audioGuard?.stop()

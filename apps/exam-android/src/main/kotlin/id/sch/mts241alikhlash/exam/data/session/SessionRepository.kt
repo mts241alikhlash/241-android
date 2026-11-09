@@ -1,5 +1,7 @@
 package id.sch.mts241alikhlash.exam.data.session
 
+import id.sch.mts241alikhlash.exam.data.model.ExamPolicyDto
+
 class SessionRepository(
     private val store: SessionStore,
     private val now: () -> Long = { System.currentTimeMillis() },
@@ -11,9 +13,12 @@ class SessionRepository(
     suspend fun start(
         id: String,
         deadline: Long = ExamTimer.deadlineFrom(now()),
+        policy: ExamPolicyDto? = null,
     ) {
         val trimmed = id.trim()
         require(trimmed.isNotEmpty()) { "Session id must not be blank" }
+
+        if (policy != null) store.savePolicy(policy)
 
         val existingId = store.load()
         val existingDeadline = store.loadDeadline()
@@ -22,6 +27,10 @@ class SessionRepository(
         }
 
         store.save(trimmed, deadline)
+    }
+
+    suspend fun applyStoredPolicy() {
+        store.loadPolicy()?.let(ExamRuntimePolicy::apply)
     }
 
     suspend fun reentryPending(id: String): Boolean = store.load() == id && store.loadReentryPending()

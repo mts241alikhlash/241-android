@@ -6,9 +6,13 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import id.sch.mts241alikhlash.exam.data.model.ExamPolicyDto
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.json.Json
 
 private val Context.sessionDataStore by preferencesDataStore(name = "exam_session")
+
+private val JSON = Json { ignoreUnknownKeys = true }
 
 class DataStoreSessionStore(
     private val context: Context,
@@ -22,6 +26,17 @@ class DataStoreSessionStore(
     override suspend fun saveReentryPending(pending: Boolean) {
         context.sessionDataStore.edit { preferences ->
             preferences[REENTRY_PENDING] = pending
+        }
+    }
+
+    override suspend fun loadPolicy(): ExamPolicyDto? =
+        context.sessionDataStore.data.first()[POLICY]?.let { stored ->
+            runCatching { JSON.decodeFromString(ExamPolicyDto.serializer(), stored) }.getOrNull()
+        }
+
+    override suspend fun savePolicy(policy: ExamPolicyDto) {
+        context.sessionDataStore.edit { preferences ->
+            preferences[POLICY] = JSON.encodeToString(ExamPolicyDto.serializer(), policy)
         }
     }
 
@@ -40,6 +55,7 @@ class DataStoreSessionStore(
             preferences.remove(SESSION_ID)
             preferences.remove(DEADLINE)
             preferences.remove(REENTRY_PENDING)
+            preferences.remove(POLICY)
         }
     }
 
@@ -47,5 +63,6 @@ class DataStoreSessionStore(
         val SESSION_ID = stringPreferencesKey("session_id")
         val DEADLINE = longPreferencesKey("exam_deadline")
         val REENTRY_PENDING = booleanPreferencesKey("requires_token_reentry")
+        val POLICY = stringPreferencesKey("exam_policy")
     }
 }
