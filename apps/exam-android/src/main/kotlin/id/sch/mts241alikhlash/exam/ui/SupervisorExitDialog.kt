@@ -38,7 +38,6 @@ fun SupervisorExitDialog(
 
     AppDialog(
         title = "Keluar darurat",
-        description = "Hanya untuk pengawas.",
         onDismiss = { if (!checking) onDismiss() },
         dismissible = !checking,
         footerStart = {
@@ -70,7 +69,7 @@ fun SupervisorExitDialog(
             fontSize = 13.sp,
             color = WebTokens.MutedForeground,
         )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(10.dp))
         FloatingTextField(
             value = identifier,
             onValueChange = {
@@ -82,7 +81,7 @@ fun SupervisorExitDialog(
             labelBackground = WebTokens.Background,
             modifier = Modifier.fillMaxWidth(),
         )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(10.dp))
         FloatingTextField(
             value = password,
             onValueChange = {

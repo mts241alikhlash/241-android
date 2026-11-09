@@ -1,74 +1,49 @@
-# Kiosk / Device Owner Setup
+# Mode Kunci (Screen Pinning)
 
-## Kenapa perlu Device Owner
+Aplikasi tidak memakai Device Owner, device admin, atau provisioning perangkat. Selama sesi
+ujian aplikasi memanggil `startLockTask()` biasa sehingga Android masuk ke **screen pinning**
+dan menampilkan pemberitahuan pinning. Tidak ada `dpm set-device-owner` dan tidak ada receiver
+admin di build ini; perangkat siswa tidak perlu di-factory reset.
 
-Tanpa Device Owner, Android **selalu** menampilkan dialog konfirmasi saat aplikasi memanggil
-`startLockTask()`, dan siswa dapat menolaknya lalu keluar. Ini perilaku OS, bukan bug aplikasi.
-Dengan Device Owner, pinning berjalan senyap dan tombol Back/Home/Recents diblokir.
+## Perilaku selama ujian
 
-## Menjadikan perangkat Device Owner
+- Status bar dan navigation bar disembunyikan, layar tetap menyala (`FLAG_KEEP_SCREEN_ON`).
+- Tombol Kembali diblokir di `MainActivity.onKeyDown`; Home dan Recents diblokir oleh pinning.
+- Mode Jangan Ganggu dinyalakan selama sesi dan dikembalikan saat aplikasi berhenti. Panggilan
+  dan mikrofon dipantau `AudioAndDisplayGuard`; panggilan menangguhkan sesi, bukan mengakhiri.
+- `lockTaskModeState` diperiksa berkala. Selama pinning aktif nilainya `PINNED`; laporan ke
+  server (`lockTaskActive`) bernilai benar untuk state apa pun selain `NONE`.
+- Aplikasi tidak pernah memutuskan sendiri ujian dibuka atau selesai. Status ujian datang dari
+  server (`lifecycle` pada daftar ujian).
 
-Perangkat harus **belum punya akun** (factory reset) — Android hanya mengizinkan provisioning
-Device Owner pada perangkat bersih.
+## Pelanggaran
 
-```bash
-adb install app-debug.apk
-adb shell dpm set-device-owner \
-  id.sch.mts241alikhlash.exam/.kiosk.ExamDeviceAdminReceiver
-```
+Melepas pin (swipe tahan tombol Kembali, lalu lepas) atau keluar dari aplikasi dicatat sebagai
+pelanggaran. Batas pelanggaran mengikuti policy server (`violationLimit`, bawaan 3); pelanggaran
+melewati batas mengumpulkan lembar jawaban dan mengunci sesi.
 
-Verifikasi:
-
-```bash
-adb shell dpm list-owners
-# Device Owner: id.sch.mts241alikhlash.exam
-adb shell dumpsys device_policy | grep -i "device owner"
-```
-
-## Perilaku saat Device Owner aktif
-
-- `startLockTask()` berjalan tanpa dialog; tidak ada tombol "Unpin".
-- Status bar dinonaktifkan selama ujian, keyguard dimatikan.
-- Hanya paket aplikasi ini yang boleh masuk lock task (`setLockTaskPackages`).
-- Saat ujian selesai, status bar dan keyguard dikembalikan.
-
-## Selesai ujian
+## Akhir ujian
 
 Semua akhir ujian — dikumpulkan siswa, waktu habis, batas pelanggaran, sesi hilang, atau keluar
-pengawas — melewati satu jalur pelepasan: keluar dari lock task, DND dikembalikan, state sesi
-dan catatan pelanggaran dibersihkan, lalu aplikasi mendarat di Daftar Ujian tanpa meminta token.
-Sesi yang di server sudah dikumpulkan (`status` ujian `FINISHED` di `GET /me/exams`) juga
-langsung kembali ke Daftar Ujian saat aplikasi dibuka lagi.
-
-## Tanpa Device Owner
-
-Aplikasi tetap berjalan, tetapi:
-
-- dialog pinning muncul dan bisa ditolak;
-- siswa dapat keluar dan mencari jawaban.
-
-Gunakan hanya untuk demo/uji internal.
-
-## Menghapus Device Owner
-
-```bash
-adb shell dpm remove-active-admin \
-  id.sch.mts241alikhlash.exam/.kiosk.ExamDeviceAdminReceiver
-```
+oleh pengawas — melewati satu jalur pelepasan: keluar dari lock task, DND dikembalikan, state
+sesi, policy runtime, dan catatan pelanggaran dibersihkan, lalu aplikasi mendarat di Daftar
+Ujian tanpa meminta token. Sesi yang di server sudah selesai (`lifecycle` ujian `FINISHED` di
+`GET /me/exams`) juga langsung kembali ke Daftar Ujian saat aplikasi dibuka lagi.
 
 ## Keluar darurat oleh pengawas
 
 Tombol keluar darurat meminta akun guru dan kata sandi (role `TEACHER`) yang diperiksa ke
-server. Perangkat harus online; tanpa koneksi kunci tidak bisa dilepas lewat aplikasi.
-Percobaan yang ditolak dicatat sebagai `supervisor_exit_denied`, yang berhasil sebagai
-`supervisor_exit`. PIN statis `SUPERVISOR_PIN` sudah dihapus dari build.
+server. Perangkat harus online; tanpa koneksi kunci tidak bisa dilepas lewat aplikasi. Percobaan
+yang ditolak dicatat sebagai `supervisor_exit_denied`, yang berhasil sebagai `supervisor_exit`.
+PIN statis `SUPERVISOR_PIN` sudah dihapus dari build.
 
-## Kamera ujian tanpa Device Owner
+## Kamera ujian
 
 Build `proctor` menyalakan kamera depan selama sesi ujian berjalan. Uji coba memakai HP siswa
-sendiri, yang **tidak** Device Owner. Akibatnya:
+sendiri, yang bukan Device Owner. Akibatnya:
 
-- status bar tetap terlihat, jadi notifikasi "Kamera ujian aktif" bisa dibaca siswa;
+- status bar tetap bisa terlihat pada beberapa perangkat, jadi notifikasi "Kamera ujian aktif"
+  bisa dibaca siswa;
 - Android 13 ke atas mengizinkan siswa menghentikan aplikasi dari notifikasi itu — kamera mati,
   dan kursi di layar pengawas memerah dalam 60 detik;
 - HP yang di-reboot tidak menyalakan kamera lagi sampai aplikasi dibuka.
@@ -79,3 +54,10 @@ background, bukan menjalankan yang sudah aktif.
 
 Kamera hanya hidup selama sesi ujian; tidak ada perekaman, dan tidak ada kamera di luar ujian.
 Lihat `TRIAL-CAMERA.md` untuk prosedur uji coba.
+
+## Batasan tanpa Device Owner
+
+Karena tidak ada Device Owner, siswa masih dapat melepas pin dengan gestur sistem. Kejadian itu
+terdeteksi dan dihitung sebagai pelanggaran, tetapi tidak bisa dicegah sepenuhnya oleh aplikasi.
+Deployment yang menuntut kunci mutlak memerlukan kebijakan MDM/Device Owner di luar aplikasi
+ini.

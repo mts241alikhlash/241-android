@@ -33,6 +33,7 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,7 +68,6 @@ import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
 import id.sch.mts241alikhlash.exam.ui.components.ActionButton
 import id.sch.mts241alikhlash.exam.ui.components.ActionStyle
 import id.sch.mts241alikhlash.exam.ui.components.AppDialog
-import id.sch.mts241alikhlash.exam.ui.components.rememberIsOnline
 import id.sch.mts241alikhlash.exam.ui.theme.DMSansFontFamily
 import id.sch.mts241alikhlash.exam.ui.theme.WebTokens
 import kotlinx.coroutines.launch
@@ -76,48 +76,36 @@ private enum class HomeSection(
     val title: String,
     val icon: DrawerIcon,
 ) {
-    Exams("Daftar Ujian", DrawerIcon.Exams),
-    Schedule("Jadwal Ujian", DrawerIcon.Schedule),
+    ExamWork("Ujian", DrawerIcon.Exams),
+    OtherWork("Non-ujian", DrawerIcon.OtherWork),
+    Schedule("Jadwal", DrawerIcon.Schedule),
     Profile("Profil Saya", DrawerIcon.Profile),
     Rules("Tata Tertib", DrawerIcon.Rules),
     Guide("Panduan Aplikasi", DrawerIcon.Guide),
 }
 
-private enum class DrawerIcon { Exams, Schedule, Profile, Rules, Guide, Logout }
+private enum class DrawerIcon { Exams, OtherWork, Schedule, Profile, Rules, Guide, Logout }
 
 @Composable
 fun HomeScreen(
-    userName: String,
     listViewModel: ExamListViewModel,
     profileViewModel: ProfileViewModel,
     notice: String?,
     onSelect: (ExamSummaryDto) -> Unit,
     onLogout: () -> Unit,
 ) {
-    var section by rememberSaveable { mutableStateOf(HomeSection.Exams) }
+    var section by rememberSaveable { mutableStateOf(HomeSection.ExamWork) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val profileState by profileViewModel.state.collectAsState()
-    val profile = (profileState as? ProfileUiState.Content)?.profile
     val listState by listViewModel.state.collectAsState()
-    val participantNumber =
-        (listState as? ExamListUiState.Content)
-            ?.exams
-            ?.firstOrNull { it.participantNumber != null && it.status != "FINISHED" }
-            ?.participantNumber
-    val identityFields =
-        listOfNotNull(
-            profile?.let { "NIS" to it.nis },
-            profile?.classLabel?.let { "Kelas" to it },
-            semesterLabel(profile?.semester, profile?.academicYear)?.let { "Semester" to it },
-            participantNumber?.let { "No. peserta" to it },
-        )
-    val examStatus = (listState as? ExamListUiState.Content)?.exams?.let(::examStatusSummary)
-    val online = rememberIsOnline()
+    val activeExam = profileCardExam((listState as? ExamListUiState.Content)?.exams.orEmpty())
+    LaunchedEffect(section) {
+        if (section == HomeSection.Profile) listViewModel.reload()
+    }
     var confirmLogout by remember { mutableStateOf(false) }
 
-    BackHandler(enabled = section != HomeSection.Exams && !drawerState.isOpen) {
-        section = HomeSection.Exams
+    BackHandler(enabled = section != HomeSection.ExamWork && !drawerState.isOpen) {
+        section = HomeSection.ExamWork
     }
 
     if (confirmLogout) {
@@ -171,13 +159,7 @@ fun HomeScreen(
                                 .scale(1.3f),
                     )
                     Column(modifier = Modifier.fillMaxHeight()) {
-                        DrawerHeader(
-                            name = profile?.name ?: userName,
-                            initials = profile?.initials ?: userName.take(1).uppercase().ifEmpty { "?" },
-                            fields = identityFields,
-                            status = examStatus,
-                            online = online,
-                        )
+                        Spacer(Modifier.height(12.dp))
                         HomeSection.entries.forEach { entry ->
                             DrawerItem(
                                 label = entry.title,
@@ -243,20 +225,29 @@ fun HomeScreen(
                             .scale(1.35f),
                 )
                 when (section) {
-                    HomeSection.Exams ->
+                    HomeSection.ExamWork ->
                         ExamListScreen(
                             viewModel = listViewModel,
                             onSelect = onSelect,
+                            examWork = true,
+                            notice = notice,
+                        )
+
+                    HomeSection.OtherWork ->
+                        ExamListScreen(
+                            viewModel = listViewModel,
+                            onSelect = onSelect,
+                            examWork = false,
                             notice = notice,
                         )
 
                     HomeSection.Schedule -> ScheduleScreen(listViewModel)
 
-                    HomeSection.Profile -> ProfileScreen(profileViewModel)
+                    HomeSection.Profile -> ProfileScreen(profileViewModel, activeExam)
 
                     HomeSection.Rules ->
                         HelpScreen(
-                            topics = examRules,
+                            topics = examRules(),
                         )
 
                     HomeSection.Guide ->
@@ -264,7 +255,7 @@ fun HomeScreen(
                             topics = appGuide,
                         )
                 }
-                if (section == HomeSection.Exams) {
+                if (section == HomeSection.ExamWork || section == HomeSection.OtherWork) {
                     RefreshButton(
                         onClick = listViewModel::reload,
                         modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
@@ -388,96 +379,6 @@ private fun MenuGlyph() {
 }
 
 @Composable
-private fun DrawerHeader(
-    name: String,
-    initials: String,
-    fields: List<Pair<String, String>>,
-    status: String?,
-    online: Boolean,
-) {
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(WebTokens.Primary)
-                .padding(start = 24.dp, end = 24.dp, top = 36.dp, bottom = 22.dp),
-    ) {
-        Row(verticalAlignment = Alignment.Top) {
-            Avatar(initials, size = 52)
-            Spacer(Modifier.width(14.dp))
-            Text(
-                text = name,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.SemiBold,
-                fontFamily = DMSansFontFamily,
-                letterSpacing = (-0.2).sp,
-                color = WebTokens.PrimaryForeground,
-                maxLines = 2,
-                modifier = Modifier.weight(1f).padding(top = 14.dp),
-            )
-            Spacer(Modifier.width(10.dp))
-            Row(
-                modifier = Modifier.padding(top = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (!online) {
-                    Text(
-                        text = "Offline",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        fontFamily = DMSansFontFamily,
-                        color = WebTokens.PrimaryForeground.copy(alpha = 0.85f),
-                    )
-                    Spacer(Modifier.width(6.dp))
-                }
-                Box(
-                    Modifier
-                        .size(8.dp)
-                        .background(if (online) Color(0xFF6EE7A0) else Color(0xFFFCA5A5), CircleShape),
-                )
-            }
-        }
-        if (status != null) {
-            Spacer(Modifier.height(14.dp))
-            Text(
-                text = status,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                fontFamily = DMSansFontFamily,
-                color = WebTokens.PrimaryForeground,
-                modifier =
-                    Modifier
-                        .background(WebTokens.PrimaryForeground.copy(alpha = 0.14f), RoundedCornerShape(50))
-                        .padding(horizontal = 12.dp, vertical = 5.dp),
-            )
-        }
-        if (fields.isNotEmpty()) Spacer(Modifier.height(16.dp))
-        fields.forEach { (label, value) ->
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = label,
-                    fontSize = 12.sp,
-                    fontFamily = DMSansFontFamily,
-                    color = WebTokens.PrimaryForeground.copy(alpha = 0.7f),
-                    modifier = Modifier.width(96.dp),
-                )
-                Text(
-                    text = value,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    fontFamily = DMSansFontFamily,
-                    color = WebTokens.PrimaryForeground,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun LogoutButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -565,6 +466,23 @@ private fun DrawerGlyph(
                 for (line in 0..2) {
                     val y = h * (0.34f + line * 0.18f)
                     drawLine(color, Offset(w * 0.3f, y), Offset(w * 0.7f, y), stroke.width, StrokeCap.Round)
+                }
+            }
+
+            DrawerIcon.OtherWork -> {
+                drawRoundRect(
+                    color,
+                    topLeft = Offset(w * 0.12f, h * 0.14f),
+                    size = Size(w * 0.76f, h * 0.76f),
+                    cornerRadius =
+                        androidx.compose.ui.geometry
+                            .CornerRadius(w * 0.12f),
+                    style = stroke,
+                )
+                for (line in 0..2) {
+                    val y = h * (0.34f + line * 0.18f)
+                    drawLine(color, Offset(w * 0.26f, y), Offset(w * 0.34f, y), stroke.width, StrokeCap.Round)
+                    drawLine(color, Offset(w * 0.44f, y), Offset(w * 0.74f, y), stroke.width, StrokeCap.Round)
                 }
             }
 

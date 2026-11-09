@@ -24,7 +24,6 @@ enum class SessionEventType {
     SCREEN_SHARE_DETECTED,
     LEFT_APP,
     VIOLATION_LOCKED,
-    KIOSK_MODE_CHANGED,
 }
 
 data class RecordedSessionEvent(
@@ -152,13 +151,6 @@ class SessionEventTracker(
         if (active == secondaryDisplayActive) return
         secondaryDisplayActive = active
         if (active) record(SessionEventType.SCREEN_SHARE_DETECTED, true, nowMs, DETAIL_SCREEN_SHARE)
-    }
-
-    fun recordKioskMode(
-        mode: String,
-        nowMs: Long,
-    ) {
-        record(SessionEventType.KIOSK_MODE_CHANGED, false, nowMs, mode)
     }
 
     fun close() {

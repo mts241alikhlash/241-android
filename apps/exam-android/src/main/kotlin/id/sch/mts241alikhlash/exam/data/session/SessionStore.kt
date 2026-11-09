@@ -1,5 +1,7 @@
 package id.sch.mts241alikhlash.exam.data.session
 
+import id.sch.mts241alikhlash.exam.data.model.ExamPolicyDto
+
 interface SessionStore {
     suspend fun load(): String?
 
@@ -11,6 +13,10 @@ interface SessionStore {
     )
 
     suspend fun clear()
+
+    suspend fun loadPolicy(): ExamPolicyDto? = null
+
+    suspend fun savePolicy(policy: ExamPolicyDto) = Unit
 
     suspend fun loadReentryPending(): Boolean = false
 

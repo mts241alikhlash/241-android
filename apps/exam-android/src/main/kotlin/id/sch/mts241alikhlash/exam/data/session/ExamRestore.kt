@@ -57,6 +57,7 @@ suspend fun restoreExamSession(
     val session =
         try {
             val id = sessionRepository.current() ?: return RestoreOutcome.NoSession
+            runCatching { sessionRepository.applyStoredPolicy() }
             RestoredSession(id, sessionRepository.deadline())
         } catch (cancellation: CancellationException) {
             throw cancellation

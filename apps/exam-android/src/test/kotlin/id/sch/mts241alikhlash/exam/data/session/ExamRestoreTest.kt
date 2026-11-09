@@ -1,5 +1,6 @@
 package id.sch.mts241alikhlash.exam.data.session
 
+import id.sch.mts241alikhlash.exam.data.model.ExamPolicyDto
 import id.sch.mts241alikhlash.exam.data.remote.ApiException
 import id.sch.mts241alikhlash.exam.data.repository.SyncReport
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -82,6 +83,26 @@ class ExamRestoreTest {
 
             assertEquals(RestoreOutcome.SessionLost("Sesi ujian tidak ditemukan"), outcome)
             assertEquals(null, repo.current())
+        }
+
+    @Test
+    fun `a restored session re-applies the stored policy`() =
+        runTest {
+            val repo = SessionRepository(StubStore("s1", 1_700_005_400_000L))
+            repo.start("s1", 1_700_005_400_000L, policy = ExamPolicyDto(violationLimit = 7))
+            ExamRuntimePolicy.reset()
+
+            try {
+                restoreExamSession(
+                    sessionRepository = repo,
+                    scope = this,
+                    syncPending = { SyncReport(0, 0) },
+                )
+
+                assertEquals(7, ExamRuntimePolicy.current.violationLimit)
+            } finally {
+                ExamRuntimePolicy.reset()
+            }
         }
 
     @Test
@@ -341,9 +362,17 @@ private class StubStore(
     private val id: String?,
     private val deadline: Long?,
 ) : SessionStore {
+    private var policy: ExamPolicyDto? = null
+
     override suspend fun load(): String? = id
 
     override suspend fun loadDeadline(): Long? = deadline
+
+    override suspend fun loadPolicy(): ExamPolicyDto? = policy
+
+    override suspend fun savePolicy(policy: ExamPolicyDto) {
+        this.policy = policy
+    }
 
     override suspend fun save(
         id: String,

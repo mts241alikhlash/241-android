@@ -60,7 +60,7 @@ fun Context.isChargingNow(): Boolean? =
         status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
     }
 
-fun Context.isLockTaskActiveNow(): Boolean? = getSystemService(ActivityManager::class.java)?.let { it.lockTaskModeState == ActivityManager.LOCK_TASK_MODE_LOCKED }
+fun Context.isLockTaskActiveNow(): Boolean? = getSystemService(ActivityManager::class.java)?.let { it.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE }
 
 fun Context.isBatteryUnrestrictedNow(): Boolean? = (getSystemService(Context.POWER_SERVICE) as? PowerManager)?.isIgnoringBatteryOptimizations(packageName)
 

@@ -25,6 +25,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.BaselineShift
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.LayoutDirection
@@ -102,7 +103,7 @@ fun HtmlContent(
                             Row(modifier = Modifier.fillMaxWidth()) {
                                 for (cell in row) {
                                     Box(modifier = Modifier.weight(1f).border(0.5.dp, BorderSubtle).padding(6.dp)) {
-                                        DirectedText(cell, rtl = false, fontSize = fontSize - 1)
+                                        DirectedText(cell, rtl = false, fontSize = fontSize - 1, justify = false)
                                     }
                                 }
                             }
@@ -123,6 +124,7 @@ private fun DirectedText(
     spans: List<HtmlSpan>,
     rtl: Boolean,
     fontSize: Int,
+    justify: Boolean = true,
 ) {
     val direction = if (rtl) LayoutDirection.Rtl else LocalLayoutDirection.current
     CompositionLocalProvider(LocalLayoutDirection provides direction) {
@@ -132,6 +134,7 @@ private fun DirectedText(
             fontSize = fontSize.sp,
             lineHeight = (fontSize + 7).sp,
             color = TextPrimary,
+            textAlign = if (justify) TextAlign.Justify else TextAlign.Start,
             modifier = Modifier.fillMaxWidth(),
         )
     }

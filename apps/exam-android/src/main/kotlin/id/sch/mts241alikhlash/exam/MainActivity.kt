@@ -133,10 +133,12 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.light(surface, surface),
         )
 
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_SECURE,
-            WindowManager.LayoutParams.FLAG_SECURE,
-        )
+        if (!BuildConfig.DEBUG) {
+            window.setFlags(
+                WindowManager.LayoutParams.FLAG_SECURE,
+                WindowManager.LayoutParams.FLAG_SECURE,
+            )
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             runCatching { window.setHideOverlayWindows(true) }
         }
@@ -472,7 +474,6 @@ class MainActivity : ComponentActivity() {
                                 },
                         )
                     HomeScreen(
-                        userName = appState.user?.name.orEmpty(),
                         listViewModel = listViewModel,
                         profileViewModel = profileViewModel,
                         notice = appState.notice,
@@ -642,7 +643,7 @@ class MainActivity : ComponentActivity() {
                                         val unsent = viewModel.uiState.value.unsentAnswers
                                         releaseExamAndShowList(
                                             when {
-                                                viewModel.uiState.value.violationExit -> ViolationPolicy.warning(ViolationPolicy.LIMIT + 1)
+                                                viewModel.uiState.value.violationExit -> ViolationPolicy.exitWarning()
                                                 unsent > 0 -> "Ujian dikumpulkan, tetapi $unsent jawaban tidak sempat terkirim"
                                                 ended -> "Ujian berhasil dikumpulkan"
                                                 else -> "Ujian selesai, tetapi sesi gagal dibersihkan"
@@ -724,7 +725,7 @@ class MainActivity : ComponentActivity() {
     private fun warnAboutViolations() {
         countedViolations.value = violations.counted()
         val total = reportedViolationCount(countedViolations.value)
-        Toast.makeText(this, ViolationPolicy.warning(total), Toast.LENGTH_LONG).show()
+        Toast.makeText(this, ViolationPolicy.warning(total, ViolationPolicy.currentLimit()), Toast.LENGTH_LONG).show()
     }
 
     internal fun setExamActiveForTest(active: Boolean) {
@@ -862,6 +863,7 @@ class MainActivity : ComponentActivity() {
         if (isExamActive) {
             applyExamWindowFlags()
             runCatching { startLockTask() }
+            dnd.enableExamDnd()
             verifyPinState()
             mainHandler.removeCallbacks(pinRecheck)
             mainHandler.postDelayed(pinRecheck, 700)
@@ -870,6 +872,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
+        // Leaving the pinned app (swipe+hold) must not leave the device on Do Not Disturb.
+        if (!isChangingConfigurations && !KioskPolicy.isLocked(this)) dnd.restorePreviousDnd()
         if (!isExamActive) return
         val interactive = getSystemService(android.os.PowerManager::class.java)?.isInteractive ?: true
         tracker?.onActivityStopped(interactive, System.currentTimeMillis())
@@ -892,7 +896,7 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         tracker?.close()
         tracker = null
-        ExamRuntimePolicy.reset()
+        if (!isChangingConfigurations) ExamRuntimePolicy.reset()
         audioGuardJob?.cancel()
         audioGuardJob = null
         audioGuard?.stop()

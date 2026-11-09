@@ -12,7 +12,7 @@ suspend fun startExamSession(
     pullAnswers: suspend (String) -> Unit = {},
 ): StartedSession {
     val started = catalog.startSession(examId, accessCode)
-    sessions.start(started.sessionId, started.deadlineLocalMillis)
+    sessions.start(started.sessionId, started.deadlineLocalMillis, started.policy)
     ExamRuntimePolicy.apply(started.policy)
     try {
         pullAnswers(started.sessionId)

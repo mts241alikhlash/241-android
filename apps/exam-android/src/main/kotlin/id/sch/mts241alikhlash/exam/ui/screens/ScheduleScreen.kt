@@ -58,10 +58,10 @@ private fun groupsOf(entries: List<ScheduleEntry>): List<ScheduleGroup> {
     val known =
         TYPE_ORDER.mapNotNull { type ->
             val inType = entries.filter { it.exam.type == type }
-            if (inType.isEmpty()) null else ScheduleGroup("JADWAL ${examTypeName(type).uppercase()}", inType)
+            if (inType.isEmpty()) null else ScheduleGroup("Jadwal ${examTypeName(type)}", inType)
         }
     val other = entries.filter { it.exam.type !in TYPE_ORDER }
-    return if (other.isEmpty()) known else known + ScheduleGroup("JADWAL UJIAN LAINNYA", other)
+    return if (other.isEmpty()) known else known + ScheduleGroup("Jadwal lainnya", other)
 }
 
 private fun examTypeName(type: String): String =

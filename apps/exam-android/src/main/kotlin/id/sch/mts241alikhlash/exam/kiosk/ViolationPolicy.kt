@@ -1,11 +1,17 @@
 package id.sch.mts241alikhlash.exam.kiosk
 
+import id.sch.mts241alikhlash.exam.data.session.ExamRuntimePolicy
+
 object ViolationPolicy {
     const val LIMIT = 3
 
     private val COUNTED = setOf("left_app", "pin_lost", "screen_share_detected")
 
     fun counts(reason: String): Boolean = reason in COUNTED
+
+    fun currentLimit(): Int = ExamRuntimePolicy.current.violationLimit
+
+    fun exitWarning(): String = warning(currentLimit() + 1, currentLimit())
 
     fun exceeded(
         count: Int,

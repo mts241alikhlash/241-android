@@ -28,14 +28,33 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
 import id.sch.mts241alikhlash.exam.data.repository.StudentProfile
 import id.sch.mts241alikhlash.exam.ui.components.CardHeader
 import id.sch.mts241alikhlash.exam.ui.components.PrimaryButton
 import id.sch.mts241alikhlash.exam.ui.theme.DMSansFontFamily
 import id.sch.mts241alikhlash.exam.ui.theme.WebTokens
 
+fun profileCardExam(exams: List<ExamSummaryDto>): ExamSummaryDto? =
+    // shortcut: ISO-8601 UTC strings sort lexicographically, parse if the formats ever vary
+    exams.filter { it.lifecycle == "OPEN" }.minByOrNull { it.startsAt }
+
+fun profileExamRows(exam: ExamSummaryDto?): List<Pair<String, String>> {
+    if (exam?.lifecycle != "OPEN") return emptyList()
+    val unset = "Belum ditetapkan"
+    return listOfNotNull(
+        exam.eventName?.takeIf { it.isNotBlank() }?.let { "Ujian" to it },
+        "Ruangan" to (exam.roomName?.takeIf { it.isNotBlank() } ?: unset),
+        exam.participantNumber?.takeIf { it.isNotBlank() }?.let { "No. peserta" to it },
+        "No. meja" to (exam.seatNumber?.toString() ?: unset),
+    )
+}
+
 @Composable
-fun ProfileScreen(viewModel: ProfileViewModel) {
+fun ProfileScreen(
+    viewModel: ProfileViewModel,
+    exam: ExamSummaryDto?,
+) {
     val state by viewModel.state.collectAsState()
     when (val current = state) {
         ProfileUiState.Loading ->
@@ -68,12 +87,15 @@ fun ProfileScreen(viewModel: ProfileViewModel) {
                 PrimaryButton(text = "Coba Lagi", onClick = viewModel::load, modifier = Modifier.width(160.dp))
             }
 
-        is ProfileUiState.Content -> ProfileContent(current.profile)
+        is ProfileUiState.Content -> ProfileContent(current.profile, exam)
     }
 }
 
 @Composable
-private fun ProfileContent(profile: StudentProfile) {
+private fun ProfileContent(
+    profile: StudentProfile,
+    exam: ExamSummaryDto?,
+) {
     Column(
         modifier =
             Modifier
@@ -117,8 +139,9 @@ private fun ProfileContent(profile: StudentProfile) {
             )
             Spacer(Modifier.height(16.dp))
         }
+        Section(title = "Ujian aktif", allRows = profileExamRows(exam))
         Section(
-            title = "DATA SISWA",
+            title = "Data siswa",
             allRows =
                 listOf(
                     "Nama lengkap" to profile.name,
@@ -128,27 +151,24 @@ private fun ProfileContent(profile: StudentProfile) {
                 ),
         )
         Section(
-            title = "DATA UJIAN",
+            title = "Data akun",
             allRows =
                 listOf(
                     "Username" to (profile.username ?: profile.nis),
-                    "No. peserta" to NOT_ASSIGNED,
-                    "Ruangan" to NOT_ASSIGNED,
-                    "Nomor meja" to NOT_ASSIGNED,
                 ),
         )
         Section(
-            title = "DATA KELAS",
+            title = "Data kelas",
             allRows =
                 listOf(
                     "Kelas" to profile.classLabel,
-                    "Tingkat" to profile.gradeName?.let { "Kelas $it" },
+                    "Tingkat" to profile.gradeName,
                     "Semester" to profile.semester,
                     "Tahun ajaran" to profile.academicYear,
                 ),
         )
         Section(
-            title = "DATA DIRI",
+            title = "Data diri",
             allRows =
                 listOf(
                     "Jenis kelamin" to profile.gender,
@@ -157,7 +177,7 @@ private fun ProfileContent(profile: StudentProfile) {
                 ),
         )
         Section(
-            title = "KONTAK",
+            title = "Kontak",
             allRows =
                 listOf(
                     "Email" to profile.email,
@@ -166,8 +186,6 @@ private fun ProfileContent(profile: StudentProfile) {
         )
     }
 }
-
-private const val NOT_ASSIGNED = "Belum ditentukan"
 
 @Composable
 private fun Section(
