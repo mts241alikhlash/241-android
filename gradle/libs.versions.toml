@@ -3,6 +3,7 @@ agp = "8.13.2"
 kotlin = "2.3.21"
 ksp = "2.3.12"
 spotless = "7.2.1"
+openapiGenerator = "7.27.0"
 coreKtx = "1.15.0"
 lifecycleRuntimeKtx = "2.8.7"
 activityCompose = "1.10.1"
@@ -58,6 +59,7 @@ android-gradlePlugin = { group = "com.android.tools.build", name = "gradle", ver
 kotlin-gradlePlugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-plugin", version.ref = "kotlin" }
 compose-compiler-gradlePlugin = { group = "org.jetbrains.kotlin", name = "compose-compiler-gradle-plugin", version.ref = "kotlin" }
 spotless-gradlePlugin = { group = "com.diffplug.spotless", name = "spotless-plugin-gradle", version.ref = "spotless" }
+openapi-generator-gradlePlugin = { group = "org.openapitools", name = "openapi-generator-gradle-plugin", version.ref = "openapiGenerator" }
 
 [plugins]
 mts241-android-application = { id = "mts241.android.application" }
@@ -68,6 +70,8 @@ mts241-jvm-library = { id = "mts241.jvm.library" }
 mts241-room = { id = "mts241.room" }
 mts241-lint = { id = "mts241.lint" }
 mts241-spotless = { id = "mts241.spotless" }
+mts241-openapi-client = { id = "mts241.openapi.client" }
+openapi-generator = { id = "org.openapi.generator", version.ref = "openapiGenerator" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
