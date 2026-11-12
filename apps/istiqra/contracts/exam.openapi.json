@@ -1293,166 +1293,6 @@
         ]
       }
     },
-    "/student-exams/{sessionId}/camera-blocked": {
-      "post": {
-        "operationId": "SessionExamController_cameraBlocked",
-        "parameters": [
-          {
-            "name": "X-Client-Platform",
-            "in": "header",
-            "description": "Send 'web' from a browser; the Android app omits it",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Device-Id",
-            "in": "header",
-            "description": "The tablet the session was started on",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "sessionId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CameraBlockedDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Record why the camera cannot take a snapshot",
-        "tags": [
-          "Student Exams"
-        ]
-      }
-    },
-    "/student-exams/{sessionId}/proctor-snapshot": {
-      "post": {
-        "operationId": "SessionExamController_snapshot",
-        "parameters": [
-          {
-            "name": "X-Client-Platform",
-            "in": "header",
-            "description": "Send 'web' from a browser; the Android app omits it",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Device-Id",
-            "in": "header",
-            "description": "The tablet the session was started on",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "sessionId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "file",
-                  "kind",
-                  "capturedAt"
-                ],
-                "properties": {
-                  "file": {
-                    "type": "string",
-                    "format": "binary"
-                  },
-                  "kind": {
-                    "type": "string",
-                    "enum": [
-                      "LIVE",
-                      "SESSION_START",
-                      "VIOLATION_RETURN",
-                      "PERIODIC_EVIDENCE"
-                    ]
-                  },
-                  "capturedAt": {
-                    "type": "string",
-                    "format": "date-time"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "statusCode": {
-                      "type": "integer",
-                      "example": 200
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Success"
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/ProctorSnapshotUploadedDto"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Upload a proctoring snapshot (JPEG, 1 MB)",
-        "tags": [
-          "Student Exams"
-        ]
-      }
-    },
     "/student-exams/{sessionId}/submit": {
       "post": {
         "operationId": "SessionExamController_submit",
@@ -1785,144 +1625,6 @@
           }
         ],
         "summary": "The device events and recovery actions of one session, merged",
-        "tags": [
-          "Exam Sessions"
-        ]
-      }
-    },
-    "/exam-sessions/{id}/snapshots": {
-      "get": {
-        "operationId": "ExamSessionAdminController_snapshots",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "statusCode": {
-                      "type": "integer",
-                      "example": 200
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Success"
-                    },
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/ProctorSnapshotDto"
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "The evidence snapshots kept for this session",
-        "tags": [
-          "Exam Sessions"
-        ]
-      }
-    },
-    "/exam-sessions/{id}/snapshots/latest": {
-      "get": {
-        "operationId": "ExamSessionAdminController_latestSnapshot",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The JPEG bytes",
-            "content": {
-              "image/jpeg": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Stream the newest snapshot of this session",
-        "tags": [
-          "Exam Sessions"
-        ]
-      }
-    },
-    "/exam-sessions/{id}/snapshots/{snapshotId}": {
-      "get": {
-        "operationId": "ExamSessionAdminController_snapshot",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "snapshotId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The JPEG bytes",
-            "content": {
-              "image/jpeg": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Stream one evidence snapshot of this session",
         "tags": [
           "Exam Sessions"
         ]
@@ -6294,9 +5996,6 @@
           "focusThresholdMs": {
             "type": "number"
           },
-          "snapshotIntervalMs": {
-            "type": "number"
-          },
           "heartbeatIntervalMs": {
             "type": "number"
           },
@@ -6316,7 +6015,6 @@
         "required": [
           "violationLimit",
           "focusThresholdMs",
-          "snapshotIntervalMs",
           "heartbeatIntervalMs",
           "gapRecordedMs",
           "gapTokenMs",
@@ -6659,11 +6357,6 @@
             "type": "number",
             "minimum": 3000,
             "maximum": 60000
-          },
-          "snapshotIntervalMs": {
-            "type": "number",
-            "minimum": 10000,
-            "maximum": 300000
           },
           "heartbeatIntervalMs": {
             "type": "number",
@@ -7506,38 +7199,6 @@
           "requiresTokenReentry"
         ]
       },
-      "CameraBlockedDto": {
-        "type": "object",
-        "properties": {
-          "reason": {
-            "enum": [
-              "network",
-              "permission",
-              "battery",
-              "stopped",
-              "hardware",
-              "cameraBusy"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "reason"
-        ]
-      },
-      "ProctorSnapshotUploadedDto": {
-        "type": "object",
-        "properties": {
-          "evidenceId": {
-            "type": "string",
-            "nullable": true,
-            "format": "uuid"
-          }
-        },
-        "required": [
-          "evidenceId"
-        ]
-      },
       "SubmitSessionRequestDto": {
         "type": "object",
         "properties": {
@@ -7812,52 +7473,6 @@
           "actorId",
           "reason",
           "metadata"
-        ]
-      },
-      "ProctorSnapshotDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "sessionId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "kind": {
-            "enum": [
-              "LIVE",
-              "SESSION_START",
-              "VIOLATION_RETURN",
-              "PERIODIC_EVIDENCE"
-            ],
-            "type": "string"
-          },
-          "sizeBytes": {
-            "type": "number"
-          },
-          "capturedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "id",
-          "sessionId",
-          "kind",
-          "sizeBytes",
-          "capturedAt",
-          "expiresAt",
-          "createdAt"
         ]
       },
       "RecoveryReasonDto": {
@@ -9312,27 +8927,6 @@
           "lastEvent": {
             "type": "object",
             "nullable": true
-          },
-          "lastSnapshotAt": {
-            "type": "string",
-            "nullable": true,
-            "format": "date-time"
-          },
-          "cameraBlocked": {
-            "type": "string",
-            "nullable": true,
-            "enum": [
-              "network",
-              "permission",
-              "battery",
-              "stopped",
-              "hardware",
-              "cameraBusy"
-            ]
-          },
-          "latestSnapshotUrl": {
-            "type": "string",
-            "nullable": true
           }
         },
         "required": [
@@ -9356,10 +8950,7 @@
           "violationCount",
           "lockedByViolation",
           "requiresTokenReentry",
-          "lastEvent",
-          "lastSnapshotAt",
-          "cameraBlocked",
-          "latestSnapshotUrl"
+          "lastEvent"
         ]
       },
       "RoomMonitorAbsenceDto": {

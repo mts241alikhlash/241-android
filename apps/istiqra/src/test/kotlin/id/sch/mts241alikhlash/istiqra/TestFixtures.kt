@@ -1,7 +1,6 @@
 package id.sch.mts241alikhlash.istiqra
 
 import id.sch.mts241alikhlash.istiqra.api.exam.apis.StudentExamsApi
-import id.sch.mts241alikhlash.istiqra.api.exam.models.CameraBlockedDto
 import id.sch.mts241alikhlash.istiqra.api.exam.models.ConfirmedAnswerDto
 import id.sch.mts241alikhlash.istiqra.api.exam.models.MyExamDto
 import id.sch.mts241alikhlash.istiqra.api.exam.models.PaperChoiceDto
@@ -24,7 +23,6 @@ import id.sch.mts241alikhlash.istiqra.api.exam.models.SessionExamControllerQuest
 import id.sch.mts241alikhlash.istiqra.api.exam.models.SessionExamControllerResume200Response
 import id.sch.mts241alikhlash.istiqra.api.exam.models.SessionExamControllerSave201Response
 import id.sch.mts241alikhlash.istiqra.api.exam.models.SessionExamControllerSaveBatch200Response
-import id.sch.mts241alikhlash.istiqra.api.exam.models.SessionExamControllerSnapshot201Response
 import id.sch.mts241alikhlash.istiqra.api.exam.models.SessionExamControllerSubmit200Response
 import id.sch.mts241alikhlash.istiqra.api.exam.models.SessionExamControllerSuspension201Response
 import id.sch.mts241alikhlash.istiqra.api.exam.models.SessionExamControllerViolations200Response
@@ -43,8 +41,6 @@ import id.sch.mts241alikhlash.istiqra.data.local.AnswerSyncState
 import id.sch.mts241alikhlash.istiqra.data.local.CachedAnswerEntity
 import id.sch.mts241alikhlash.istiqra.data.session.ServerClock
 import kotlinx.coroutines.test.TestCoroutineScheduler
-import okhttp3.MultipartBody
-import okhttp3.RequestBody
 import okhttp3.ResponseBody
 import retrofit2.Response
 
@@ -381,13 +377,6 @@ open class StubExamApi : StudentExamsApi {
         xClientPlatform: String?,
     ) = Response.success(SessionExamControllerAnswers200Response(data = getAnswers(sessionId)))
 
-    override suspend fun sessionExamControllerCameraBlocked(
-        xDeviceId: String,
-        sessionId: String,
-        cameraBlockedDto: CameraBlockedDto,
-        xClientPlatform: String?,
-    ): Response<Unit> = Response.success(Unit)
-
     override suspend fun sessionExamControllerEvents(
         xDeviceId: String,
         sessionId: String,
@@ -434,15 +423,6 @@ open class StubExamApi : StudentExamsApi {
         saveAnswersBatchDto: SaveAnswersBatchDto,
         xClientPlatform: String?,
     ) = Response.success(SessionExamControllerSaveBatch200Response(data = saveAnswersBatch(sessionId, saveAnswersBatchDto)))
-
-    override suspend fun sessionExamControllerSnapshot(
-        xDeviceId: String,
-        sessionId: String,
-        file: MultipartBody.Part,
-        kind: RequestBody,
-        capturedAt: RequestBody,
-        xClientPlatform: String?,
-    ): Response<SessionExamControllerSnapshot201Response> = throw UnsupportedOperationException()
 
     override suspend fun sessionExamControllerSubmit(
         xDeviceId: String,

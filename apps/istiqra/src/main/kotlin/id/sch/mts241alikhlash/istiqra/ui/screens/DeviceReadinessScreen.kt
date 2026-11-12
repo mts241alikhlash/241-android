@@ -1,12 +1,9 @@
 package id.sch.mts241alikhlash.istiqra.ui.screens
 
-import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
 import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,7 +35,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,14 +49,11 @@ import androidx.lifecycle.LifecycleEventObserver
 import id.sch.mts241alikhlash.istiqra.kiosk.DeviceReadinessState
 import id.sch.mts241alikhlash.istiqra.kiosk.DndController
 import id.sch.mts241alikhlash.istiqra.kiosk.InternalIntentGuard
-import id.sch.mts241alikhlash.istiqra.proctor.CameraPermissionState
-import id.sch.mts241alikhlash.istiqra.proctor.ProctorFlags
-import id.sch.mts241alikhlash.istiqra.proctor.cameraPermissionState
-import id.sch.mts241alikhlash.istiqra.proctor.findActivity
 import id.sch.mts241alikhlash.istiqra.ui.components.ActionButton
 import id.sch.mts241alikhlash.istiqra.ui.components.ActionStyle
 import id.sch.mts241alikhlash.istiqra.ui.components.CardHeader
 import id.sch.mts241alikhlash.istiqra.ui.components.PrimaryButton
+import id.sch.mts241alikhlash.istiqra.ui.components.findActivity
 import id.sch.mts241alikhlash.istiqra.ui.components.rememberIsOnline
 import id.sch.mts241alikhlash.istiqra.ui.theme.BorderSubtle
 import id.sch.mts241alikhlash.istiqra.ui.theme.BrandBackground
@@ -81,22 +74,12 @@ fun DeviceReadinessScreen(
     val context = LocalContext.current
     val dnd = remember(context) { DndController(context) }
     val online = rememberIsOnline()
-    var askedCamera by rememberSaveable { mutableStateOf(false) }
     var readiness by remember { mutableStateOf(DeviceReadinessState()) }
 
-    val cameraLauncher =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission(),
-        ) { askedCamera = true }
-
-    val cameraRequired = ProctorFlags.ENABLED
     val refresh: () -> Unit = {
         readiness =
             DeviceReadinessState(
                 dndGranted = dnd.isAccessGranted(),
-                cameraGranted =
-                    !cameraRequired ||
-                        cameraPermissionState(context, askedCamera) == CameraPermissionState.GRANTED,
                 audioClear = isAudioClear(context),
             )
     }
@@ -119,7 +102,6 @@ fun DeviceReadinessScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val cameraState = cameraPermissionState(context, askedCamera)
     val state = readiness.copy(online = online)
 
     Column(
@@ -136,7 +118,7 @@ fun DeviceReadinessScreen(
                 .padding(horizontal = 20.dp, vertical = 20.dp),
     ) {
         val readyCount =
-            listOf(state.dndGranted, state.cameraGranted, state.audioClear, state.online)
+            listOf(state.dndGranted, state.audioClear, state.online)
                 .count { it }
         Column(
             modifier =
@@ -166,18 +148,18 @@ fun DeviceReadinessScreen(
                     Box(
                         modifier =
                             Modifier
-                                .fillMaxWidth(readyCount / 4f)
+                                .fillMaxWidth(readyCount / 3f)
                                 .height(3.dp)
-                                .background(if (readyCount == 4) StatusSuccess else DoubtfulOrange),
+                                .background(if (readyCount == 3) StatusSuccess else DoubtfulOrange),
                     )
                 }
                 Spacer(Modifier.width(12.dp))
                 Text(
-                    text = "$readyCount/4",
+                    text = "$readyCount/3",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = DMSansFontFamily,
-                    color = if (readyCount == 4) StatusSuccess else DoubtfulOrange,
+                    color = if (readyCount == 3) StatusSuccess else DoubtfulOrange,
                 )
             }
             ReadinessRow(
@@ -185,19 +167,6 @@ fun DeviceReadinessScreen(
                 ok = state.dndGranted,
                 actionLabel = if (state.dndGranted) null else "Izinkan",
                 onAction = { openDndSettings(context, dnd) },
-            )
-            RowDivider()
-            ReadinessRow(
-                title = "Izin Kamera Pengawas",
-                ok = state.cameraGranted,
-                actionLabel = if (!cameraRequired || state.cameraGranted) null else "Izinkan",
-                onAction = {
-                    if (cameraState == CameraPermissionState.BLOCKED) {
-                        openAppSettings(context)
-                    } else {
-                        cameraLauncher.launch(Manifest.permission.CAMERA)
-                    }
-                },
             )
             RowDivider()
             ReadinessRow(
@@ -293,18 +262,6 @@ private fun ReadinessRow(
                 color = TextMuted,
             )
         }
-    }
-}
-
-private fun openAppSettings(context: Context) {
-    InternalIntentGuard.shared.markLaunchingInternalDialog()
-    runCatching {
-        context.startActivity(
-            Intent(
-                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                android.net.Uri.fromParts("package", context.packageName, null),
-            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-        )
     }
 }
 

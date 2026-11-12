@@ -1,5 +1,6 @@
 package id.sch.mts241alikhlash.istiqra.data.model
 
+import id.sch.mts241alikhlash.istiqra.api.exam.models.ExamPolicyDto
 import id.sch.mts241alikhlash.istiqra.api.exam.models.MyExamDto
 import id.sch.mts241alikhlash.istiqra.api.exam.models.PaperChoiceDto
 import id.sch.mts241alikhlash.istiqra.api.exam.models.PaperQuestionDto
@@ -15,7 +16,9 @@ import id.sch.mts241alikhlash.istiqra.api.exam.models.SubmitSessionResponseDto
 import id.sch.mts241alikhlash.istiqra.myExam
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ExamDtoJsonTest {
@@ -172,7 +175,7 @@ class ExamDtoJsonTest {
                 """
                 {"sessionId":"s1","deadline":10,"serverTime":9,
                  "policy":{"violationLimit":5,"focusThresholdMs":12000,
-                 "snapshotIntervalMs":30000,"heartbeatIntervalMs":15000,
+                 "heartbeatIntervalMs":15000,
                  "gapRecordedMs":300000,"gapTokenMs":1800000,
                  "gapViolationFrom":3,"tokenSlotSeconds":600}}
                 """.trimIndent(),
@@ -180,7 +183,6 @@ class ExamDtoJsonTest {
 
         assertEquals(5, dto.policy.violationLimit)
         assertEquals(12_000L, dto.policy.focusThresholdMs)
-        assertEquals(30_000L, dto.policy.snapshotIntervalMs)
         assertEquals(3, dto.policy.gapViolationFrom)
     }
 
@@ -193,6 +195,14 @@ class ExamDtoJsonTest {
 
         assertEquals(3, dto.policy.violationLimit)
         assertEquals(10_000L, dto.policy.focusThresholdMs)
-        assertEquals(15_000L, dto.policy.snapshotIntervalMs)
+        assertEquals(15_000L, dto.policy.heartbeatIntervalMs)
+    }
+
+    @Test
+    fun the_policy_has_no_camera_interval() {
+        val names = ExamPolicyDto::class.java.declaredFields.map { it.name }
+
+        assertTrue("heartbeatIntervalMs" in names)
+        assertFalse("snapshotIntervalMs" in names)
     }
 }

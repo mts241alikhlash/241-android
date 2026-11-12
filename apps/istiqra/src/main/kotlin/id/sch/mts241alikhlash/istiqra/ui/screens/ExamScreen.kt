@@ -46,7 +46,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -76,8 +75,6 @@ import id.sch.mts241alikhlash.istiqra.api.exam.models.MyExamDto
 import id.sch.mts241alikhlash.istiqra.api.exam.models.PaperQuestionDto
 import id.sch.mts241alikhlash.istiqra.data.model.AnswerPayload
 import id.sch.mts241alikhlash.istiqra.kiosk.ViolationPolicy
-import id.sch.mts241alikhlash.istiqra.proctor.ProctorController
-import id.sch.mts241alikhlash.istiqra.proctor.rememberProctorPermission
 import id.sch.mts241alikhlash.istiqra.ui.components.ActionButton
 import id.sch.mts241alikhlash.istiqra.ui.components.ActionStyle
 import id.sch.mts241alikhlash.istiqra.ui.components.AppDialog
@@ -116,7 +113,6 @@ fun ExamScreen(
     onFinish: () -> Unit,
     onSupervisorExit: () -> Unit = {},
     onSessionLost: (String) -> Unit = {},
-    proctor: ProctorController? = null,
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -127,13 +123,6 @@ fun ExamScreen(
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val owner = androidx.compose.ui.platform.LocalLifecycleOwner.current
-    if (proctor != null) {
-        rememberProctorPermission(sessionId, proctor)
-    }
-
-    DisposableEffect(proctor) {
-        onDispose { proctor?.stop() }
-    }
     androidx.compose.foundation.layout.Box {
         androidx.compose.foundation.layout.Box(
             modifier =

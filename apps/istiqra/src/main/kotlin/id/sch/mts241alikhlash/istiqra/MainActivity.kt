@@ -14,7 +14,6 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -52,8 +51,6 @@ import id.sch.mts241alikhlash.istiqra.kiosk.SessionEventTracker
 import id.sch.mts241alikhlash.istiqra.kiosk.ViolationPolicy
 import id.sch.mts241alikhlash.istiqra.kiosk.ViolationStore
 import id.sch.mts241alikhlash.istiqra.kiosk.blocksExamKey
-import id.sch.mts241alikhlash.istiqra.proctor.ProctorController
-import id.sch.mts241alikhlash.istiqra.proctor.ProctorFlags
 import id.sch.mts241alikhlash.istiqra.ui.AppRootState
 import id.sch.mts241alikhlash.istiqra.ui.AssessmentAppRoot
 import id.sch.mts241alikhlash.istiqra.ui.ExamInputLockdown
@@ -82,7 +79,6 @@ class MainActivity : ComponentActivity() {
     private lateinit var dnd: DndController
     private var audioGuard: AudioAndDisplayGuard? = null
     private var audioGuardJob: kotlinx.coroutines.Job? = null
-    private var proctorController: ProctorController? = null
     private var tracker by mutableStateOf<SessionEventTracker?>(null)
     private var lastLocked: Boolean? = null
     private val guard = InternalIntentGuard.shared
@@ -155,9 +151,6 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            id.sch.mts241alikhlash.istiqra.proctor
-                .RequestCameraOnLaunch(guard)
-
             var restoreAttempt by remember { mutableStateOf(0) }
 
             LaunchedEffect(restoreAttempt) {
@@ -587,24 +580,6 @@ class MainActivity : ComponentActivity() {
                         countedViolations.value = violations.counted()
                     }
 
-                    val proctor =
-                        remember {
-                            if (!ProctorFlags.ENABLED) {
-                                null
-                            } else {
-                                ProctorController.camera(
-                                    intervalMs = ExamRuntimePolicy.current.snapshotIntervalMs,
-                                    context = applicationContext,
-                                    api = app.examApi,
-                                    deviceId = app::deviceId,
-                                    isAnswerSyncBusy = { app.repository.isSyncingOrSubmitting },
-                                )
-                            }
-                        }
-                    DisposableEffect(proctor) {
-                        proctorController = proctor
-                        onDispose { proctorController = null }
-                    }
                     LaunchedEffect(sessionId, viewModel) {
                         activeInterference.collect { current ->
                             viewModel.onCallOrMicChanged(current.callOrMic, System.currentTimeMillis())
@@ -616,7 +591,6 @@ class MainActivity : ComponentActivity() {
                             ExamScreen(
                                 viewModel = viewModel,
                                 sessionId = sessionId,
-                                proctor = proctor,
                                 exam = appState.activeExam,
                                 baseUrl = BuildConfig.BASE_URL,
                                 imageLoader = app.imageLoader,
@@ -793,7 +767,6 @@ class MainActivity : ComponentActivity() {
     private fun onCallOrMic(paused: Boolean) {
         if (!isExamActive) return
         tracker?.onSuspensionChanged(paused)
-        if (paused) proctorController?.pause() else proctorController?.resume()
     }
 
     private fun releaseExamAndShowList(notice: String? = null) {
@@ -825,7 +798,6 @@ class MainActivity : ComponentActivity() {
         audioGuardJob = null
         audioGuard?.stop()
         audioGuard = null
-        proctorController = null
         activeInterference.value = InterferenceState()
         tracker?.close()
         tracker = null

@@ -86,18 +86,6 @@ android {
         )
     }
 
-    flavorDimensions += "proctoring"
-    productFlavors {
-        create("standard") {
-            dimension = "proctoring"
-            buildConfigField("boolean", "PROCTORING_ENABLED", "false")
-        }
-        create("proctor") {
-            dimension = "proctoring"
-            buildConfigField("boolean", "PROCTORING_ENABLED", "true")
-        }
-    }
-
     signingConfigs {
         if (hasReleaseStoreFile) {
             create("release") {
@@ -155,7 +143,7 @@ android {
     }
 }
 
-tasks.named("check") { dependsOn("lintStandardDebug", "lintProctorDebug") }
+tasks.named("check") { dependsOn("lintDebug") }
 
 dependencies {
     implementation(libs.androidx.core.ktx)
@@ -183,10 +171,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.datastore.preferences)
-
-    implementation(libs.androidx.camera.core)
-    implementation(libs.androidx.camera.camera2)
-    implementation(libs.androidx.camera.lifecycle)
 
     debugImplementation(libs.androidx.ui.tooling)
 

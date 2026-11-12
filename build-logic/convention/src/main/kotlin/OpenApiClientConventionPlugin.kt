@@ -34,8 +34,6 @@ class OpenApiClientConventionPlugin : Plugin<Project> {
                             "SessionExamController_heartbeatNow",
                             "SessionExamController_suspension",
                             "SessionExamController_resume",
-                            "SessionExamController_cameraBlocked",
-                            "SessionExamController_snapshot",
                             "SessionExamController_submit",
                             "SessionExamController_file",
                         ).joinToString("|", prefix = "operationId:"),
@@ -167,7 +165,6 @@ class OpenApiClientConventionPlugin : Plugin<Project> {
                                         text
                                             .replace("val violationLimit: kotlin.Int", "val violationLimit: kotlin.Int = 3")
                                             .replace("val focusThresholdMs: kotlin.Int", "val focusThresholdMs: kotlin.Long = 10_000L")
-                                            .replace("val snapshotIntervalMs: kotlin.Int", "val snapshotIntervalMs: kotlin.Long = 15_000L")
                                             .replace("val heartbeatIntervalMs: kotlin.Int", "val heartbeatIntervalMs: kotlin.Long = 15_000L")
                                             .replace("val gapRecordedMs: kotlin.Int", "val gapRecordedMs: kotlin.Long = 60_000L")
                                             .replace("val gapTokenMs: kotlin.Int", "val gapTokenMs: kotlin.Long = 300_000L")
