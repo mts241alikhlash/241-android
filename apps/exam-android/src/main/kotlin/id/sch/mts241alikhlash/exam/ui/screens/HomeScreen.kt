@@ -146,7 +146,7 @@ fun HomeScreen(
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     Image(
-                        painter = painterResource(id = R.drawable.logo),
+                        painter = painterResource(id = R.drawable.istiqra_symbol),
                         contentDescription = null,
                         colorFilter = ColorFilter.tint(WebTokens.Foreground.copy(alpha = 0.04f), BlendMode.SrcIn),
                         contentScale = ContentScale.FillWidth,
@@ -189,7 +189,7 @@ fun HomeScreen(
                             )
                             Spacer(Modifier.height(6.dp))
                             Text(
-                                text = "241-exam · Versi ${BuildConfig.VERSION_NAME}",
+                                text = "Istiqra · Versi ${BuildConfig.VERSION_NAME}",
                                 fontSize = 11.sp,
                                 fontFamily = DMSansFontFamily,
                                 color = WebTokens.MutedForeground,
@@ -212,7 +212,7 @@ fun HomeScreen(
                         .windowInsetsPadding(WindowInsets.navigationBars),
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.logo),
+                    painter = painterResource(id = R.drawable.istiqra_symbol),
                     contentDescription = null,
                     colorFilter = ColorFilter.tint(WebTokens.Foreground.copy(alpha = 0.035f), BlendMode.SrcIn),
                     contentScale = ContentScale.FillWidth,
@@ -310,9 +310,9 @@ private fun TopBar(
             )
             Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.Center) {
                 Image(
-                    painter = painterResource(id = R.drawable.logo),
-                    contentDescription = "Logo MTs 241 Al-Ikhlash",
-                    modifier = Modifier.height(30.dp),
+                    painter = painterResource(id = R.drawable.istiqra_symbol),
+                    contentDescription = "Logo Istiqra",
+                    modifier = Modifier.width(36.dp),
                     contentScale = ContentScale.Fit,
                 )
             }
