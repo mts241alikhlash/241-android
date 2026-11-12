@@ -116,15 +116,6 @@ class OpenApiClientConventionPlugin : Plugin<Project> {
                                 include("HealthControllerCheck*.kt")
                             },
                         )
-                        val apiDir = outDir.get().dir("src/main/kotlin/$pkgPath/apis").asFile
-                        apiDir.walkTopDown().filter { it.isFile && it.name == "StudentExamsApi.kt" }.forEach { file ->
-                            var text = file.readText()
-                            text =
-                                text
-                                    .replace("@Part(\"kind\") kind: kotlin.String", "@Part(\"kind\") kind: RequestBody")
-                                    .replace("@Part(\"capturedAt\") capturedAt: kotlin.String", "@Part(\"capturedAt\") capturedAt: RequestBody")
-                            file.writeText(text)
-                        }
                         val modelsDir = outDir.get().dir("src/main/kotlin/$pkgPath/models").asFile
                         modelsDir.walkTopDown().filter { it.isFile && it.extension == "kt" }.forEach { file ->
                             var text = file.readText()
