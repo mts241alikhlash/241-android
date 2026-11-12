@@ -1,28 +1,47 @@
 package id.sch.mts241alikhlash.exam.ui.screens
 
 import id.sch.mts241alikhlash.exam.MainDispatcherRule
+import id.sch.mts241alikhlash.exam.api.student.apis.StudentsApi
+import id.sch.mts241alikhlash.exam.api.student.models.MyClassroomResponseDto
+import id.sch.mts241alikhlash.exam.api.student.models.StudentControllerFindMine200Response
+import id.sch.mts241alikhlash.exam.api.student.models.StudentControllerFindMyClassroom200Response
+import id.sch.mts241alikhlash.exam.api.student.models.StudentInternalControllerParticipantNumber200Response
+import id.sch.mts241alikhlash.exam.api.student.models.StudentResponseDto
+import id.sch.mts241alikhlash.exam.api.student.models.StudentResponseUserDto
 import id.sch.mts241alikhlash.exam.data.auth.httpError
-import id.sch.mts241alikhlash.exam.data.model.MyClassroomDto
-import id.sch.mts241alikhlash.exam.data.model.StudentMeDto
-import id.sch.mts241alikhlash.exam.data.remote.StudentApiService
 import id.sch.mts241alikhlash.exam.data.repository.StudentProfileRepository
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import retrofit2.Response
 import java.io.IOException
+
+private fun testStudent(
+    id: String = "s1",
+    nis: String = "2024001",
+) = StudentResponseDto(
+    id = id,
+    userId = "u1",
+    nis = nis,
+    nisn = "",
+    status = StudentResponseDto.Status.ACTIVE,
+    user = StudentResponseUserDto(id = "u1", identifier = nis, isActive = true),
+)
 
 class ProfileViewModelTest {
     @get:Rule
     val mainRule = MainDispatcherRule()
 
     private class Api(
-        var meResult: () -> StudentMeDto = { StudentMeDto(id = "s1", nis = "2024001") },
-        var classroomResult: () -> MyClassroomDto? = { null },
-    ) : StudentApiService {
-        override suspend fun me(): StudentMeDto = meResult()
+        var meResult: () -> StudentResponseDto = { testStudent() },
+        var classroomResult: () -> MyClassroomResponseDto? = { null },
+    ) : StudentsApi {
+        override suspend fun studentControllerFindMine(): Response<StudentControllerFindMine200Response> = Response.success(StudentControllerFindMine200Response(data = meResult()))
 
-        override suspend fun classroom(): MyClassroomDto? = classroomResult()
+        override suspend fun studentControllerFindMyClassroom(): Response<StudentControllerFindMyClassroom200Response> = Response.success(StudentControllerFindMyClassroom200Response(data = classroomResult()))
+
+        override suspend fun studentControllerFindMyParticipantNumber(): Response<StudentInternalControllerParticipantNumber200Response> = throw UnsupportedOperationException()
     }
 
     private fun viewModel(api: Api) = ProfileViewModel(StudentProfileRepository(api), "Ahmad")
@@ -49,7 +68,7 @@ class ProfileViewModelTest {
 
         assertTrue(vm.state.value is ProfileUiState.Error)
 
-        api.meResult = { StudentMeDto(id = "s1", nis = "2024001") }
+        api.meResult = { testStudent() }
         vm.load()
 
         assertTrue(vm.state.value is ProfileUiState.Content)

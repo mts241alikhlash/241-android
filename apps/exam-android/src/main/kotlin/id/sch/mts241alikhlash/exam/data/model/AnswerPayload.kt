@@ -2,6 +2,7 @@ package id.sch.mts241alikhlash.exam.data.model
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -44,7 +45,7 @@ sealed interface AnswerPayload {
             return (parsed as? JsonObject)?.let(::fromJson)
         }
 
-        fun fromJson(json: JsonObject): AnswerPayload? {
+        fun fromJson(json: Map<String, JsonElement>): AnswerPayload? {
             if (json.size != 1) return null
             val (name, value) = json.entries.first()
             return when (name) {
@@ -60,6 +61,6 @@ sealed interface AnswerPayload {
             }
         }
 
-        private fun stringOf(element: kotlinx.serialization.json.JsonElement): String? = (element as? JsonPrimitive)?.takeIf { it.isString }?.content
+        private fun stringOf(element: JsonElement): String? = (element as? JsonPrimitive)?.takeIf { it.isString }?.content
     }
 }

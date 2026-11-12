@@ -1,5 +1,18 @@
 package id.sch.mts241alikhlash.exam.data.model
 
+import id.sch.mts241alikhlash.exam.api.exam.models.MyExamDto
+import id.sch.mts241alikhlash.exam.api.exam.models.PaperChoiceDto
+import id.sch.mts241alikhlash.exam.api.exam.models.PaperQuestionDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SaveAnswerItemDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SaveAnswersBatchDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SaveAnswersBatchResultDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SavedAnswerDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionSuspensionDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionSuspensionRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.StartedSessionDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SubmitSessionRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SubmitSessionResponseDto
+import id.sch.mts241alikhlash.exam.myExam
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -11,17 +24,31 @@ class ExamDtoJsonTest {
     @Test
     fun exam_summary_reads_the_camel_case_wire_shape() {
         val dto =
-            json.decodeFromString<ExamSummaryDto>(
-                """{"id":"e1","title":"UTS","subjectId":"s1","startsAt":"2026-11-02T01:00:00.000Z","endsAt":"2026-11-02T04:00:00.000Z","durationMinutes":90,"status":"IN_PROGRESS","sessionId":"x"}""",
+            json.decodeFromString<MyExamDto>(
+                """{"id":"e1","title":"UTS","subjectId":"s1","startsAt":"2026-11-02T01:00:00.000Z","endsAt":"2026-11-02T04:00:00.000Z","durationMinutes":90,"minSubmitMinutes":0,"status":"IN_PROGRESS","sessionId":"x","type":"MIDTERM","category":"EXAM","lifecycle":"OPEN","makeup":false}""",
             )
-        assertEquals(ExamSummaryDto("e1", "UTS", "s1", "2026-11-02T01:00:00.000Z", "2026-11-02T04:00:00.000Z", 90, "IN_PROGRESS", "x"), dto)
+        assertEquals(
+            myExam(
+                id = "e1",
+                title = "UTS",
+                subjectId = "s1",
+                startsAt = "2026-11-02T01:00:00.000Z",
+                endsAt = "2026-11-02T04:00:00.000Z",
+                durationMinutes = 90,
+                status = MyExamDto.Status.IN_PROGRESS,
+                sessionId = "x",
+                type = MyExamDto.Type.MIDTERM,
+                category = MyExamDto.Category.EXAM,
+            ),
+            dto,
+        )
     }
 
     @Test
     fun exam_summary_allows_a_null_session() {
         val dto =
-            json.decodeFromString<ExamSummaryDto>(
-                """{"id":"e1","title":"UTS","subjectId":"s1","startsAt":"a","endsAt":"b","durationMinutes":90,"status":"OPEN","sessionId":null}""",
+            json.decodeFromString<MyExamDto>(
+                """{"id":"e1","title":"UTS","subjectId":"s1","startsAt":"a","endsAt":"b","durationMinutes":90,"minSubmitMinutes":0,"status":"OPEN","sessionId":null,"type":"MIDTERM","category":"EXAM","lifecycle":"OPEN","makeup":false}""",
             )
         assertNull(dto.sessionId)
     }
@@ -29,7 +56,7 @@ class ExamDtoJsonTest {
     @Test
     fun started_session_reads_epoch_values() {
         val dto = json.decodeFromString<StartedSessionDto>("""{"sessionId":"s1","deadline":1700000000000,"serverTime":1699999000000}""")
-        assertEquals(StartedSessionDto("s1", 1700000000000, 1699999000000), dto)
+        assertEquals(StartedSessionDto("s1", 1700000000000L, 1699999000000L), dto)
     }
 
     @Test
@@ -38,7 +65,7 @@ class ExamDtoJsonTest {
             json.decodeFromString<PaperQuestionDto>(
                 """{"id":"q1","number":3,"type":"MULTIPLE_CHOICE","bodyHtml":"<p>x</p>","points":2,"choices":[{"key":"B","html":"<p>b</p>"},{"key":"A","html":"a"}]}""",
             )
-        assertEquals(listOf("B", "A"), dto.choices?.map { it.key })
+        assertEquals(listOf(PaperChoiceDto.Key.B, PaperChoiceDto.Key.A), dto.choices?.map { it.key })
         assertEquals(2.0, dto.points, 0.0)
     }
 
@@ -53,8 +80,8 @@ class ExamDtoJsonTest {
         val saved = json.decodeFromString<SavedAnswerDto>("""{"questionId":"q1","answer":{"keys":["A","B"]}}""")
         assertEquals(AnswerPayload.Multiple(listOf("A", "B")), AnswerPayload.fromJson(saved.answer))
         val done =
-            json.decodeFromString<SubmittedSessionDto>(
-                """{"status":"GRADED","submittedAt":null,"confirmedAnswerCount":46,"serverTime":"t"}""",
+            json.decodeFromString<SubmitSessionResponseDto>(
+                """{"status":"GRADED","submittedAt":null,"confirmedAnswerCount":46,"answersStored":true,"serverTime":"t"}""",
             )
         assertNull(done.submittedAt)
         assertEquals(46, done.confirmedAnswerCount)
@@ -76,8 +103,8 @@ class ExamDtoJsonTest {
     fun batch_request_serializes_camel_case() {
         val body =
             json.encodeToString(
-                SaveAnswersBatchRequest.serializer(),
-                SaveAnswersBatchRequest(
+                SaveAnswersBatchDto.serializer(),
+                SaveAnswersBatchDto(
                     answers =
                         listOf(
                             SaveAnswerItemDto("q1", "c1", AnswerPayload.Choice("A").toJson()),
@@ -91,7 +118,7 @@ class ExamDtoJsonTest {
                 ),
             )
         assertEquals(
-            """{"answers":[{"questionId":"q1","clientId":"c1","answer":{"key":"A"}}],"pendingLocalCount":4,"batteryLevel":88,"isCharging":true,"dndGranted":true,"lockTaskActive":false,"batteryUnrestricted":true}""",
+            """{"answers":[{"questionId":"q1","clientId":"c1","answer":{"key":"A"}}],"batteryLevel":88,"isCharging":true,"dndGranted":true,"lockTaskActive":false,"batteryUnrestricted":true,"pendingLocalCount":4}""",
             body,
         )
     }
@@ -100,8 +127,8 @@ class ExamDtoJsonTest {
     fun suspension_request_serializes_the_call_reason() {
         val body =
             json.encodeToString(
-                SuspensionRequest.serializer(),
-                SuspensionRequest(reason = SUSPENSION_REASON_CALL, seconds = 90, clientId = "c-1"),
+                SessionSuspensionRequestDto.serializer(),
+                SessionSuspensionRequestDto(reason = SessionSuspensionRequestDto.Reason.CALL, seconds = 90, clientId = "c-1"),
             )
         assertEquals("""{"reason":"CALL","seconds":90,"clientId":"c-1"}""", body)
     }
@@ -109,7 +136,7 @@ class ExamDtoJsonTest {
     @Test
     fun suspension_response_reads_the_extended_deadline() {
         val dto =
-            json.decodeFromString<SuspensionResponseDto>(
+            json.decodeFromString<SessionSuspensionDto>(
                 """{"deadline":"2026-10-27T06:00:00.000Z","finalizeAt":"2026-10-27T06:10:00.000Z","extraMinutes":2,"suspendedSeconds":90}""",
             )
         assertEquals("2026-10-27T06:00:00.000Z", dto.deadline)
@@ -122,8 +149,8 @@ class ExamDtoJsonTest {
     fun submit_request_sends_pending_answers_and_the_expected_count() {
         val body =
             json.encodeToString(
-                SubmitRequest.serializer(),
-                SubmitRequest(
+                SubmitSessionRequestDto.serializer(),
+                SubmitSessionRequestDto(
                     violations = 2,
                     expectedAnswerCount = 46,
                     pendingAnswers =

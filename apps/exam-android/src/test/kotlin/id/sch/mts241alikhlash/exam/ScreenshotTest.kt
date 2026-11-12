@@ -3,11 +3,10 @@ package id.sch.mts241alikhlash.exam
 import androidx.compose.runtime.Composable
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
+import id.sch.mts241alikhlash.exam.api.exam.models.PaperQuestionDto
 import id.sch.mts241alikhlash.exam.choices
 import id.sch.mts241alikhlash.exam.data.auth.AuthUser
 import id.sch.mts241alikhlash.exam.data.model.AnswerPayload
-import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
-import id.sch.mts241alikhlash.exam.data.model.PaperQuestionDto
 import id.sch.mts241alikhlash.exam.ui.AppRootState
 import id.sch.mts241alikhlash.exam.ui.AssessmentAppRoot
 import id.sch.mts241alikhlash.exam.ui.screens.ExamContent
@@ -41,14 +40,12 @@ class ScreenshotTest {
                         restoreComplete = true,
                         user = AuthUser("u1", "Ahmad", setOf("STUDENT")),
                         selectedExam =
-                            ExamSummaryDto(
-                                "e1",
-                                "UTS Matematika",
-                                "Matematika",
-                                "2026-11-01T01:00:00Z",
-                                "2026-11-01T03:00:00Z",
-                                90,
-                                "OPEN",
+                            myExam(
+                                id = "e1",
+                                title = "UTS Matematika",
+                                subjectId = "Matematika",
+                                startsAt = "2026-11-01T01:00:00Z",
+                                endsAt = "2026-11-01T03:00:00Z",
                             ),
                         readinessComplete = true,
                     ),
@@ -82,7 +79,7 @@ class ScreenshotTest {
                 PaperQuestionDto(
                     id = "q1",
                     number = 1,
-                    type = "multiple_choice",
+                    type = PaperQuestionDto.Type.MULTIPLE_CHOICE,
                     bodyHtml = "Hasil dari 12 x 8 adalah ...",
                     points = 1.0,
                     choices = choices("86", "96", "104", "112"),
@@ -90,7 +87,7 @@ class ScreenshotTest {
                 PaperQuestionDto(
                     id = "q2",
                     number = 2,
-                    type = "multiple_choice",
+                    type = PaperQuestionDto.Type.MULTIPLE_CHOICE,
                     bodyHtml = "Ibu kota Provinsi Jawa Timur adalah ...",
                     points = 1.0,
                     choices = choices("Malang", "Surabaya", "Kediri", "Madiun"),
@@ -98,7 +95,7 @@ class ScreenshotTest {
                 PaperQuestionDto(
                     id = "q3",
                     number = 3,
-                    type = "multiple_choice",
+                    type = PaperQuestionDto.Type.MULTIPLE_CHOICE,
                     bodyHtml = "Kalimat yang menggunakan ejaan baku adalah ...",
                     points = 1.0,
                     choices = choices("A", "B", "C", "D"),
@@ -172,7 +169,7 @@ class ScreenshotTest {
                         PaperQuestionDto(
                             id = "q1",
                             number = 1,
-                            type = "multiple_choice",
+                            type = PaperQuestionDto.Type.MULTIPLE_CHOICE,
                             bodyHtml = "Hasil dari 12 x 8 adalah ...",
                             points = 1.0,
                             choices = choices("86", "96", "104", "112"),
@@ -218,7 +215,7 @@ private fun PreviewExamScreen() {
                     PaperQuestionDto(
                         id = "q1",
                         number = 1,
-                        type = "multiple_choice",
+                        type = PaperQuestionDto.Type.MULTIPLE_CHOICE,
                         bodyHtml = "Hasil dari 12 x 8 adalah ...",
                         points = 1.0,
                         choices = choices("86", "96", "104", "112"),
@@ -226,7 +223,7 @@ private fun PreviewExamScreen() {
                     PaperQuestionDto(
                         id = "q2",
                         number = 2,
-                        type = "multiple_choice",
+                        type = PaperQuestionDto.Type.MULTIPLE_CHOICE,
                         bodyHtml = "Ibu kota Provinsi Jawa Timur adalah ...",
                         points = 1.0,
                         choices = choices("Malang", "Surabaya", "Kediri", "Madiun"),
@@ -234,7 +231,7 @@ private fun PreviewExamScreen() {
                     PaperQuestionDto(
                         id = "q3",
                         number = 3,
-                        type = "multiple_choice",
+                        type = PaperQuestionDto.Type.MULTIPLE_CHOICE,
                         bodyHtml = "Kalimat yang menggunakan ejaan baku adalah ...",
                         points = 1.0,
                         choices = choices("A", "B", "C", "D"),

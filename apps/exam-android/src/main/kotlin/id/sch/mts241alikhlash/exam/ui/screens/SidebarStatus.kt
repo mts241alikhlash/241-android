@@ -1,6 +1,6 @@
 package id.sch.mts241alikhlash.exam.ui.screens
 
-import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
+import id.sch.mts241alikhlash.exam.api.exam.models.MyExamDto
 
 fun answerSyncLabel(summary: AnswerSyncSummary): String =
     if (summary.allConfirmed) {
@@ -9,13 +9,13 @@ fun answerSyncLabel(summary: AnswerSyncSummary): String =
         "Tersimpan di HP: ${summary.totalAnswered} soal (Menunggu koneksi: ${summary.pendingCount})"
     }
 
-fun examStatusSummary(exams: List<ExamSummaryDto>): String {
-    val running = exams.filter { it.status == "IN_PROGRESS" }
+fun examStatusSummary(exams: List<MyExamDto>): String {
+    val running = exams.filter { it.status == MyExamDto.Status.IN_PROGRESS }
     if (running.isNotEmpty()) return "Ujian berlangsung · ${running.first().title}"
-    val open = exams.filter { it.status == "OPEN" }
+    val open = exams.filter { it.status == MyExamDto.Status.OPEN }
     if (open.size > 1) return "${open.size} ujian sedang dibuka"
     if (open.size == 1) return "Ujian dibuka · ${open.first().title}"
-    val next = exams.filter { it.status == "UPCOMING" }.minByOrNull { it.startsAt }
+    val next = exams.filter { it.status == MyExamDto.Status.UPCOMING }.minByOrNull { it.startsAt }
     if (next != null) return "Berikutnya · ${next.title}"
     return "Tidak ada ujian"
 }

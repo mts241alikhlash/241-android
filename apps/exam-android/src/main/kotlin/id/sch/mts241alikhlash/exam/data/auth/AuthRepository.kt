@@ -1,8 +1,13 @@
 package id.sch.mts241alikhlash.exam.data.auth
 
+import id.sch.mts241alikhlash.exam.api.identity.apis.NativeAuthenticationApi
+import id.sch.mts241alikhlash.exam.api.identity.models.NativeLoginDto
+import id.sch.mts241alikhlash.exam.api.identity.models.NativeLogoutDto
+import id.sch.mts241alikhlash.exam.api.identity.models.NativeRefreshDto
 import id.sch.mts241alikhlash.exam.data.remote.ApiException
-import id.sch.mts241alikhlash.exam.data.remote.GENERIC_ERROR_MESSAGE
-import id.sch.mts241alikhlash.exam.data.remote.apiCall
+import id.sch.mts241alikhlash.exam.data.remote.guarded
+import id.sch.mts241alikhlash.exam.data.remote.unwrapData
+import id.sch.mts241alikhlash.exam.data.remote.unwrapUnit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -10,7 +15,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 class AuthRepository(
-    private val api: AuthApiService,
+    private val api: NativeAuthenticationApi,
     private val store: TokenStore,
     private val deviceId: () -> String,
     private val now: () -> Long = { System.currentTimeMillis() },
@@ -24,7 +29,13 @@ class AuthRepository(
         password: String,
         requiredRole: String,
     ): AuthUser {
-        val response = apiCall { api.login(LoginRequest(identifier.trim(), password, deviceId())) }
+        val response =
+            guarded {
+                api
+                    .nativeAuthControllerLogin(
+                        NativeLoginDto(identifier.trim(), password, deviceId()),
+                    ).unwrapData { it.data }
+            }
         val firstTokens = response.toTokens(now())
         val user = response.user.toUser()
         if (requiredRole !in user.roles) {
@@ -41,7 +52,13 @@ class AuthRepository(
         password: String,
     ) {
         val stored = store.load()
-        val response = apiCall { api.login(LoginRequest(identifier.trim(), password, deviceId())) }
+        val response =
+            guarded {
+                api
+                    .nativeAuthControllerLogin(
+                        NativeLoginDto(identifier.trim(), password, deviceId()),
+                    ).unwrapData { it.data }
+            }
         val reloginTokens = response.toTokens(now())
         val user = response.user.toUser()
         if (stored != null && user.id != stored.user.id) {
@@ -61,7 +78,7 @@ class AuthRepository(
     suspend fun currentStudent(): AuthUser? = store.load()?.user?.takeIf { it.isStudent }
 
     private suspend fun revoke(refreshToken: String) {
-        runCatching { api.logout(LogoutRequest(refreshToken)) }
+        runCatching { api.nativeAuthControllerLogout(NativeLogoutDto(refreshToken)).unwrapUnit() }
     }
 
     suspend fun refresh(
@@ -77,7 +94,13 @@ class AuthRepository(
                 return stored.tokens
             }
             try {
-                val response = apiCall { api.refresh(RefreshRequest(before, deviceId())) }
+                val response =
+                    guarded {
+                        api
+                            .nativeAuthControllerRefresh(
+                                NativeRefreshDto(before, deviceId()),
+                            ).unwrapData { it.data }
+                    }
                 val tokens = response.toTokens(now(), before)
                 store.save(stored.copy(tokens = tokens))
                 tokens
@@ -98,14 +121,3 @@ class AuthRepository(
         store.clear()
     }
 }
-
-private fun AuthUserDto.toUser() = AuthUser(id, name, roles.toSet())
-
-private fun AuthResponseDto.toTokens(
-    now: Long,
-    held: String? = null,
-) = AuthTokens(
-    accessToken,
-    refreshToken ?: held ?: throw ApiException(0, GENERIC_ERROR_MESSAGE),
-    now + expiresIn * 1000,
-)

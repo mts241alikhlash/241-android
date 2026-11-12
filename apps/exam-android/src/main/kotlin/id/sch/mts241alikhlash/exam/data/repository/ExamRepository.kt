@@ -1,5 +1,19 @@
 package id.sch.mts241alikhlash.exam.data.repository
 
+import id.sch.mts241alikhlash.exam.api.exam.apis.StudentExamsApi
+import id.sch.mts241alikhlash.exam.api.exam.models.PaperChoiceDto
+import id.sch.mts241alikhlash.exam.api.exam.models.PaperQuestionDto
+import id.sch.mts241alikhlash.exam.api.exam.models.RecordSessionEventsRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.RecordViolationsRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.ResumeSessionRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SaveAnswerItemDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SaveAnswersBatchDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionEventItemDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionHeartbeatDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionPaperDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionSuspensionRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SubmitSessionRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SubmitSessionResponseDto
 import id.sch.mts241alikhlash.exam.data.local.AnswerDao
 import id.sch.mts241alikhlash.exam.data.local.AnswerSyncState
 import id.sch.mts241alikhlash.exam.data.local.CachedAnswerEntity
@@ -9,25 +23,11 @@ import id.sch.mts241alikhlash.exam.data.local.NoSessionEvents
 import id.sch.mts241alikhlash.exam.data.local.QuestionDao
 import id.sch.mts241alikhlash.exam.data.local.SessionEventDao
 import id.sch.mts241alikhlash.exam.data.model.AnswerPayload
-import id.sch.mts241alikhlash.exam.data.model.PaperChoiceDto
-import id.sch.mts241alikhlash.exam.data.model.PaperQuestionDto
-import id.sch.mts241alikhlash.exam.data.model.RecordSessionEventsRequest
-import id.sch.mts241alikhlash.exam.data.model.ResumeSessionRequest
-import id.sch.mts241alikhlash.exam.data.model.SUSPENSION_REASON_CALL
-import id.sch.mts241alikhlash.exam.data.model.SaveAnswerItemDto
-import id.sch.mts241alikhlash.exam.data.model.SaveAnswersBatchRequest
-import id.sch.mts241alikhlash.exam.data.model.SessionEventUploadItem
-import id.sch.mts241alikhlash.exam.data.model.SessionHeartbeatResponse
-import id.sch.mts241alikhlash.exam.data.model.SessionPaperDto
-import id.sch.mts241alikhlash.exam.data.model.SubmitRequest
-import id.sch.mts241alikhlash.exam.data.model.SubmittedSessionDto
-import id.sch.mts241alikhlash.exam.data.model.SuspensionRequest
-import id.sch.mts241alikhlash.exam.data.model.ViolationReport
 import id.sch.mts241alikhlash.exam.data.remote.ApiErrorCode
 import id.sch.mts241alikhlash.exam.data.remote.ApiException
-import id.sch.mts241alikhlash.exam.data.remote.ExamApiService
 import id.sch.mts241alikhlash.exam.data.remote.NETWORK_ERROR_MESSAGE
 import id.sch.mts241alikhlash.exam.data.remote.guarded
+import id.sch.mts241alikhlash.exam.data.remote.unwrapData
 import id.sch.mts241alikhlash.exam.data.session.parseIsoMillis
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.sync.Mutex
@@ -104,7 +104,7 @@ data class EventUploadReport(
 const val MAX_EVENT_BATCH = 200
 
 class ExamRepository(
-    private val api: ExamApiService,
+    private val api: StudentExamsApi,
     private val dao: AnswerDao,
     private val questionDao: QuestionDao,
     private val eventDao: SessionEventDao = NoSessionEvents,
@@ -147,8 +147,8 @@ class ExamRepository(
         }
 
         return try {
-            val remote = guarded { api.getQuestions(sessionId) }
-            remote.serverTime?.let(onServerTime)
+            val remote = guarded { api.sessionExamControllerQuestions(deviceId(), sessionId).unwrapData { it.data } }
+            onServerTime(remote.serverTime)
             if (remote.questions.isEmpty() && cached.isNotEmpty()) {
                 Result.success(cachedPaper(cached))
             } else {
@@ -171,7 +171,7 @@ class ExamRepository(
             questions = cached.map { it.toDto() },
             startedAt = "",
             minSubmitMinutes = 0,
-            serverTime = null,
+            serverTime = "",
         )
 
     private suspend fun cacheQuestions(
@@ -190,12 +190,12 @@ class ExamRepository(
     suspend fun submit(
         sessionId: String,
         violations: Int = 0,
-    ): SubmittedSessionDto = sending { submitLoop(sessionId, violations) }
+    ): SubmitSessionResponseDto = sending { submitLoop(sessionId, violations) }
 
     private suspend fun submitLoop(
         sessionId: String,
         violations: Int,
-    ): SubmittedSessionDto {
+    ): SubmitSessionResponseDto {
         var attempt = 0
         while (true) {
             val pending = dao.getPendingAnswers(sessionId).filter { it.answer.isNotBlank() }
@@ -212,17 +212,19 @@ class ExamRepository(
             try {
                 val result =
                     guarded {
-                        api.submit(
-                            sessionId,
-                            SubmitRequest(
-                                violations = violations,
-                                expectedAnswerCount = total,
-                                pendingAnswers = pending.map { it.toItem() },
-                            ),
-                        )
+                        api
+                            .sessionExamControllerSubmit(
+                                deviceId(),
+                                sessionId,
+                                SubmitSessionRequestDto(
+                                    violations = violations,
+                                    expectedAnswerCount = total,
+                                    pendingAnswers = pending.map { it.toItem() },
+                                ),
+                            ).unwrapData { it.data }
                     }
                 if (result.answersStored) markSubmitted(pending)
-                result.serverTime?.let(onServerTime)
+                onServerTime(result.serverTime)
                 return result
             } catch (cancellation: CancellationException) {
                 throw cancellation
@@ -245,9 +247,9 @@ class ExamRepository(
         }
     }
 
-    suspend fun heartbeat(sessionId: String): SessionHeartbeatResponse? =
+    suspend fun heartbeat(sessionId: String): SessionHeartbeatDto? =
         try {
-            guarded { api.sessionHeartbeat(sessionId) }
+            guarded { api.sessionExamControllerHeartbeatNow(deviceId(), sessionId).unwrapData { it.data } }
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (error: Exception) {
@@ -263,15 +265,17 @@ class ExamRepository(
         try {
             val dto =
                 guarded {
-                    api.reportSuspension(
-                        sessionId,
-                        SuspensionRequest(SUSPENSION_REASON_CALL, seconds, clientId),
-                    )
+                    api
+                        .sessionExamControllerSuspension(
+                            deviceId(),
+                            sessionId,
+                            SessionSuspensionRequestDto(SessionSuspensionRequestDto.Reason.CALL, seconds, clientId),
+                        ).unwrapData { it.data }
                 }
             Result.success(
                 SuspensionResult(
                     deadlineMillis = parseIsoMillis(dto.deadline),
-                    finalizeAtMillis = dto.finalizeAt?.let { runCatching { parseIsoMillis(it) }.getOrNull() },
+                    finalizeAtMillis = dto.finalizeAt.let { runCatching { parseIsoMillis(it) }.getOrNull() },
                     extraMinutes = dto.extraMinutes,
                     suspendedSeconds = dto.suspendedSeconds,
                 ),
@@ -288,7 +292,9 @@ class ExamRepository(
         count: Int,
     ): Int? =
         try {
-            guarded { api.reportViolations(sessionId, ViolationReport(count)) }.violationCount
+            guarded {
+                api.sessionExamControllerViolations(deviceId(), sessionId, RecordViolationsRequestDto(count)).unwrapData { it.data }
+            }.violationCount
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (error: Exception) {
@@ -381,18 +387,20 @@ class ExamRepository(
                 val result =
                     try {
                         guarded {
-                            api.saveAnswersBatch(
-                                sessionId,
-                                SaveAnswersBatchRequest(
-                                    answers = chunk.map { it.toItem() },
-                                    pendingLocalCount = pending.size - chunk.size,
-                                    batteryLevel = batteryLevel,
-                                    isCharging = isCharging,
-                                    dndGranted = dndGranted,
-                                    lockTaskActive = lockTaskActive,
-                                    batteryUnrestricted = batteryUnrestricted,
-                                ),
-                            )
+                            api
+                                .sessionExamControllerSaveBatch(
+                                    deviceId(),
+                                    sessionId,
+                                    SaveAnswersBatchDto(
+                                        answers = chunk.map { it.toItem() },
+                                        pendingLocalCount = pending.size - chunk.size,
+                                        batteryLevel = batteryLevel,
+                                        isCharging = isCharging,
+                                        dndGranted = dndGranted,
+                                        lockTaskActive = lockTaskActive,
+                                        batteryUnrestricted = batteryUnrestricted,
+                                    ),
+                                ).unwrapData { it.data }
                         }
                     } catch (cancellation: CancellationException) {
                         throw cancellation
@@ -460,7 +468,7 @@ class ExamRepository(
                     }
                 }
                 skipped += rebind
-                result.serverTime?.let(onServerTime)
+                onServerTime(result.serverTime)
                 if (rebind > 0 && skipped <= MAX_REBIND) continue
                 if (progressed == 0) break
                 if (chunk.size < MAX_BATCH_SIZE) break
@@ -492,13 +500,15 @@ class ExamRepository(
         for (chunk in queued.chunked(MAX_EVENT_BATCH)) {
             val response =
                 guarded {
-                    api.recordSessionEvents(
-                        sessionId,
-                        RecordSessionEventsRequest(chunk.map { it.toUploadItem() }),
-                    )
+                    api
+                        .sessionExamControllerEvents(
+                            deviceId(),
+                            sessionId,
+                            RecordSessionEventsRequestDto(chunk.map { it.toUploadItem() }),
+                        ).unwrapData { it.data }
                 }
             eventDao.markSynced(chunk.map { it.clientId })
-            response.serverTime?.let(onServerTime)
+            onServerTime(response.serverTime)
             uploaded += chunk.size
             reentry = reentry || response.requiresTokenReentry
             locked = locked || response.lockedByViolation
@@ -512,21 +522,23 @@ class ExamRepository(
     ): ResumedSession {
         val result =
             guarded {
-                api.resumeSession(
-                    sessionId,
-                    ResumeSessionRequest(accessCode.trim(), deviceId()),
-                )
+                api
+                    .sessionExamControllerResume(
+                        deviceId(),
+                        sessionId,
+                        ResumeSessionRequestDto(accessCode.trim(), deviceId()),
+                    ).unwrapData { it.data }
             }
         onServerTime(result.serverTime)
         return ResumedSession(
-            status = result.status,
+            status = result.status.value,
             deadlineMillis = runCatching { parseIsoMillis(result.deadline) }.getOrNull(),
             requiresTokenReentry = result.requiresTokenReentry,
         )
     }
 
     suspend fun pullServerAnswers(sessionId: String): Int {
-        val remote = guarded { api.getAnswers(sessionId) }
+        val remote = guarded { api.sessionExamControllerAnswers(deviceId(), sessionId).unwrapData { it.data } }
         var imported = 0
         for (item in remote) {
             val payload = AnswerPayload.fromJson(item.answer) ?: continue
@@ -578,9 +590,9 @@ class ExamRepository(
 }
 
 private fun CachedSessionEventEntity.toUploadItem() =
-    SessionEventUploadItem(
+    SessionEventItemDto(
         clientId = clientId,
-        type = type,
+        type = SessionEventItemDto.Type.valueOf(type),
         isViolation = isViolation,
         detail = detail,
         occurredAt = isoFromMillis(occurredAtMs),
@@ -606,7 +618,7 @@ private fun PaperQuestionDto.toEntity(
     sessionId = sessionId,
     id = id,
     number = number,
-    type = type,
+    type = type.value,
     bodyHtml = bodyHtml,
     points = points,
     choicesJson =
@@ -620,7 +632,7 @@ private fun CachedQuestionEntity.toDto() =
     PaperQuestionDto(
         id = id,
         number = number,
-        type = type,
+        type = PaperQuestionDto.Type.valueOf(type),
         bodyHtml = bodyHtml,
         points = points,
         choices =

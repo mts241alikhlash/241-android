@@ -1,25 +1,28 @@
 package id.sch.mts241alikhlash.exam.data.repository
 
+import id.sch.mts241alikhlash.exam.StubExamApi
+import id.sch.mts241alikhlash.exam.api.exam.models.PaperQuestionDto
+import id.sch.mts241alikhlash.exam.api.exam.models.RecordSessionEventsRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.RecordSessionEventsResponseDto
+import id.sch.mts241alikhlash.exam.api.exam.models.RecordViolationsRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.ResumeSessionRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.ResumeSessionResponseDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SaveAnswersBatchDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SaveAnswersBatchResultDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SavedAnswerDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionPaperDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SubmitSessionRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SubmitSessionResponseDto
+import id.sch.mts241alikhlash.exam.api.exam.models.ViolationCountDto
 import id.sch.mts241alikhlash.exam.choices
 import id.sch.mts241alikhlash.exam.data.local.AnswerDao
 import id.sch.mts241alikhlash.exam.data.local.CachedAnswerEntity
 import id.sch.mts241alikhlash.exam.data.local.CachedQuestionEntity
 import id.sch.mts241alikhlash.exam.data.local.QuestionDao
-import id.sch.mts241alikhlash.exam.data.model.PaperQuestionDto
-import id.sch.mts241alikhlash.exam.data.model.RecordSessionEventsRequest
-import id.sch.mts241alikhlash.exam.data.model.RecordSessionEventsResponse
-import id.sch.mts241alikhlash.exam.data.model.ResumeSessionRequest
-import id.sch.mts241alikhlash.exam.data.model.ResumedSessionDto
-import id.sch.mts241alikhlash.exam.data.model.SaveAnswersBatchRequest
-import id.sch.mts241alikhlash.exam.data.model.SaveAnswersBatchResultDto
-import id.sch.mts241alikhlash.exam.data.model.SavedAnswerDto
-import id.sch.mts241alikhlash.exam.data.model.SessionPaperDto
-import id.sch.mts241alikhlash.exam.data.model.SubmitRequest
-import id.sch.mts241alikhlash.exam.data.model.SubmittedSessionDto
-import id.sch.mts241alikhlash.exam.data.model.ViolationCountDto
-import id.sch.mts241alikhlash.exam.data.model.ViolationReport
-import id.sch.mts241alikhlash.exam.data.remote.ExamApiService
+import id.sch.mts241alikhlash.exam.eventsResponse
+import id.sch.mts241alikhlash.exam.heartbeatOf
 import id.sch.mts241alikhlash.exam.paperOf
+import id.sch.mts241alikhlash.exam.submitted
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -288,7 +291,7 @@ private fun cached(
     sessionId = sessionId,
     id = id,
     number = 1,
-    type = "multiple_choice",
+    type = "MULTIPLE_CHOICE",
     bodyHtml = "<p>Soal $id</p>",
     points = 1.0,
     choicesJson = null,
@@ -299,7 +302,7 @@ private fun dto(id: String) =
     PaperQuestionDto(
         id = id,
         number = 1,
-        type = "multiple_choice",
+        type = PaperQuestionDto.Type.MULTIPLE_CHOICE,
         bodyHtml = "<p>Soal $id</p>",
         points = 1.0,
         choices = null,
@@ -386,19 +389,17 @@ private class FakeAnswerDao : AnswerDao {
 private class FakeApi(
     private val questions: List<PaperQuestionDto> = emptyList(),
     private val failure: Throwable? = null,
-) : ExamApiService {
+) : StubExamApi() {
     override suspend fun sessionHeartbeat(
         sessionId: String,
-    ): id.sch.mts241alikhlash.exam.data.model.SessionHeartbeatResponse =
-        id.sch.mts241alikhlash.exam.data.model
-            .SessionHeartbeatResponse()
+    ): id.sch.mts241alikhlash.exam.api.exam.models.SessionHeartbeatDto = heartbeatOf()
 
     override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
 
     override suspend fun submit(
         sessionId: String,
-        request: SubmitRequest,
-    ): SubmittedSessionDto = SubmittedSessionDto("SUBMITTED")
+        request: SubmitSessionRequestDto,
+    ): SubmitSessionResponseDto = submitted(SubmitSessionResponseDto.Status.SUBMITTED)
 
     var calls = 0
         private set
@@ -411,32 +412,33 @@ private class FakeApi(
 
     override suspend fun saveAnswersBatch(
         sessionId: String,
-        request: SaveAnswersBatchRequest,
+        request: SaveAnswersBatchDto,
     ): SaveAnswersBatchResultDto = throw UnsupportedOperationException("not used in QuestionCacheTest")
 
     override suspend fun recordSessionEvents(
         sessionId: String,
-        request: RecordSessionEventsRequest,
-    ): RecordSessionEventsResponse = RecordSessionEventsResponse()
+        request: RecordSessionEventsRequestDto,
+    ): RecordSessionEventsResponseDto = eventsResponse()
 
     override suspend fun resumeSession(
         sessionId: String,
-        request: ResumeSessionRequest,
-    ): ResumedSessionDto =
-        ResumedSessionDto(
+        request: ResumeSessionRequestDto,
+    ): ResumeSessionResponseDto =
+        ResumeSessionResponseDto(
             sessionId = sessionId,
-            status = "IN_PROGRESS",
+            status = ResumeSessionResponseDto.Status.IN_PROGRESS,
             deadline = "",
             serverTime = "",
+            requiresTokenReentry = false,
         )
 
     override suspend fun reportViolations(
         sessionId: String,
-        request: ViolationReport,
+        request: RecordViolationsRequestDto,
     ): ViolationCountDto = ViolationCountDto(request.count)
 
     override suspend fun reportSuspension(
         sessionId: String,
-        request: id.sch.mts241alikhlash.exam.data.model.SuspensionRequest,
-    ): id.sch.mts241alikhlash.exam.data.model.SuspensionResponseDto = throw UnsupportedOperationException("not used")
+        request: id.sch.mts241alikhlash.exam.api.exam.models.SessionSuspensionRequestDto,
+    ): id.sch.mts241alikhlash.exam.api.exam.models.SessionSuspensionDto = throw UnsupportedOperationException("not used")
 }

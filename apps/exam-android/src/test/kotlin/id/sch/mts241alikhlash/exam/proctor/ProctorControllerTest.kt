@@ -3,13 +3,17 @@ package id.sch.mts241alikhlash.exam.proctor
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
-import id.sch.mts241alikhlash.exam.data.model.CameraBlockedBody
+import id.sch.mts241alikhlash.exam.StubExamApi
+import id.sch.mts241alikhlash.exam.api.exam.models.CameraBlockedDto
+import id.sch.mts241alikhlash.exam.api.exam.models.ProctorSnapshotUploadedDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionExamControllerSnapshot201Response
 import kotlinx.coroutines.runBlocking
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import retrofit2.Response
 
 class ProctorControllerTest {
     private class TestOwner : LifecycleOwner {
@@ -48,30 +52,36 @@ class ProctorControllerTest {
     private class FakeApi(
         private val failures: Int = 0,
         private val failKinds: Set<String> = emptySet(),
-    ) : ProctorSnapshotApi {
+    ) : StubExamApi() {
         val kinds = mutableListOf<String>()
         var attempts = 0
         val blockedReasons = java.util.concurrent.CopyOnWriteArrayList<String>()
         val blockedLatch = java.util.concurrent.CountDownLatch(1)
 
-        override suspend fun uploadSnapshot(
+        override suspend fun sessionExamControllerSnapshot(
+            xDeviceId: String,
             sessionId: String,
+            file: MultipartBody.Part,
             kind: RequestBody,
             capturedAt: RequestBody,
-            file: MultipartBody.Part,
-        ) {
+            xClientPlatform: String?,
+        ): Response<SessionExamControllerSnapshot201Response> {
             attempts++
             val name = okio.Buffer().also { kind.writeTo(it) }.readUtf8()
             if (attempts <= failures || name in failKinds) throw IllegalStateException("offline")
             kinds += name
+            return Response.success(SessionExamControllerSnapshot201Response(data = ProctorSnapshotUploadedDto(evidenceId = null)))
         }
 
-        override suspend fun reportCameraBlocked(
+        override suspend fun sessionExamControllerCameraBlocked(
+            xDeviceId: String,
             sessionId: String,
-            request: CameraBlockedBody,
-        ) {
-            blockedReasons += request.reason
+            cameraBlockedDto: CameraBlockedDto,
+            xClientPlatform: String?,
+        ): Response<Unit> {
+            blockedReasons += cameraBlockedDto.reason.value
             blockedLatch.countDown()
+            return Response.success(Unit)
         }
     }
 

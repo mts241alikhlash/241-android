@@ -55,7 +55,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.sch.mts241alikhlash.exam.R
-import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
+import id.sch.mts241alikhlash.exam.api.exam.models.MyExamDto
 import id.sch.mts241alikhlash.exam.ui.components.ActionButton
 import id.sch.mts241alikhlash.exam.ui.components.ActionStyle
 import id.sch.mts241alikhlash.exam.ui.components.BrandCardOverlap
@@ -71,7 +71,7 @@ import id.sch.mts241alikhlash.exam.ui.theme.WebTokens
 
 @Composable
 private fun TokenHero(
-    exam: ExamSummaryDto?,
+    exam: MyExamDto?,
     resumeMode: Boolean,
     height: Dp,
 ) {
@@ -151,7 +151,7 @@ private fun TokenHero(
 @Composable
 fun TokenScreen(
     onStartExam: (sessionId: String) -> Unit,
-    exam: ExamSummaryDto? = null,
+    exam: MyExamDto? = null,
     loading: Boolean = false,
     error: String? = null,
     onBack: (() -> Unit)? = null,
@@ -336,7 +336,7 @@ fun TokenScreen(
 }
 
 @Composable
-private fun ExamDetailCard(exam: ExamSummaryDto) {
+private fun ExamDetailCard(exam: MyExamDto) {
     val shape = RoundedCornerShape(10.dp)
     Column(
         modifier =

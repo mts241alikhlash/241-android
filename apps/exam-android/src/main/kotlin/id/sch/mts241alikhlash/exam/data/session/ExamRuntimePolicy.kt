@@ -1,6 +1,6 @@
 package id.sch.mts241alikhlash.exam.data.session
 
-import id.sch.mts241alikhlash.exam.data.model.ExamPolicyDto
+import id.sch.mts241alikhlash.exam.api.exam.models.ExamPolicyDto
 
 object ExamRuntimePolicy {
     @Volatile

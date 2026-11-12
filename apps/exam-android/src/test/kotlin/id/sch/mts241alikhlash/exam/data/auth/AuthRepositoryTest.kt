@@ -1,13 +1,17 @@
 package id.sch.mts241alikhlash.exam.data.auth
 
-import id.sch.mts241alikhlash.exam.data.remote.ApiEnvelope
+import id.sch.mts241alikhlash.exam.api.identity.apis.NativeAuthenticationApi
+import id.sch.mts241alikhlash.exam.api.identity.models.NativeAuthControllerLogin200Response
+import id.sch.mts241alikhlash.exam.api.identity.models.NativeAuthResponseDto
+import id.sch.mts241alikhlash.exam.api.identity.models.NativeLoginDto
+import id.sch.mts241alikhlash.exam.api.identity.models.NativeLogoutDto
+import id.sch.mts241alikhlash.exam.api.identity.models.NativeRefreshDto
+import id.sch.mts241alikhlash.exam.api.identity.models.NativeUserDto
 import id.sch.mts241alikhlash.exam.data.remote.ApiException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -32,26 +36,26 @@ class InMemoryTokenStore : TokenStore {
     }
 }
 
-class FakeAuthApi : AuthApiService {
-    var loginResult: () -> AuthResponseDto = { authResponse(roles = listOf("STUDENT")) }
-    var refreshResult: () -> AuthResponseDto = { authResponse(access = "access-2", refresh = "refresh-2") }
+open class FakeAuthApi : NativeAuthenticationApi {
+    var loginResult: () -> NativeAuthResponseDto = { authResponse(roles = listOf("STUDENT")) }
+    var refreshResult: () -> NativeAuthResponseDto = { authResponse(access = "access-2", refresh = "refresh-2") }
     var logoutFails = false
     var refreshCalls = 0
     var logoutCalls = 0
     var refreshDelayMillis = 0L
 
-    override suspend fun login(request: LoginRequest): ApiEnvelope<AuthResponseDto> = ApiEnvelope(200, "OK", loginResult())
+    override suspend fun nativeAuthControllerLogin(nativeLoginDto: NativeLoginDto): Response<NativeAuthControllerLogin200Response> = Response.success(NativeAuthControllerLogin200Response(data = loginResult()))
 
-    override suspend fun refresh(request: RefreshRequest): ApiEnvelope<AuthResponseDto> {
+    override suspend fun nativeAuthControllerRefresh(nativeRefreshDto: NativeRefreshDto): Response<NativeAuthControllerLogin200Response> {
         refreshCalls++
         if (refreshDelayMillis > 0) delay(refreshDelayMillis)
-        return ApiEnvelope(200, "OK", refreshResult())
+        return Response.success(NativeAuthControllerLogin200Response(data = refreshResult()))
     }
 
-    override suspend fun logout(request: LogoutRequest): ApiEnvelope<JsonElement> {
+    override suspend fun nativeAuthControllerLogout(nativeLogoutDto: NativeLogoutDto): Response<Unit> {
         logoutCalls++
         if (logoutFails) throw IOException("offline")
-        return ApiEnvelope(200, "OK", JsonNull)
+        return Response.success(Unit)
     }
 }
 
@@ -59,11 +63,11 @@ fun authResponse(
     access: String = "access-1",
     refresh: String? = "refresh-1",
     roles: List<String> = listOf("STUDENT"),
-) = AuthResponseDto(
+) = NativeAuthResponseDto(
     accessToken = access,
     refreshToken = refresh,
-    expiresIn = 900,
-    user = AuthUserDto(id = "u1", name = "Ahmad", roles = roles),
+    expiresIn = 900L,
+    user = NativeUserDto(id = "u1", name = "Ahmad", roles = roles),
 )
 
 fun httpError(code: Int): HttpException =
@@ -89,7 +93,7 @@ class AuthRepositoryTest {
             val stored = store.value!!
             assertEquals("access-1", stored.tokens.accessToken)
             assertEquals("refresh-1", stored.tokens.refreshToken)
-            assertEquals(clock + 900_000L, stored.tokens.expiresAtMillis)
+            assertEquals(clock + 900_000L, stored.tokens.expiresAtEpochMillis)
             assertTrue(stored.user.isStudent)
         }
 
@@ -166,8 +170,8 @@ class AuthRepositoryTest {
         runTest {
             repo.login("ahmad", "secret", requiredRole = "STUDENT")
             val failing =
-                object : AuthApiService by api {
-                    override suspend fun refresh(request: RefreshRequest): ApiEnvelope<AuthResponseDto> = throw httpError(401)
+                object : NativeAuthenticationApi by api {
+                    override suspend fun nativeAuthControllerRefresh(nativeRefreshDto: NativeRefreshDto): Response<NativeAuthControllerLogin200Response> = throw httpError(401)
                 }
             val failingRepo = AuthRepository(failing, store, { "device-1" }, { clock })
 
@@ -180,8 +184,8 @@ class AuthRepositoryTest {
         runTest {
             repo.login("ahmad", "secret", requiredRole = "STUDENT")
             val offline =
-                object : AuthApiService by api {
-                    override suspend fun refresh(request: RefreshRequest): ApiEnvelope<AuthResponseDto> = throw IOException("offline")
+                object : NativeAuthenticationApi by api {
+                    override suspend fun nativeAuthControllerRefresh(nativeRefreshDto: NativeRefreshDto): Response<NativeAuthControllerLogin200Response> = throw IOException("offline")
                 }
             val offlineRepo = AuthRepository(offline, store, { "device-1" }, { clock })
 
@@ -260,7 +264,7 @@ class AuthRepositoryTest {
             api.refreshResult = { throw httpError(401) }
             repo.refresh(clearOnRejected = false)
             api.loginResult = {
-                authResponse(access = "access-9").copy(user = AuthUserDto("u2", "Budi", listOf("STUDENT")))
+                authResponse(access = "access-9").copy(user = NativeUserDto("u2", "Budi", listOf("STUDENT")))
             }
 
             val error = runCatching { repo.relogin("budi", "secret") }.exceptionOrNull() as ApiException
@@ -285,7 +289,7 @@ class AuthRepositoryTest {
         runTest {
             repo.login("ahmad", "secret", requiredRole = "STUDENT")
             api.loginResult = {
-                authResponse(access = "access-9").copy(user = AuthUserDto("u2", "Budi", listOf("STUDENT")))
+                authResponse(access = "access-9").copy(user = NativeUserDto("u2", "Budi", listOf("STUDENT")))
             }
 
             runCatching { repo.relogin("budi", "secret") }

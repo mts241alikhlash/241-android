@@ -28,19 +28,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
+import id.sch.mts241alikhlash.exam.api.exam.models.MyExamDto
 import id.sch.mts241alikhlash.exam.data.repository.StudentProfile
 import id.sch.mts241alikhlash.exam.ui.components.CardHeader
 import id.sch.mts241alikhlash.exam.ui.components.PrimaryButton
 import id.sch.mts241alikhlash.exam.ui.theme.DMSansFontFamily
 import id.sch.mts241alikhlash.exam.ui.theme.WebTokens
 
-fun profileCardExam(exams: List<ExamSummaryDto>): ExamSummaryDto? =
+fun profileCardExam(exams: List<MyExamDto>): MyExamDto? =
     // shortcut: ISO-8601 UTC strings sort lexicographically, parse if the formats ever vary
-    exams.filter { it.lifecycle == "OPEN" }.minByOrNull { it.startsAt }
+    exams.filter { it.lifecycle == MyExamDto.Lifecycle.OPEN }.minByOrNull { it.startsAt }
 
-fun profileExamRows(exam: ExamSummaryDto?): List<Pair<String, String>> {
-    if (exam?.lifecycle != "OPEN") return emptyList()
+fun profileExamRows(exam: MyExamDto?): List<Pair<String, String>> {
+    if (exam?.lifecycle != MyExamDto.Lifecycle.OPEN) return emptyList()
     val unset = "Belum ditetapkan"
     return listOfNotNull(
         exam.eventName?.takeIf { it.isNotBlank() }?.let { "Ujian" to it },
@@ -53,7 +53,7 @@ fun profileExamRows(exam: ExamSummaryDto?): List<Pair<String, String>> {
 @Composable
 fun ProfileScreen(
     viewModel: ProfileViewModel,
-    exam: ExamSummaryDto?,
+    exam: MyExamDto?,
 ) {
     val state by viewModel.state.collectAsState()
     when (val current = state) {
@@ -94,7 +94,7 @@ fun ProfileScreen(
 @Composable
 private fun ProfileContent(
     profile: StudentProfile,
-    exam: ExamSummaryDto?,
+    exam: MyExamDto?,
 ) {
     Column(
         modifier =

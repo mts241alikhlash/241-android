@@ -1,11 +1,12 @@
 package id.sch.mts241alikhlash.exam.data.repository
 
-import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
-import id.sch.mts241alikhlash.exam.data.model.StartSessionRequest
-import id.sch.mts241alikhlash.exam.data.model.StartedSessionDto
+import id.sch.mts241alikhlash.exam.StubExamApi
+import id.sch.mts241alikhlash.exam.api.exam.models.MyExamDto
+import id.sch.mts241alikhlash.exam.api.exam.models.StartSessionDto
+import id.sch.mts241alikhlash.exam.api.exam.models.StartedSessionDto
 import id.sch.mts241alikhlash.exam.data.remote.ApiException
-import id.sch.mts241alikhlash.exam.data.remote.ExamCatalogApiService
 import id.sch.mts241alikhlash.exam.data.session.ServerClock
+import id.sch.mts241alikhlash.exam.myExam
 import kotlinx.coroutines.test.runTest
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
@@ -15,27 +16,27 @@ import retrofit2.Response
 
 class ExamCatalogRepositoryTest {
     private val exam =
-        ExamSummaryDto(
+        myExam(
             id = "e1",
             title = "UTS Matematika",
             subjectId = "s1",
             startsAt = "2026-11-01T01:00:00Z",
             endsAt = "2026-11-01T03:00:00Z",
             durationMinutes = 90,
-            status = "OPEN",
+            status = MyExamDto.Status.OPEN,
         )
 
     private class FakeCatalogApi(
-        var exams: List<ExamSummaryDto> = emptyList(),
+        var exams: List<MyExamDto> = emptyList(),
         var started: () -> StartedSessionDto = { StartedSessionDto("s1", 0, 0) },
-    ) : ExamCatalogApiService {
-        var lastRequest: StartSessionRequest? = null
+    ) : StubExamApi() {
+        var lastRequest: StartSessionDto? = null
 
-        override suspend fun listExams(): List<ExamSummaryDto> = exams
+        override suspend fun listExams(): List<MyExamDto> = exams
 
         override suspend fun startSession(
             examId: String,
-            request: StartSessionRequest,
+            request: StartSessionDto,
         ): StartedSessionDto {
             lastRequest = request
             return started()
@@ -61,7 +62,7 @@ class ExamCatalogRepositoryTest {
             assertEquals("s1", session.sessionId)
             assertEquals(65_000L, session.deadlineLocalMillis)
             assertEquals(5_000L, clock.nowMillis())
-            assertEquals(StartSessionRequest("ABC123", "device-1"), api.lastRequest)
+            assertEquals(StartSessionDto("ABC123", "device-1"), api.lastRequest)
         }
 
     @Test

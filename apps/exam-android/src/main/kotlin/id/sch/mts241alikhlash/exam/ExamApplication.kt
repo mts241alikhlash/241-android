@@ -1,7 +1,9 @@
 package id.sch.mts241alikhlash.exam
 
 import android.app.Application
-import id.sch.mts241alikhlash.exam.data.auth.AuthApiService
+import id.sch.mts241alikhlash.exam.api.exam.apis.StudentExamsApi
+import id.sch.mts241alikhlash.exam.api.identity.apis.NativeAuthenticationApi
+import id.sch.mts241alikhlash.exam.api.student.apis.StudentsApi
 import id.sch.mts241alikhlash.exam.data.auth.AuthInterceptor
 import id.sch.mts241alikhlash.exam.data.auth.AuthRepository
 import id.sch.mts241alikhlash.exam.data.auth.KeystoreTokenStore
@@ -10,9 +12,6 @@ import id.sch.mts241alikhlash.exam.data.auth.TokenAuthenticator
 import id.sch.mts241alikhlash.exam.data.auth.authLoggingInterceptor
 import id.sch.mts241alikhlash.exam.data.local.ExamDatabase
 import id.sch.mts241alikhlash.exam.data.remote.DeviceIdInterceptor
-import id.sch.mts241alikhlash.exam.data.remote.EnvelopeConverterFactory
-import id.sch.mts241alikhlash.exam.data.remote.ExamApiService
-import id.sch.mts241alikhlash.exam.data.remote.ExamCatalogApiService
 import id.sch.mts241alikhlash.exam.data.repository.ExamCatalogRepository
 import id.sch.mts241alikhlash.exam.data.repository.ExamRepository
 import id.sch.mts241alikhlash.exam.data.session.DataStoreSessionStore
@@ -48,10 +47,7 @@ class ExamApplication : Application() {
     lateinit var imageLoader: coil3.ImageLoader
         private set
 
-    lateinit var examApi: ExamApiService
-        private set
-
-    lateinit var retrofit: Retrofit
+    lateinit var examApi: StudentExamsApi
         private set
 
     @Volatile
@@ -94,7 +90,7 @@ class ExamApplication : Application() {
                 .client(authClient)
                 .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
                 .build()
-                .create(AuthApiService::class.java)
+                .create(NativeAuthenticationApi::class.java)
 
         supervisorVerifier = SupervisorVerifier(authApi) { deviceId() }
 
@@ -128,22 +124,20 @@ class ExamApplication : Application() {
                 .Builder()
                 .baseUrl(BuildConfig.BASE_URL)
                 .client(client)
-                .addConverterFactory(EnvelopeConverterFactory())
                 .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
                 .build()
 
-        val api = retrofit.create(ExamApiService::class.java)
+        val api = retrofit.create(StudentExamsApi::class.java)
         examApi = api
-        this.retrofit = retrofit
         catalogRepository =
             ExamCatalogRepository(
-                api = retrofit.create(ExamCatalogApiService::class.java),
+                api = api,
                 deviceId = { deviceId() },
                 clock = serverClock,
             )
         profileRepository =
             id.sch.mts241alikhlash.exam.data.repository.StudentProfileRepository(
-                retrofit.create(id.sch.mts241alikhlash.exam.data.remote.StudentApiService::class.java),
+                retrofit.create(StudentsApi::class.java),
             )
         val database = ExamDatabase.getInstance(this)
 
@@ -158,7 +152,7 @@ class ExamApplication : Application() {
             )
     }
 
-    private fun deviceId(): String =
+    fun deviceId(): String =
         android.provider.Settings.Secure
             .getString(contentResolver, android.provider.Settings.Secure.ANDROID_ID)
             .orEmpty()

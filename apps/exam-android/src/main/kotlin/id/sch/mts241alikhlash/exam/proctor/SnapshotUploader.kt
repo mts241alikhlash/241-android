@@ -1,39 +1,20 @@
 package id.sch.mts241alikhlash.exam.proctor
 
-import id.sch.mts241alikhlash.exam.data.model.CameraBlockedBody
+import id.sch.mts241alikhlash.exam.api.exam.apis.StudentExamsApi
+import id.sch.mts241alikhlash.exam.api.exam.models.CameraBlockedDto
+import id.sch.mts241alikhlash.exam.data.remote.unwrapData
+import id.sch.mts241alikhlash.exam.data.remote.unwrapUnit
 import kotlinx.coroutines.CancellationException
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
-import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import retrofit2.http.Body
-import retrofit2.http.Multipart
-import retrofit2.http.POST
-import retrofit2.http.Part
-import retrofit2.http.Path
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
 
-interface ProctorSnapshotApi {
-    @Multipart
-    @POST("student-exams/{sessionId}/proctor-snapshot")
-    suspend fun uploadSnapshot(
-        @Path("sessionId") sessionId: String,
-        @Part("kind") kind: RequestBody,
-        @Part("capturedAt") capturedAt: RequestBody,
-        @Part file: MultipartBody.Part,
-    )
-
-    @POST("student-exams/{sessionId}/camera-blocked")
-    suspend fun reportCameraBlocked(
-        @Path("sessionId") sessionId: String,
-        @Body request: CameraBlockedBody,
-    )
-}
-
 class SnapshotUploader(
-    private val api: ProctorSnapshotApi,
+    private val api: StudentExamsApi,
+    private val deviceId: () -> String = { "" },
     private val log: (String) -> Unit = {},
 ) {
     suspend fun upload(
@@ -43,17 +24,19 @@ class SnapshotUploader(
         capturedAtMillis: Long,
     ): Boolean =
         try {
-            api.uploadSnapshot(
-                sessionId = sessionId,
-                kind = kind.name.toRequestBody(TEXT),
-                capturedAt = isoMillis(capturedAtMillis).toRequestBody(TEXT),
-                file =
-                    MultipartBody.Part.createFormData(
-                        "file",
-                        "snapshot.jpg",
-                        jpeg.toRequestBody(JPEG),
-                    ),
-            )
+            api
+                .sessionExamControllerSnapshot(
+                    xDeviceId = deviceId(),
+                    sessionId = sessionId,
+                    kind = kind.name.toRequestBody(TEXT),
+                    capturedAt = isoMillis(capturedAtMillis).toRequestBody(TEXT),
+                    file =
+                        MultipartBody.Part.createFormData(
+                            "file",
+                            "snapshot.jpg",
+                            jpeg.toRequestBody(JPEG),
+                        ),
+                ).unwrapData { it.data }
             true
         } catch (cancellation: CancellationException) {
             throw cancellation
@@ -67,7 +50,12 @@ class SnapshotUploader(
         reason: String,
     ): Boolean =
         try {
-            api.reportCameraBlocked(sessionId, CameraBlockedBody(reason))
+            api
+                .sessionExamControllerCameraBlocked(
+                    deviceId(),
+                    sessionId,
+                    CameraBlockedDto(CameraBlockedDto.Reason.entries.first { it.value == reason }),
+                ).unwrapUnit()
             true
         } catch (cancellation: CancellationException) {
             throw cancellation

@@ -2,7 +2,7 @@ package id.sch.mts241alikhlash.exam.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
+import id.sch.mts241alikhlash.exam.api.exam.models.MyExamDto
 import id.sch.mts241alikhlash.exam.data.remote.ApiException
 import id.sch.mts241alikhlash.exam.data.remote.GENERIC_ERROR_MESSAGE
 import id.sch.mts241alikhlash.exam.data.repository.ExamCatalogRepository
@@ -18,7 +18,7 @@ sealed interface ExamListUiState {
     data object Empty : ExamListUiState
 
     data class Content(
-        val exams: List<ExamSummaryDto>,
+        val exams: List<MyExamDto>,
         val staleMessage: String? = null,
     ) : ExamListUiState
 
@@ -30,36 +30,27 @@ sealed interface ExamListUiState {
 
 fun examTypeLabel(type: String?): String? =
     when (type) {
-        "UH" -> "UH"
-        "QUIZ" -> "Quiz"
+        "DAILY" -> "Ulangan Harian"
         "ASSIGNMENT" -> "Tugas"
-        "UTS" -> "UTS"
-        "UAS" -> "UAS"
+        "MIDTERM" -> "UTS"
+        "FINAL" -> "UAS"
         else -> null
     }
 
-fun ExamSummaryDto.displayTitle(): String {
-    val label = examTypeLabel(type)
+fun MyExamDto.displayTitle(): String {
+    val label = examTypeLabel(type.value)
     val subject = subjectName?.takeIf { it.isNotBlank() }
     return if (label != null && subject != null) "$label - $subject" else title
 }
 
-fun ExamSummaryDto.isSelectable(): Boolean =
-    when (lifecycle) {
-        null -> status == "OPEN" || status == "IN_PROGRESS"
-        else -> lifecycle == "OPEN"
-    }
+fun MyExamDto.isSelectable(): Boolean = lifecycle == MyExamDto.Lifecycle.OPEN
 
-fun ExamSummaryDto.isExpandable(): Boolean = (lifecycle ?: status) != "FINISHED"
-
-private val EXAM_WORK_TYPES = setOf("UTS", "UAS")
-
-fun isExamWork(exam: ExamSummaryDto): Boolean = exam.makeup || exam.type in EXAM_WORK_TYPES
+fun MyExamDto.isExpandable(): Boolean = lifecycle != MyExamDto.Lifecycle.FINISHED
 
 fun examMenuExams(
-    exams: List<ExamSummaryDto>,
+    exams: List<MyExamDto>,
     examWork: Boolean,
-): List<ExamSummaryDto> = exams.filter { isExamWork(it) == examWork }
+): List<MyExamDto> = exams.filter { it.category == if (examWork) MyExamDto.Category.EXAM else MyExamDto.Category.NON_EXAM }
 
 class ExamListViewModel(
     private val catalog: ExamCatalogRepository,

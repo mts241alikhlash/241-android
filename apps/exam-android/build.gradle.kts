@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.mts241.android.application.compose)
     alias(libs.plugins.mts241.room)
     alias(libs.plugins.mts241.lint)
+    alias(libs.plugins.mts241.openapi.client)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.paparazzi)
 }

@@ -35,7 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
+import id.sch.mts241alikhlash.exam.api.exam.models.MyExamDto
 import id.sch.mts241alikhlash.exam.ui.components.ActionButton
 import id.sch.mts241alikhlash.exam.ui.components.AppDialog
 import id.sch.mts241alikhlash.exam.ui.components.CardHeader
@@ -43,7 +43,7 @@ import id.sch.mts241alikhlash.exam.ui.theme.DMSansFontFamily
 import id.sch.mts241alikhlash.exam.ui.theme.WebTokens
 
 private data class ScheduleEntry(
-    val exam: ExamSummaryDto,
+    val exam: MyExamDto,
     val window: ExamWindow,
 )
 
@@ -52,29 +52,21 @@ private data class ScheduleGroup(
     val entries: List<ScheduleEntry>,
 )
 
-private val TYPE_ORDER = listOf("UTS", "UAS", "UH", "QUIZ", "ASSIGNMENT")
+private val TYPE_ORDER = listOf(MyExamDto.Type.FINAL, MyExamDto.Type.MIDTERM, MyExamDto.Type.DAILY, MyExamDto.Type.ASSIGNMENT)
 
 private fun groupsOf(entries: List<ScheduleEntry>): List<ScheduleGroup> {
     val known =
         TYPE_ORDER.mapNotNull { type ->
             val inType = entries.filter { it.exam.type == type }
-            if (inType.isEmpty()) null else ScheduleGroup("Jadwal ${examTypeName(type)}", inType)
+            if (inType.isEmpty()) null else ScheduleGroup("Jadwal ${examTypeLabel(type.value)}", inType)
         }
     val other = entries.filter { it.exam.type !in TYPE_ORDER }
     return if (other.isEmpty()) known else known + ScheduleGroup("Jadwal lainnya", other)
 }
 
-private fun examTypeName(type: String): String =
-    when (type) {
-        "UH" -> "Ulangan Harian"
-        "QUIZ" -> "Quiz"
-        "ASSIGNMENT" -> "Tugas"
-        else -> type
-    }
-
-private fun scheduleOf(exams: List<ExamSummaryDto>): List<ScheduleEntry> =
+private fun scheduleOf(exams: List<MyExamDto>): List<ScheduleEntry> =
     exams
-        .filter { it.status != "FINISHED" }
+        .filter { it.status != MyExamDto.Status.FINISHED }
         .sortedBy { it.startsAt }
         .mapNotNull { exam -> examWindow(exam.startsAt, exam.endsAt)?.let { ScheduleEntry(exam, it) } }
 

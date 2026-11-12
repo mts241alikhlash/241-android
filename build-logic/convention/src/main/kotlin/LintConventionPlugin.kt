@@ -19,6 +19,7 @@ class LintConventionPlugin : Plugin<Project> {
 
 private fun Lint.configureLint() {
     warningsAsErrors = true
+    checkGeneratedSources = false
     disable +=
         setOf(
             "LockedOrientationActivity",
