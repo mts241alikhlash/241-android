@@ -320,34 +320,6 @@ class ExamRepositoryTest {
             assertNotEquals("c-q1", entity.clientId)
             assertEquals(null, entity.confirmedAtMillis)
         }
-
-    @Test
-    fun `the busy flag stays set until the outermost submit returns`() =
-        runTest {
-            val ids = (1..251).map { "q$it" }
-            val dao = InMemoryAnswerDao(*ids.map { pendingAnswer(it) }.toTypedArray())
-            val api = BatchApi()
-            val batchGate = CompletableDeferred<Unit>()
-            val submitGate = CompletableDeferred<Unit>()
-            api.gate = batchGate
-            api.submitGate = submitGate
-            val repository = repo(api, dao)
-
-            val job = launch { repository.submit("s1") }
-            runCurrent()
-            assertTrue("the nested sync is still running", repository.isSyncingOrSubmitting)
-
-            batchGate.complete(Unit)
-            runCurrent()
-            assertEquals(251, api.batches.sumOf { it.answers.size })
-            assertEquals(1, api.submits.size)
-            assertTrue("the outer submit is still running", repository.isSyncingOrSubmitting)
-
-            submitGate.complete(Unit)
-            job.join()
-
-            assertTrue(!repository.isSyncingOrSubmitting)
-        }
 }
 
 private class BatchApi(

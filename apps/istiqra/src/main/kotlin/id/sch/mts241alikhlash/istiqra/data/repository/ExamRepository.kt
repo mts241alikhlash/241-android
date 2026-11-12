@@ -35,7 +35,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.util.UUID
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.cancellation.CancellationException
 
 data class SyncBatchOutcome(
@@ -117,19 +116,6 @@ class ExamRepository(
 ) {
     private val sendLock = Mutex()
 
-    private val sendDepth = AtomicInteger()
-
-    val isSyncingOrSubmitting: Boolean get() = sendDepth.get() > 0
-
-    private suspend fun <T> sending(block: suspend () -> T): T {
-        sendDepth.incrementAndGet()
-        try {
-            return block()
-        } finally {
-            sendDepth.decrementAndGet()
-        }
-    }
-
     fun observeAnswers(sessionId: String): Flow<List<CachedAnswerEntity>> = dao.observeAnswers(sessionId)
 
     suspend fun getQuestions(
@@ -190,7 +176,7 @@ class ExamRepository(
     suspend fun submit(
         sessionId: String,
         violations: Int = 0,
-    ): SubmitSessionResponseDto = sending { submitLoop(sessionId, violations) }
+    ): SubmitSessionResponseDto = submitLoop(sessionId, violations)
 
     private suspend fun submitLoop(
         sessionId: String,
@@ -355,10 +341,7 @@ class ExamRepository(
         dndGranted: Boolean? = null,
         lockTaskActive: Boolean? = null,
         batteryUnrestricted: Boolean? = null,
-    ): SyncBatchOutcome =
-        sending {
-            syncPendingBatchLoop(sessionId, batteryLevel, isCharging, dndGranted, lockTaskActive, batteryUnrestricted)
-        }
+    ): SyncBatchOutcome = syncPendingBatchLoop(sessionId, batteryLevel, isCharging, dndGranted, lockTaskActive, batteryUnrestricted)
 
     private suspend fun syncPendingBatchLoop(
         sessionId: String,
