@@ -26,7 +26,6 @@
 1. `include(":apps:<app>")` in `settings.gradle.kts`.
 2. `apps/<app>/build.gradle.kts` applies `mts241.android.application.compose` (add `mts241.room`,
    `mts241.lint` when it needs them) and writes only app-specific things: `applicationId`,
-   `versionCode`, `versionName`, flavors, the release `API_BASE_URL` default, signing, dependencies.
+   `versionCode`, `versionName`, the release `API_BASE_URL` default, signing, dependencies.
 3. Nothing else. CI covers every module through unqualified task names, and the release workflow reads
-   the app and version from the tag `<app>@<version>`; pass its `flavor` input when the app has flavors
-   other than the workflow default.
+   the app and version from the tag `<app>@<version>` and builds `assembleRelease`.

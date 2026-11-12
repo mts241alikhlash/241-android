@@ -8,15 +8,15 @@ Release builds are signed with a keystore stored **outside** this repository. If
 | --- | --- |
 | `RELEASE_STORE_FILE` | Absolute path to the `.jks` file |
 | `KEYSTORE_PASSWORD` | Store password |
-| `KEY_ALIAS` | Key alias (`exam-android`; one keystore per app) |
+| `KEY_ALIAS` | Key alias (`istiqra`; one keystore per app) |
 | `KEY_PASSWORD` | Key password |
 
 ## Create the keystore (once, by the owner, offline)
 
 ```bash
 keytool -genkeypair -v \
-  -keystore ~/keys/exam-android-release.jks \
-  -alias exam-android \
+  -keystore ~/keys/istiqra-release.jks \
+  -alias istiqra \
   -keyalg RSA -keysize 2048 -validity 10000
 ```
 
@@ -28,24 +28,24 @@ Back it up offline before the first APK is distributed. Losing it means no insta
 ## Build locally
 
 ```bash
-export RELEASE_STORE_FILE="$HOME/keys/exam-android-release.jks"
-export KEYSTORE_PASSWORD='…' KEY_ALIAS='exam-android' KEY_PASSWORD='…'
-./gradlew :apps:exam-android:assembleProctorRelease
+export RELEASE_STORE_FILE="$HOME/keys/istiqra-release.jks"
+export KEYSTORE_PASSWORD='…' KEY_ALIAS='istiqra' KEY_PASSWORD='…'
+./gradlew :apps:istiqra:assembleRelease
 "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs \
-  apps/exam-android/build/outputs/apk/proctor/release/*.apk
+  apps/istiqra/build/outputs/apk/release/*.apk
 ```
 
-Expected: the certificate matches the release key. `./gradlew :apps:exam-android:signingReport` exits 0 even without credentials; `Config: null` there means the APK would be unsigned.
+Expected: the certificate matches the release key. `./gradlew :apps:istiqra:signingReport` exits 0 even without credentials; `Config: null` there means the APK would be unsigned.
 
 ## Release through CI
 
-1. Raise `versionCode` (it must always increase) and set `versionName` in `apps/exam-android/build.gradle.kts`. While below `1.0.0`, a breaking change raises the minor version.
-2. Merge, then push the tag `exam-android@<versionName>`. The workflow reads the app and version from the tag and fails if `versionName` differs.
+1. Raise `versionCode` (it must always increase) and set `versionName` in `apps/istiqra/build.gradle.kts`. While below `1.0.0`, a breaking change raises the minor version.
+2. Merge, then push the tag `istiqra@<versionName>`. The workflow reads the app and version from the tag, fails if `versionName` differs, and publishes `istiqra-<versionName>.apk`.
 3. The four repository secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` come from the same keystore.
 
 ## Installing over an old app
 
-The application id changed to `id.sch.mts241alikhlash.exam`, so Android treats it as a new app, not an update. On a device that still has the old app, uninstall it first, then install this one and redo the kiosk setup (`apps/exam-android/docs/KIOSK.md`).
+From 0.2.0 the application id is `id.sch.mts241alikhlash.istiqra` and the app is signed with the `istiqra` keystore, so Android treats it as a new app, not an update. On a device that still has the old exam app (`id.sch.mts241alikhlash.exam`), uninstall it first, then install Istiqra and redo the kiosk setup (`apps/istiqra/docs/KIOSK.md`). Tags before 0.2.0 are `exam-android@<version>`.
 
 ## Room migration 2 to 3
 

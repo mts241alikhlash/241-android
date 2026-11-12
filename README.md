@@ -6,7 +6,7 @@ Android apps of Madrasah Tsanawiyah 241 Al-Ikhlash, in one Gradle repository.
 
 | Path | What |
 | --- | --- |
-| `apps/exam-android` | Student exam app (kiosk mode, optional camera proctoring) |
+| `apps/istiqra` | Istiqra, the student exam app (kiosk mode) |
 | `build-logic/` | Convention plugins (`mts241.*`); shared build config lives only here |
 | `gradle/libs.versions.toml` | The single version catalog |
 | `core/` | Shared modules, created when a second app needs them |

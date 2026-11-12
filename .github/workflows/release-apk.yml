@@ -11,15 +11,8 @@ on:
       api_base_url:
         description: 'API base URL baked into the APK (defaults to the app module default)'
       tag:
-        description: 'Release tag (e.g. exam-android@0.1.0). Required for workflow_dispatch.'
+        description: 'Release tag (e.g. istiqra@0.2.0). Required for workflow_dispatch.'
         required: true
-      flavor:
-        description: 'Product flavor: standard (no camera permission) or proctor (snapshot proctoring)'
-        type: choice
-        options:
-          - proctor
-          - standard
-        default: proctor
 
 permissions:
   contents: write
@@ -73,7 +66,6 @@ jobs:
       - name: Build signed release APK
         env:
           APP: ${{ steps.tag.outputs.app }}
-          FLAVOR: ${{ inputs.flavor || 'proctor' }}
           ORG_GRADLE_PROJECT_API_BASE_URL: ${{ inputs.api_base_url }}
           RELEASE_STORE_FILE: ${{ runner.temp }}/release.jks
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -82,20 +74,19 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x ./gradlew
-          ./gradlew ":apps:${APP}:assemble${FLAVOR^}Release" --no-daemon --stacktrace
+          ./gradlew ":apps:${APP}:assembleRelease" --no-daemon --stacktrace
 
       - name: Collect APK
         id: apk
         run: |
           set -euo pipefail
-          flavor="${{ inputs.flavor || 'proctor' }}"
           app="${{ steps.tag.outputs.app }}"
-          apk=$(find "apps/${app}/build/outputs/apk/${flavor}/release" -name '*.apk' -type f | head -1)
+          apk=$(find "apps/${app}/build/outputs/apk/release" -name '*.apk' -type f | head -1)
           if [ -z "$apk" ]; then
             echo "no release APK produced" >&2
             exit 1
           fi
-          name="241-${app}-${flavor}-${{ steps.tag.outputs.version }}.apk"
+          name="${app}-${{ steps.tag.outputs.version }}.apk"
           cp "$apk" "$RUNNER_TEMP/$name"
           echo "path=$RUNNER_TEMP/$name" >> "$GITHUB_OUTPUT"
           echo "name=$name" >> "$GITHUB_OUTPUT"
