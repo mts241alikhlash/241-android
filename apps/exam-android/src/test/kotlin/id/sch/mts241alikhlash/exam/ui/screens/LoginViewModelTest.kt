@@ -1,6 +1,9 @@
 package id.sch.mts241alikhlash.exam.ui.screens
 
 import id.sch.mts241alikhlash.exam.MainDispatcherRule
+import id.sch.mts241alikhlash.exam.api.identity.apis.NativeAuthenticationApi
+import id.sch.mts241alikhlash.exam.api.identity.models.NativeAuthControllerLogin200Response
+import id.sch.mts241alikhlash.exam.api.identity.models.NativeLoginDto
 import id.sch.mts241alikhlash.exam.data.auth.AuthRepository
 import id.sch.mts241alikhlash.exam.data.auth.FakeAuthApi
 import id.sch.mts241alikhlash.exam.data.auth.InMemoryTokenStore
@@ -11,6 +14,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
+import retrofit2.Response
 
 class LoginViewModelTest {
     @get:Rule
@@ -46,10 +50,10 @@ class LoginViewModelTest {
     @Test
     fun login_error_message_from_server_is_shown() {
         val failing =
-            object : id.sch.mts241alikhlash.exam.data.auth.AuthApiService by api {
-                override suspend fun login(
-                    request: id.sch.mts241alikhlash.exam.data.auth.LoginRequest,
-                ): id.sch.mts241alikhlash.exam.data.remote.ApiEnvelope<id.sch.mts241alikhlash.exam.data.auth.AuthResponseDto> = throw httpError(401)
+            object : NativeAuthenticationApi by api {
+                override suspend fun nativeAuthControllerLogin(
+                    nativeLoginDto: NativeLoginDto,
+                ): Response<NativeAuthControllerLogin200Response> = throw httpError(401)
             }
         val vm = LoginViewModel(AuthRepository(failing, store, { "device-1" }))
 
@@ -72,10 +76,10 @@ class LoginViewModelTest {
     @Test
     fun non_api_error_shows_generic_message() {
         val failing =
-            object : id.sch.mts241alikhlash.exam.data.auth.AuthApiService by api {
-                override suspend fun login(
-                    request: id.sch.mts241alikhlash.exam.data.auth.LoginRequest,
-                ): id.sch.mts241alikhlash.exam.data.remote.ApiEnvelope<id.sch.mts241alikhlash.exam.data.auth.AuthResponseDto> = throw IllegalStateException("Keystore internal detail")
+            object : NativeAuthenticationApi by api {
+                override suspend fun nativeAuthControllerLogin(
+                    nativeLoginDto: NativeLoginDto,
+                ): Response<NativeAuthControllerLogin200Response> = throw IllegalStateException("Keystore internal detail")
             }
         val vm = LoginViewModel(AuthRepository(failing, store, { "device-1" }))
 

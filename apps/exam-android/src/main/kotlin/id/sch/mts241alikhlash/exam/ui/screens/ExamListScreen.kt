@@ -40,7 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
+import id.sch.mts241alikhlash.exam.api.exam.models.MyExamDto
 import id.sch.mts241alikhlash.exam.ui.components.CardHeader
 import id.sch.mts241alikhlash.exam.ui.components.PrimaryButton
 import id.sch.mts241alikhlash.exam.ui.theme.DMSansFontFamily
@@ -48,23 +48,23 @@ import id.sch.mts241alikhlash.exam.ui.theme.WebTokens
 
 internal data class ExamGroup(
     val title: String,
-    val exams: List<ExamSummaryDto>,
+    val exams: List<MyExamDto>,
 )
 
-internal fun groupExams(exams: List<ExamSummaryDto>): List<ExamGroup> =
+internal fun groupExams(exams: List<MyExamDto>): List<ExamGroup> =
     listOf(
         ExamGroup("Bisa Dikerjakan", exams.filter { it.isSelectable() }),
         ExamGroup(
             "Akan Datang",
-            exams.filter { !it.isSelectable() && (it.lifecycle ?: it.status) == "UPCOMING" },
+            exams.filter { !it.isSelectable() && it.lifecycle == MyExamDto.Lifecycle.UPCOMING },
         ),
-        ExamGroup("Selesai", exams.filter { (it.lifecycle ?: it.status) == "FINISHED" }),
+        ExamGroup("Selesai", exams.filter { it.lifecycle == MyExamDto.Lifecycle.FINISHED }),
     ).filter { it.exams.isNotEmpty() }
 
 @Composable
 fun ExamListScreen(
     viewModel: ExamListViewModel,
-    onSelect: (ExamSummaryDto) -> Unit,
+    onSelect: (MyExamDto) -> Unit,
     examWork: Boolean,
     notice: String? = null,
 ) {
@@ -172,7 +172,7 @@ private fun GroupCard(
     group: ExamGroup,
     expandedId: String?,
     onToggle: (String) -> Unit,
-    onStart: (ExamSummaryDto) -> Unit,
+    onStart: (MyExamDto) -> Unit,
 ) {
     val shape = RoundedCornerShape(10.dp)
     Column(
@@ -198,10 +198,10 @@ private fun GroupCard(
 
 @Composable
 private fun ExamRow(
-    exam: ExamSummaryDto,
+    exam: MyExamDto,
     expanded: Boolean,
     onToggle: () -> Unit,
-    onStart: (ExamSummaryDto) -> Unit,
+    onStart: (MyExamDto) -> Unit,
 ) {
     val selectable = exam.isSelectable()
     val rotation by animateFloatAsState(if (expanded) 180f else 0f, label = "chevron")
@@ -276,8 +276,8 @@ private fun ExamRow(
                     PrimaryButton(
                         text =
                             when (exam.status) {
-                                "IN_PROGRESS" -> "Lanjutkan Ujian"
-                                "UPCOMING" ->
+                                MyExamDto.Status.IN_PROGRESS -> "Lanjutkan Ujian"
+                                MyExamDto.Status.UPCOMING ->
                                     examOpensIn(exam.startsAt, System.currentTimeMillis())
                                         ?.let { "Dibuka dalam $it" } ?: "Belum Dibuka"
                                 else -> "Mulai Ujian"
@@ -292,13 +292,13 @@ private fun ExamRow(
 }
 
 @Composable
-private fun StatusRow(exam: ExamSummaryDto) {
+private fun StatusRow(exam: MyExamDto) {
     val gold = Color(0xFF8A6D1C)
     val (text, color) =
         when (exam.status) {
-            "OPEN" -> "Sedang dibuka" to WebTokens.Primary
-            "IN_PROGRESS" -> "Sedang berlangsung" to gold
-            "UPCOMING" -> "Belum dibuka" to gold
+            MyExamDto.Status.OPEN -> "Sedang dibuka" to WebTokens.Primary
+            MyExamDto.Status.IN_PROGRESS -> "Sedang berlangsung" to gold
+            MyExamDto.Status.UPCOMING -> "Belum dibuka" to gold
             else -> "Selesai" to WebTokens.MutedForeground
         }
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {

@@ -1,40 +1,127 @@
 package id.sch.mts241alikhlash.exam
 
+import id.sch.mts241alikhlash.exam.api.exam.apis.StudentExamsApi
+import id.sch.mts241alikhlash.exam.api.exam.models.CameraBlockedDto
+import id.sch.mts241alikhlash.exam.api.exam.models.ConfirmedAnswerDto
+import id.sch.mts241alikhlash.exam.api.exam.models.MyExamDto
+import id.sch.mts241alikhlash.exam.api.exam.models.PaperChoiceDto
+import id.sch.mts241alikhlash.exam.api.exam.models.PaperQuestionDto
+import id.sch.mts241alikhlash.exam.api.exam.models.RecordSessionEventsRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.RecordSessionEventsResponseDto
+import id.sch.mts241alikhlash.exam.api.exam.models.RecordViolationsRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.ResumeSessionRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.ResumeSessionResponseDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SaveAnswerDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SaveAnswerItemDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SaveAnswersBatchDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SaveAnswersBatchResultDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SaveAnswersBatchResultDtoSkippedInner
+import id.sch.mts241alikhlash.exam.api.exam.models.SavedAnswerDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionExamControllerAnswers200Response
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionExamControllerEvents200Response
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionExamControllerHeartbeatNow200Response
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionExamControllerQuestions200Response
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionExamControllerResume200Response
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionExamControllerSave201Response
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionExamControllerSaveBatch200Response
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionExamControllerSnapshot201Response
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionExamControllerSubmit200Response
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionExamControllerSuspension201Response
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionExamControllerViolations200Response
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionHeartbeatDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionPaperDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionSuspensionDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionSuspensionRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.StartSessionDto
+import id.sch.mts241alikhlash.exam.api.exam.models.StartedSessionDto
+import id.sch.mts241alikhlash.exam.api.exam.models.StudentExamControllerFindMine200Response
+import id.sch.mts241alikhlash.exam.api.exam.models.StudentExamControllerStart201Response
+import id.sch.mts241alikhlash.exam.api.exam.models.SubmitSessionRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SubmitSessionResponseDto
+import id.sch.mts241alikhlash.exam.api.exam.models.ViolationCountDto
 import id.sch.mts241alikhlash.exam.data.local.AnswerSyncState
 import id.sch.mts241alikhlash.exam.data.local.CachedAnswerEntity
-import id.sch.mts241alikhlash.exam.data.model.ConfirmedAnswerDto
-import id.sch.mts241alikhlash.exam.data.model.PaperChoiceDto
-import id.sch.mts241alikhlash.exam.data.model.RecordSessionEventsRequest
-import id.sch.mts241alikhlash.exam.data.model.RecordSessionEventsResponse
-import id.sch.mts241alikhlash.exam.data.model.ResumeSessionRequest
-import id.sch.mts241alikhlash.exam.data.model.ResumedSessionDto
-import id.sch.mts241alikhlash.exam.data.model.SaveAnswerItemDto
-import id.sch.mts241alikhlash.exam.data.model.SaveAnswersBatchRequest
-import id.sch.mts241alikhlash.exam.data.model.SaveAnswersBatchResultDto
-import id.sch.mts241alikhlash.exam.data.model.SkippedAnswerDto
-import id.sch.mts241alikhlash.exam.data.model.SuspensionRequest
-import id.sch.mts241alikhlash.exam.data.model.SuspensionResponseDto
-import id.sch.mts241alikhlash.exam.data.model.ViolationCountDto
-import id.sch.mts241alikhlash.exam.data.model.ViolationReport
 import id.sch.mts241alikhlash.exam.data.session.ServerClock
 import kotlinx.coroutines.test.TestCoroutineScheduler
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.ResponseBody
+import retrofit2.Response
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 fun testClock(scheduler: TestCoroutineScheduler): ServerClock = ServerClock { scheduler.currentTime }.apply { syncEpochMillis(scheduler.currentTime) }
 
-fun paperOf(questions: List<id.sch.mts241alikhlash.exam.data.model.PaperQuestionDto> = emptyList()) =
-    id.sch.mts241alikhlash.exam.data.model.SessionPaperDto(
+const val TEST_SERVER_TIME = "2026-11-01T01:00:00.000Z"
+
+fun paperOf(questions: List<PaperQuestionDto> = emptyList()) =
+    SessionPaperDto(
         questions = questions,
-        startedAt = "2026-11-01T01:00:00.000Z",
+        startedAt = TEST_SERVER_TIME,
         minSubmitMinutes = 0,
-        serverTime = "2026-11-01T01:00:00.000Z",
+        serverTime = TEST_SERVER_TIME,
     )
 
-fun choices(vararg html: String): List<PaperChoiceDto> = html.mapIndexed { index, text -> PaperChoiceDto(('A' + index).toString(), text) }
+fun choices(vararg html: String): List<PaperChoiceDto> = html.mapIndexed { index, text -> PaperChoiceDto(PaperChoiceDto.Key.valueOf(('A' + index).toString()), text) }
+
+fun myExam(
+    id: String = "e1",
+    title: String = "Ujian $id",
+    subjectId: String = "s1",
+    subjectName: String? = null,
+    type: MyExamDto.Type = MyExamDto.Type.ASSIGNMENT,
+    category: MyExamDto.Category = if (type == MyExamDto.Type.MIDTERM || type == MyExamDto.Type.FINAL) MyExamDto.Category.EXAM else MyExamDto.Category.NON_EXAM,
+    startsAt: String = "2026-11-01T01:00:00.000Z",
+    endsAt: String = "2026-11-01T03:00:00.000Z",
+    durationMinutes: Int = 90,
+    minSubmitMinutes: Int = 0,
+    status: MyExamDto.Status = MyExamDto.Status.OPEN,
+    sessionId: String? = null,
+    activityId: String? = null,
+    activityStatus: MyExamDto.ActivityStatus? = null,
+    eventId: String? = null,
+    eventName: String? = null,
+    lifecycle: MyExamDto.Lifecycle =
+        when (status) {
+            MyExamDto.Status.UPCOMING -> MyExamDto.Lifecycle.UPCOMING
+            MyExamDto.Status.FINISHED -> MyExamDto.Lifecycle.FINISHED
+            else -> MyExamDto.Lifecycle.OPEN
+        },
+    roomName: String? = null,
+    seatNumber: Int? = null,
+    participantNumber: String? = null,
+    makeup: Boolean = false,
+) = MyExamDto(
+    id = id,
+    title = title,
+    subjectId = subjectId,
+    subjectName = subjectName,
+    type = type,
+    category = category,
+    startsAt = startsAt,
+    endsAt = endsAt,
+    durationMinutes = durationMinutes,
+    minSubmitMinutes = minSubmitMinutes,
+    status = status,
+    sessionId = sessionId,
+    activityId = activityId,
+    activityStatus = activityStatus,
+    eventId = eventId,
+    eventName = eventName,
+    lifecycle = lifecycle,
+    roomName = roomName,
+    seatNumber = seatNumber,
+    participantNumber = participantNumber,
+    makeup = makeup,
+)
+
+fun skipped(
+    questionId: String,
+    clientId: String = "c-$questionId",
+) = SaveAnswersBatchResultDtoSkippedInner(questionId = questionId, clientId = clientId)
 
 fun batchAck(
-    request: SaveAnswersBatchRequest,
-    skipped: List<SkippedAnswerDto> = emptyList(),
+    request: SaveAnswersBatchDto,
+    skipped: List<SaveAnswersBatchResultDtoSkippedInner> = emptyList(),
 ) = SaveAnswersBatchResultDto(
     confirmed =
         request.answers
@@ -51,6 +138,28 @@ fun batchAck(
     confirmedCount = request.answers.size,
     serverTime = "2026-10-27T00:00:00Z",
 )
+
+fun submitted(
+    status: SubmitSessionResponseDto.Status = SubmitSessionResponseDto.Status.SUBMITTED,
+    confirmedAnswerCount: Int = 0,
+    answersStored: Boolean = true,
+    submittedAt: String? = null,
+    serverTime: String = TEST_SERVER_TIME,
+) = SubmitSessionResponseDto(status, submittedAt, confirmedAnswerCount, answersStored, serverTime)
+
+fun heartbeatOf(
+    lockedByViolation: Boolean = false,
+    requiresTokenReentry: Boolean = false,
+    absentSince: String? = null,
+    serverTime: String = TEST_SERVER_TIME,
+) = SessionHeartbeatDto(lockedByViolation, requiresTokenReentry, absentSince, serverTime)
+
+fun eventsResponse(
+    violationCount: Int = 0,
+    requiresTokenReentry: Boolean = false,
+    lockedByViolation: Boolean = false,
+    serverTime: String = TEST_SERVER_TIME,
+) = RecordSessionEventsResponseDto(emptyList(), violationCount, requiresTokenReentry, lockedByViolation, serverTime)
 
 open class InMemoryAnswerDao(
     vararg initial: CachedAnswerEntity,
@@ -179,7 +288,7 @@ fun pendingAnswer(
 fun item(
     questionId: String,
     clientId: String = "c-$questionId",
-): SaveAnswerItemDto = SaveAnswerItemDto(questionId = questionId, clientId = clientId, answer = kotlinx.serialization.json.JsonObject(emptyMap()))
+): SaveAnswerItemDto = SaveAnswerItemDto(questionId = questionId, clientId = clientId, answer = emptyMap())
 
 class EmptyQuestionDao : id.sch.mts241alikhlash.exam.data.local.QuestionDao {
     private val rows = mutableListOf<id.sch.mts241alikhlash.exam.data.local.CachedQuestionEntity>()
@@ -195,26 +304,26 @@ class EmptyQuestionDao : id.sch.mts241alikhlash.exam.data.local.QuestionDao {
     }
 }
 
-open class StubExamApi : id.sch.mts241alikhlash.exam.data.remote.ExamApiService {
-    val batches = mutableListOf<SaveAnswersBatchRequest>()
-    val submits = mutableListOf<id.sch.mts241alikhlash.exam.data.model.SubmitRequest>()
-    val suspensions = mutableListOf<SuspensionRequest>()
+open class StubExamApi : StudentExamsApi {
+    val batches = mutableListOf<SaveAnswersBatchDto>()
+    val submits = mutableListOf<SubmitSessionRequestDto>()
+    val suspensions = mutableListOf<SessionSuspensionRequestDto>()
 
     var suspensionFailures: Int = 0
     var suspensionDeadline: String = "2026-10-27T06:00:00Z"
     var suspensionExtraMinutes: Int = 0
 
-    override suspend fun reportSuspension(
+    open suspend fun reportSuspension(
         sessionId: String,
-        request: SuspensionRequest,
-    ): SuspensionResponseDto {
+        request: SessionSuspensionRequestDto,
+    ): SessionSuspensionDto {
         suspensions += request
         if (suspensionFailures > 0) {
             suspensionFailures -= 1
             throw id.sch.mts241alikhlash.exam.data.remote
                 .ApiException(0, "offline")
         }
-        return SuspensionResponseDto(
+        return SessionSuspensionDto(
             deadline = suspensionDeadline,
             finalizeAt = suspensionDeadline,
             extraMinutes = suspensionExtraMinutes,
@@ -222,60 +331,160 @@ open class StubExamApi : id.sch.mts241alikhlash.exam.data.remote.ExamApiService 
         )
     }
 
-    override suspend fun sessionHeartbeat(
+    open suspend fun sessionHeartbeat(sessionId: String): SessionHeartbeatDto = heartbeatOf()
+
+    open suspend fun getQuestions(sessionId: String): SessionPaperDto = paperOf()
+
+    open suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
+
+    open suspend fun saveAnswersBatch(
         sessionId: String,
-    ): id.sch.mts241alikhlash.exam.data.model.SessionHeartbeatResponse =
-        id.sch.mts241alikhlash.exam.data.model
-            .SessionHeartbeatResponse()
-
-    override suspend fun getQuestions(sessionId: String) = paperOf()
-
-    override suspend fun getAnswers(sessionId: String): List<id.sch.mts241alikhlash.exam.data.model.SavedAnswerDto> = emptyList()
-
-    override suspend fun saveAnswersBatch(
-        sessionId: String,
-        request: SaveAnswersBatchRequest,
+        request: SaveAnswersBatchDto,
     ): SaveAnswersBatchResultDto {
         batches += request
         return batchAck(request)
     }
 
-    override suspend fun submit(
+    open suspend fun submit(
         sessionId: String,
-        request: id.sch.mts241alikhlash.exam.data.model.SubmitRequest,
-    ): id.sch.mts241alikhlash.exam.data.model.SubmittedSessionDto {
+        request: SubmitSessionRequestDto,
+    ): SubmitSessionResponseDto {
         submits += request
-        return id.sch.mts241alikhlash.exam.data.model
-            .SubmittedSessionDto("SUBMITTED")
+        return submitted()
     }
 
-    override suspend fun recordSessionEvents(
+    open suspend fun recordSessionEvents(
         sessionId: String,
-        request: RecordSessionEventsRequest,
-    ): RecordSessionEventsResponse = RecordSessionEventsResponse()
+        request: RecordSessionEventsRequestDto,
+    ): RecordSessionEventsResponseDto = eventsResponse()
 
-    override suspend fun resumeSession(
+    open suspend fun resumeSession(
         sessionId: String,
-        request: ResumeSessionRequest,
-    ): ResumedSessionDto =
-        ResumedSessionDto(
+        request: ResumeSessionRequestDto,
+    ): ResumeSessionResponseDto =
+        ResumeSessionResponseDto(
             sessionId = sessionId,
-            status = "IN_PROGRESS",
+            status = ResumeSessionResponseDto.Status.IN_PROGRESS,
             deadline = "",
             serverTime = "",
+            requiresTokenReentry = false,
         )
 
-    override suspend fun reportViolations(
+    open suspend fun reportViolations(
         sessionId: String,
-        request: ViolationReport,
+        request: RecordViolationsRequestDto,
     ): ViolationCountDto = ViolationCountDto(request.count)
+
+    override suspend fun sessionExamControllerAnswers(
+        xDeviceId: String,
+        sessionId: String,
+        xClientPlatform: String?,
+    ) = Response.success(SessionExamControllerAnswers200Response(data = getAnswers(sessionId)))
+
+    override suspend fun sessionExamControllerCameraBlocked(
+        xDeviceId: String,
+        sessionId: String,
+        cameraBlockedDto: CameraBlockedDto,
+        xClientPlatform: String?,
+    ): Response<Unit> = Response.success(Unit)
+
+    override suspend fun sessionExamControllerEvents(
+        xDeviceId: String,
+        sessionId: String,
+        recordSessionEventsRequestDto: RecordSessionEventsRequestDto,
+        xClientPlatform: String?,
+    ) = Response.success(SessionExamControllerEvents200Response(data = recordSessionEvents(sessionId, recordSessionEventsRequestDto)))
+
+    override suspend fun sessionExamControllerFile(
+        xDeviceId: String,
+        sessionId: String,
+        fileId: String,
+        xClientPlatform: String?,
+    ): Response<ResponseBody> = throw UnsupportedOperationException()
+
+    override suspend fun sessionExamControllerHeartbeatNow(
+        xDeviceId: String,
+        sessionId: String,
+        xClientPlatform: String?,
+    ) = Response.success(SessionExamControllerHeartbeatNow200Response(data = sessionHeartbeat(sessionId)))
+
+    override suspend fun sessionExamControllerQuestions(
+        xDeviceId: String,
+        sessionId: String,
+        xClientPlatform: String?,
+    ) = Response.success(SessionExamControllerQuestions200Response(data = getQuestions(sessionId)))
+
+    override suspend fun sessionExamControllerResume(
+        xDeviceId: String,
+        sessionId: String,
+        resumeSessionRequestDto: ResumeSessionRequestDto,
+        xClientPlatform: String?,
+    ) = Response.success(SessionExamControllerResume200Response(data = resumeSession(sessionId, resumeSessionRequestDto)))
+
+    override suspend fun sessionExamControllerSave(
+        xDeviceId: String,
+        sessionId: String,
+        saveAnswerDto: SaveAnswerDto,
+        xClientPlatform: String?,
+    ): Response<SessionExamControllerSave201Response> = throw UnsupportedOperationException()
+
+    override suspend fun sessionExamControllerSaveBatch(
+        xDeviceId: String,
+        sessionId: String,
+        saveAnswersBatchDto: SaveAnswersBatchDto,
+        xClientPlatform: String?,
+    ) = Response.success(SessionExamControllerSaveBatch200Response(data = saveAnswersBatch(sessionId, saveAnswersBatchDto)))
+
+    override suspend fun sessionExamControllerSnapshot(
+        xDeviceId: String,
+        sessionId: String,
+        file: MultipartBody.Part,
+        kind: RequestBody,
+        capturedAt: RequestBody,
+        xClientPlatform: String?,
+    ): Response<SessionExamControllerSnapshot201Response> = throw UnsupportedOperationException()
+
+    override suspend fun sessionExamControllerSubmit(
+        xDeviceId: String,
+        sessionId: String,
+        submitSessionRequestDto: SubmitSessionRequestDto,
+        xClientPlatform: String?,
+    ) = Response.success(SessionExamControllerSubmit200Response(data = submit(sessionId, submitSessionRequestDto)))
+
+    override suspend fun sessionExamControllerSuspension(
+        xDeviceId: String,
+        sessionId: String,
+        sessionSuspensionRequestDto: SessionSuspensionRequestDto,
+        xClientPlatform: String?,
+    ) = Response.success(SessionExamControllerSuspension201Response(data = reportSuspension(sessionId, sessionSuspensionRequestDto)))
+
+    override suspend fun sessionExamControllerViolations(
+        xDeviceId: String,
+        sessionId: String,
+        recordViolationsRequestDto: RecordViolationsRequestDto,
+        xClientPlatform: String?,
+    ) = Response.success(SessionExamControllerViolations200Response(data = reportViolations(sessionId, recordViolationsRequestDto)))
+
+    open suspend fun listExams(): List<MyExamDto> = emptyList()
+
+    open suspend fun startSession(
+        examId: String,
+        request: StartSessionDto,
+    ): StartedSessionDto = throw UnsupportedOperationException()
+
+    override suspend fun studentExamControllerFindMine() = Response.success(StudentExamControllerFindMine200Response(data = listExams()))
+
+    override suspend fun studentExamControllerStart(
+        scheduleId: String,
+        startSessionDto: StartSessionDto,
+    ) = Response.success(StudentExamControllerStart201Response(data = startSession(scheduleId, startSessionDto)))
 }
 
 fun paperQuestion(questionId: String = "q1") =
-    id.sch.mts241alikhlash.exam.data.model.PaperQuestionDto(
+    PaperQuestionDto(
         id = questionId,
         number = 1,
-        type = "MULTIPLE_CHOICE",
+        type = PaperQuestionDto.Type.MULTIPLE_CHOICE,
         bodyHtml = "<p>Soal</p>",
         points = 1.0,
         choices = choices("A", "B"),

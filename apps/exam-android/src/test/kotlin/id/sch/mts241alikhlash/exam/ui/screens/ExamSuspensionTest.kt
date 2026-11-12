@@ -4,9 +4,9 @@ import id.sch.mts241alikhlash.exam.EmptyQuestionDao
 import id.sch.mts241alikhlash.exam.InMemoryAnswerDao
 import id.sch.mts241alikhlash.exam.MainDispatcherRule
 import id.sch.mts241alikhlash.exam.StubExamApi
-import id.sch.mts241alikhlash.exam.data.model.SUSPENSION_REASON_CALL
-import id.sch.mts241alikhlash.exam.data.model.SuspensionRequest
-import id.sch.mts241alikhlash.exam.data.model.SuspensionResponseDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionSuspensionDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionSuspensionRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionSuspensionRequestDto.Reason.CALL
 import id.sch.mts241alikhlash.exam.data.remote.ApiException
 import id.sch.mts241alikhlash.exam.data.repository.ExamRepository
 import id.sch.mts241alikhlash.exam.data.session.ExamTimer
@@ -53,7 +53,7 @@ class ExamSuspensionTest {
             runCurrent()
 
             val request = api.suspensions.single()
-            assertEquals(SUSPENSION_REASON_CALL, request.reason)
+            assertEquals(SessionSuspensionRequestDto.Reason.CALL, request.reason)
             assertEquals(91, request.seconds)
             assertTrue(request.clientId.isNotBlank())
             assertEquals(listOf(5_640_000L), extended)
@@ -90,8 +90,8 @@ class ExamSuspensionTest {
                 object : StubExamApi() {
                     override suspend fun reportSuspension(
                         sessionId: String,
-                        request: SuspensionRequest,
-                    ): SuspensionResponseDto {
+                        request: SessionSuspensionRequestDto,
+                    ): SessionSuspensionDto {
                         suspensions += request
                         throw ApiException(409, "Sesi ujian tidak ditemukan")
                     }

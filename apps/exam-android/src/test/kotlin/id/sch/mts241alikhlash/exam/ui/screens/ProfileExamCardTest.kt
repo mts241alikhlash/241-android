@@ -1,26 +1,27 @@
 package id.sch.mts241alikhlash.exam.ui.screens
 
-import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
+import id.sch.mts241alikhlash.exam.api.exam.models.MyExamDto
+import id.sch.mts241alikhlash.exam.myExam
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ProfileExamCardTest {
     private fun exam(
-        lifecycle: String?,
+        lifecycle: String,
         roomName: String? = null,
         seatNumber: Int? = null,
         participantNumber: String? = null,
         eventName: String? = null,
-    ) = ExamSummaryDto(
+    ) = myExam(
         id = "e1",
         title = "UTS - IPA",
         subjectId = "s",
         startsAt = "2026-11-09T01:00:00.000Z",
         endsAt = "2026-11-09T03:00:00.000Z",
         durationMinutes = 90,
-        status = "OPEN",
-        lifecycle = lifecycle,
+        status = MyExamDto.Status.OPEN,
+        lifecycle = MyExamDto.Lifecycle.valueOf(lifecycle),
         roomName = roomName,
         seatNumber = seatNumber,
         participantNumber = participantNumber,
@@ -79,7 +80,7 @@ class ProfileExamCardTest {
     @Test
     fun `a finished exam shows nothing`() {
         assertEquals(emptyList<Pair<String, String>>(), profileExamRows(exam(lifecycle = "FINISHED")))
-        assertEquals(emptyList<Pair<String, String>>(), profileExamRows(exam(lifecycle = null)))
+        assertEquals(emptyList<Pair<String, String>>(), profileExamRows(exam(lifecycle = "UPCOMING")))
     }
 
     @Test

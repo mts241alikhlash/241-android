@@ -1,6 +1,7 @@
 package id.sch.mts241alikhlash.exam.ui.screens
 
-import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
+import id.sch.mts241alikhlash.exam.api.exam.models.MyExamDto
+import id.sch.mts241alikhlash.exam.myExam
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -10,33 +11,30 @@ import java.util.TimeZone
 
 class ExamTitleAndWindowTest {
     private fun exam(
-        type: String?,
+        type: MyExamDto.Type,
         subject: String?,
-    ) = ExamSummaryDto(
-        "e1",
-        "Bilangan dan Operasi Hitung",
-        "s1",
-        "2026-11-02T00:30:00.000Z",
-        "2026-11-02T02:15:00.000Z",
-        90,
-        "UPCOMING",
+    ) = myExam(
+        id = "e1",
+        title = "Bilangan dan Operasi Hitung",
+        startsAt = "2026-11-02T00:30:00.000Z",
+        endsAt = "2026-11-02T02:15:00.000Z",
+        status = MyExamDto.Status.UPCOMING,
         subjectName = subject,
         type = type,
     )
 
     @Test
     fun `title joins the type label and the subject`() {
-        assertEquals("UTS - IPA", exam("UTS", "IPA").displayTitle())
-        assertEquals("Quiz - Bahasa Inggris", exam("QUIZ", "Bahasa Inggris").displayTitle())
-        assertEquals("Tugas - PAI", exam("ASSIGNMENT", "PAI").displayTitle())
+        assertEquals("UTS - IPA", exam(MyExamDto.Type.MIDTERM, "IPA").displayTitle())
+        assertEquals("UAS - IPA", exam(MyExamDto.Type.FINAL, "IPA").displayTitle())
+        assertEquals("Ulangan Harian - Bahasa Inggris", exam(MyExamDto.Type.DAILY, "Bahasa Inggris").displayTitle())
+        assertEquals("Tugas - PAI", exam(MyExamDto.Type.ASSIGNMENT, "PAI").displayTitle())
     }
 
     @Test
-    fun `title falls back to the package title without a type or a subject`() {
-        assertEquals("Bilangan dan Operasi Hitung", exam(null, "IPA").displayTitle())
-        assertEquals("Bilangan dan Operasi Hitung", exam("UTS", null).displayTitle())
-        assertEquals("Bilangan dan Operasi Hitung", exam("UTS", "  ").displayTitle())
-        assertEquals("Bilangan dan Operasi Hitung", exam("OTHER", "IPA").displayTitle())
+    fun `title falls back to the package title without a subject`() {
+        assertEquals("Bilangan dan Operasi Hitung", exam(MyExamDto.Type.MIDTERM, null).displayTitle())
+        assertEquals("Bilangan dan Operasi Hitung", exam(MyExamDto.Type.MIDTERM, "  ").displayTitle())
     }
 
     @Test
@@ -82,12 +80,13 @@ class ExamTitleAndWindowTest {
     }
 
     @Test
-    fun `type label covers the five types only`() {
-        assertEquals("UH", examTypeLabel("UH"))
-        assertEquals("Quiz", examTypeLabel("QUIZ"))
+    fun `type label covers the four types only`() {
+        assertEquals("Ulangan Harian", examTypeLabel("DAILY"))
         assertEquals("Tugas", examTypeLabel("ASSIGNMENT"))
-        assertEquals("UTS", examTypeLabel("UTS"))
-        assertEquals("UAS", examTypeLabel("UAS"))
+        assertEquals("UTS", examTypeLabel("MIDTERM"))
+        assertEquals("UAS", examTypeLabel("FINAL"))
+        assertNull(examTypeLabel("UH"))
+        assertNull(examTypeLabel("QUIZ"))
         assertNull(examTypeLabel("PTS"))
         assertNull(examTypeLabel(null))
     }

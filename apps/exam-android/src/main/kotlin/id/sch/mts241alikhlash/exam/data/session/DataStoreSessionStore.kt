@@ -6,7 +6,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import id.sch.mts241alikhlash.exam.data.model.ExamPolicyDto
+import id.sch.mts241alikhlash.exam.api.exam.models.ExamPolicyDto
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 

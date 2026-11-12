@@ -1,6 +1,6 @@
 package id.sch.mts241alikhlash.exam.ui.screens
 
-import id.sch.mts241alikhlash.exam.data.model.ExamPolicyDto
+import id.sch.mts241alikhlash.exam.api.exam.models.ExamPolicyDto
 import id.sch.mts241alikhlash.exam.data.session.ExamRuntimePolicy
 import id.sch.mts241alikhlash.exam.kiosk.ViolationPolicy
 import org.junit.Assert.assertEquals

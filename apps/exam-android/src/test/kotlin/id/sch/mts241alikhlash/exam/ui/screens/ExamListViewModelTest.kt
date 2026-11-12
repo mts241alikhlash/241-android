@@ -1,12 +1,11 @@
 package id.sch.mts241alikhlash.exam.ui.screens
 
 import id.sch.mts241alikhlash.exam.MainDispatcherRule
+import id.sch.mts241alikhlash.exam.StubExamApi
+import id.sch.mts241alikhlash.exam.api.exam.models.MyExamDto
 import id.sch.mts241alikhlash.exam.data.auth.httpError
-import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
-import id.sch.mts241alikhlash.exam.data.model.StartSessionRequest
-import id.sch.mts241alikhlash.exam.data.model.StartedSessionDto
-import id.sch.mts241alikhlash.exam.data.remote.ExamCatalogApiService
 import id.sch.mts241alikhlash.exam.data.repository.ExamCatalogRepository
+import id.sch.mts241alikhlash.exam.myExam
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -21,25 +20,19 @@ class ExamListViewModelTest {
     private fun exam(
         id: String,
         status: String,
-    ) = ExamSummaryDto(
-        id,
-        "Ujian $id",
-        "Matematika",
-        "2026-11-01T01:00:00Z",
-        "2026-11-01T03:00:00Z",
-        90,
-        status,
+    ) = myExam(
+        id = id,
+        title = "Ujian $id",
+        subjectId = "Matematika",
+        startsAt = "2026-11-01T01:00:00Z",
+        endsAt = "2026-11-01T03:00:00Z",
+        status = MyExamDto.Status.valueOf(status),
     )
 
     private class Api(
-        var result: () -> List<ExamSummaryDto>,
-    ) : ExamCatalogApiService {
-        override suspend fun listExams(): List<ExamSummaryDto> = result()
-
-        override suspend fun startSession(
-            examId: String,
-            request: StartSessionRequest,
-        ): StartedSessionDto = throw UnsupportedOperationException()
+        var result: () -> List<MyExamDto>,
+    ) : StubExamApi() {
+        override suspend fun listExams(): List<MyExamDto> = result()
     }
 
     private fun viewModel(api: Api) = ExamListViewModel(ExamCatalogRepository(api, { "device-1" }))
@@ -124,7 +117,7 @@ class ExamListViewModelTest {
 
     @Test
     fun lifecycle_open_makes_a_finished_looking_status_startable() {
-        val open = exam("a", "FINISHED").copy(lifecycle = "OPEN")
+        val open = exam("a", "FINISHED").copy(lifecycle = MyExamDto.Lifecycle.OPEN)
 
         assertTrue(open.isSelectable())
         assertTrue(open.isExpandable())
@@ -133,7 +126,7 @@ class ExamListViewModelTest {
 
     @Test
     fun lifecycle_finished_makes_an_open_looking_status_unstartable() {
-        val finished = exam("b", "OPEN").copy(lifecycle = "FINISHED")
+        val finished = exam("b", "OPEN").copy(lifecycle = MyExamDto.Lifecycle.FINISHED)
 
         assertFalse(finished.isSelectable())
         assertFalse(finished.isExpandable())

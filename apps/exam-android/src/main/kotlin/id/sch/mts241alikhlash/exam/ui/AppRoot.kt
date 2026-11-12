@@ -21,8 +21,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import id.sch.mts241alikhlash.exam.api.exam.models.MyExamDto
 import id.sch.mts241alikhlash.exam.data.auth.AuthUser
-import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
 import id.sch.mts241alikhlash.exam.ui.screens.DeviceReadinessScreen
 import id.sch.mts241alikhlash.exam.ui.screens.TokenScreen
 import id.sch.mts241alikhlash.exam.ui.theme.AssessmentTheme
@@ -41,9 +41,9 @@ data class AppRootState(
     val reentryLoading: Boolean = false,
     val reentryError: String? = null,
     val user: AuthUser? = null,
-    val selectedExam: ExamSummaryDto? = null,
+    val selectedExam: MyExamDto? = null,
     val readinessComplete: Boolean = false,
-    val activeExam: ExamSummaryDto? = null,
+    val activeExam: MyExamDto? = null,
     val starting: Boolean = false,
     val startError: String? = null,
     val notice: String? = null,
@@ -80,7 +80,7 @@ fun AssessmentAppRoot(
     readinessContent: @Composable (onReadyToProceed: () -> Unit) -> Unit = { ready ->
         DeviceReadinessScreen(onReadyToProceed = ready, onBack = onBackToList)
     },
-    tokenContent: @Composable (ExamSummaryDto) -> Unit = { exam ->
+    tokenContent: @Composable (MyExamDto) -> Unit = { exam ->
         TokenScreen(
             exam = exam,
             loading = state.starting,

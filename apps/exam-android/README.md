@@ -7,7 +7,7 @@ The student exam app: sign in with the school account, list exams, take an exam 
 ## Depends on
 
 - Pinned OpenAPI contracts in `contracts/` (`exam: 0.3.0`, `identity: 0.1.1`, `student: 0.2.0`), synced from `241-apps` via `scripts/sync-contracts.sh` and generated at build time by `mts241.openapi.client`.
-- Auth/session runtime rules (`docs/API-CONTRACT.md`).
+- Auth/session runtime rules (`docs/AUTH-BEHAVIOR.md`).
 - No `core/*` modules yet.
 
 ## Rules specific to this package

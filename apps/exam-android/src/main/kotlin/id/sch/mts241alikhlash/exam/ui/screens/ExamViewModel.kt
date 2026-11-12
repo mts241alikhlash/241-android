@@ -2,9 +2,9 @@ package id.sch.mts241alikhlash.exam.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import id.sch.mts241alikhlash.exam.api.exam.models.PaperQuestionDto
 import id.sch.mts241alikhlash.exam.data.local.AnswerSyncState
 import id.sch.mts241alikhlash.exam.data.model.AnswerPayload
-import id.sch.mts241alikhlash.exam.data.model.PaperQuestionDto
 import id.sch.mts241alikhlash.exam.data.remote.ApiErrorCode
 import id.sch.mts241alikhlash.exam.data.remote.ApiException
 import id.sch.mts241alikhlash.exam.data.repository.ExamRepository

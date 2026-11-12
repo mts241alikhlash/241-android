@@ -4,26 +4,21 @@ import id.sch.mts241alikhlash.exam.InMemoryAnswerDao
 import id.sch.mts241alikhlash.exam.MainDispatcherRule
 import id.sch.mts241alikhlash.exam.PaperExamApi
 import id.sch.mts241alikhlash.exam.StubExamApi
-import id.sch.mts241alikhlash.exam.batchAck
+import id.sch.mts241alikhlash.exam.api.exam.apis.StudentExamsApi
+import id.sch.mts241alikhlash.exam.api.exam.models.PaperQuestionDto
+import id.sch.mts241alikhlash.exam.api.exam.models.RecordViolationsRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SaveAnswersBatchDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SaveAnswersBatchResultDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SessionPaperDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SubmitSessionRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SubmitSessionResponseDto
+import id.sch.mts241alikhlash.exam.api.exam.models.ViolationCountDto
 import id.sch.mts241alikhlash.exam.choices
 import id.sch.mts241alikhlash.exam.data.local.AnswerSyncState
-import id.sch.mts241alikhlash.exam.data.model.PaperQuestionDto
-import id.sch.mts241alikhlash.exam.data.model.RecordSessionEventsRequest
-import id.sch.mts241alikhlash.exam.data.model.RecordSessionEventsResponse
-import id.sch.mts241alikhlash.exam.data.model.ResumeSessionRequest
-import id.sch.mts241alikhlash.exam.data.model.ResumedSessionDto
-import id.sch.mts241alikhlash.exam.data.model.SaveAnswersBatchRequest
-import id.sch.mts241alikhlash.exam.data.model.SaveAnswersBatchResultDto
-import id.sch.mts241alikhlash.exam.data.model.SavedAnswerDto
-import id.sch.mts241alikhlash.exam.data.model.SessionPaperDto
-import id.sch.mts241alikhlash.exam.data.model.SubmitRequest
-import id.sch.mts241alikhlash.exam.data.model.SubmittedSessionDto
-import id.sch.mts241alikhlash.exam.data.model.ViolationCountDto
-import id.sch.mts241alikhlash.exam.data.model.ViolationReport
-import id.sch.mts241alikhlash.exam.data.remote.ExamApiService
 import id.sch.mts241alikhlash.exam.data.repository.ExamRepository
 import id.sch.mts241alikhlash.exam.paperOf
 import id.sch.mts241alikhlash.exam.pendingAnswer
+import id.sch.mts241alikhlash.exam.submitted
 import id.sch.mts241alikhlash.exam.testClock
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -402,7 +397,7 @@ class ExamViewModelSubmitTest {
 
     private fun repo(
         dao: InMemoryAnswerDao = InMemoryAnswerDao(),
-        api: ExamApiService = StubExamApi(),
+        api: StudentExamsApi = StubExamApi(),
     ) = ExamRepository(api, dao, QuestionDaoStub(), now = { 5_000L })
 
     private fun TestScope.advanceTimeBySeconds(seconds: Long) {
@@ -425,13 +420,7 @@ private class QuestionDaoStub : id.sch.mts241alikhlash.exam.data.local.QuestionD
     }
 }
 
-private class BlockingSubmitApi : ExamApiService {
-    override suspend fun sessionHeartbeat(
-        sessionId: String,
-    ): id.sch.mts241alikhlash.exam.data.model.SessionHeartbeatResponse =
-        id.sch.mts241alikhlash.exam.data.model
-            .SessionHeartbeatResponse()
-
+private class BlockingSubmitApi : StubExamApi() {
     private val started = CompletableDeferred<Unit>()
     private val release = CompletableDeferred<Unit>()
     var submitCalls = 0
@@ -443,165 +432,53 @@ private class BlockingSubmitApi : ExamApiService {
 
     override suspend fun getQuestions(sessionId: String) = paperOf(listOf(question("q1")))
 
-    override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
-
-    override suspend fun saveAnswersBatch(
-        sessionId: String,
-        request: SaveAnswersBatchRequest,
-    ): SaveAnswersBatchResultDto = batchAck(request)
-
     override suspend fun submit(
         sessionId: String,
-        request: SubmitRequest,
-    ): SubmittedSessionDto {
+        request: SubmitSessionRequestDto,
+    ): SubmitSessionResponseDto {
         submitCalls++
         started.complete(Unit)
         release.await()
-        return SubmittedSessionDto("SUBMITTED")
+        return submitted(SubmitSessionResponseDto.Status.SUBMITTED)
     }
-
-    override suspend fun recordSessionEvents(
-        sessionId: String,
-        request: RecordSessionEventsRequest,
-    ): RecordSessionEventsResponse = RecordSessionEventsResponse()
-
-    override suspend fun resumeSession(
-        sessionId: String,
-        request: ResumeSessionRequest,
-    ): ResumedSessionDto =
-        ResumedSessionDto(
-            sessionId = sessionId,
-            status = "IN_PROGRESS",
-            deadline = "",
-            serverTime = "",
-        )
-
-    override suspend fun reportViolations(
-        sessionId: String,
-        request: ViolationReport,
-    ): ViolationCountDto = ViolationCountDto(request.count)
-
-    override suspend fun reportSuspension(
-        sessionId: String,
-        request: id.sch.mts241alikhlash.exam.data.model.SuspensionRequest,
-    ): id.sch.mts241alikhlash.exam.data.model.SuspensionResponseDto = throw UnsupportedOperationException("not used")
 }
 
-private class FailingApi : ExamApiService {
-    override suspend fun sessionHeartbeat(
-        sessionId: String,
-    ): id.sch.mts241alikhlash.exam.data.model.SessionHeartbeatResponse =
-        id.sch.mts241alikhlash.exam.data.model
-            .SessionHeartbeatResponse()
-
+private class FailingApi : StubExamApi() {
     override suspend fun getQuestions(sessionId: String) = paperOf(listOf(question("q1")))
-
-    override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
 
     override suspend fun saveAnswersBatch(
         sessionId: String,
-        request: SaveAnswersBatchRequest,
+        request: SaveAnswersBatchDto,
     ): SaveAnswersBatchResultDto = throw IOException("offline")
 
     override suspend fun submit(
         sessionId: String,
-        request: SubmitRequest,
-    ): SubmittedSessionDto = throw IOException("offline")
-
-    override suspend fun recordSessionEvents(
-        sessionId: String,
-        request: RecordSessionEventsRequest,
-    ): RecordSessionEventsResponse = RecordSessionEventsResponse()
-
-    override suspend fun resumeSession(
-        sessionId: String,
-        request: ResumeSessionRequest,
-    ): ResumedSessionDto =
-        ResumedSessionDto(
-            sessionId = sessionId,
-            status = "IN_PROGRESS",
-            deadline = "",
-            serverTime = "",
-        )
-
-    override suspend fun reportViolations(
-        sessionId: String,
-        request: ViolationReport,
-    ): ViolationCountDto = ViolationCountDto(request.count)
-
-    override suspend fun reportSuspension(
-        sessionId: String,
-        request: id.sch.mts241alikhlash.exam.data.model.SuspensionRequest,
-    ): id.sch.mts241alikhlash.exam.data.model.SuspensionResponseDto = throw UnsupportedOperationException("not used")
+        request: SubmitSessionRequestDto,
+    ): SubmitSessionResponseDto = throw IOException("offline")
 }
 
 private class FlakySubmitApi(
     private var failFirst: Int,
-) : ExamApiService {
-    override suspend fun sessionHeartbeat(
-        sessionId: String,
-    ): id.sch.mts241alikhlash.exam.data.model.SessionHeartbeatResponse =
-        id.sch.mts241alikhlash.exam.data.model
-            .SessionHeartbeatResponse()
-
+) : StubExamApi() {
     var submitCalls = 0
         private set
 
     override suspend fun getQuestions(sessionId: String) = paperOf(listOf(question("q1")))
 
-    override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
-
-    override suspend fun saveAnswersBatch(
-        sessionId: String,
-        request: SaveAnswersBatchRequest,
-    ): SaveAnswersBatchResultDto = batchAck(request)
-
     override suspend fun submit(
         sessionId: String,
-        request: SubmitRequest,
-    ): SubmittedSessionDto {
+        request: SubmitSessionRequestDto,
+    ): SubmitSessionResponseDto {
         submitCalls++
         if (failFirst > 0) {
             failFirst--
             throw IOException("offline")
         }
-        return SubmittedSessionDto("SUBMITTED")
+        return submitted(SubmitSessionResponseDto.Status.SUBMITTED)
     }
-
-    override suspend fun recordSessionEvents(
-        sessionId: String,
-        request: RecordSessionEventsRequest,
-    ): RecordSessionEventsResponse = RecordSessionEventsResponse()
-
-    override suspend fun resumeSession(
-        sessionId: String,
-        request: ResumeSessionRequest,
-    ): ResumedSessionDto =
-        ResumedSessionDto(
-            sessionId = sessionId,
-            status = "IN_PROGRESS",
-            deadline = "",
-            serverTime = "",
-        )
-
-    override suspend fun reportViolations(
-        sessionId: String,
-        request: ViolationReport,
-    ): ViolationCountDto = ViolationCountDto(request.count)
-
-    override suspend fun reportSuspension(
-        sessionId: String,
-        request: id.sch.mts241alikhlash.exam.data.model.SuspensionRequest,
-    ): id.sch.mts241alikhlash.exam.data.model.SuspensionResponseDto = throw UnsupportedOperationException("not used")
 }
 
-private class FailingQuestionsApi : ExamApiService {
-    override suspend fun sessionHeartbeat(
-        sessionId: String,
-    ): id.sch.mts241alikhlash.exam.data.model.SessionHeartbeatResponse =
-        id.sch.mts241alikhlash.exam.data.model
-            .SessionHeartbeatResponse()
-
+private class FailingQuestionsApi : StubExamApi() {
     var questionCalls = 0
         private set
 
@@ -610,53 +487,9 @@ private class FailingQuestionsApi : ExamApiService {
         if (questionCalls == 1) throw IOException("offline")
         return paperOf(listOf(question("q1")))
     }
-
-    override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
-
-    override suspend fun saveAnswersBatch(
-        sessionId: String,
-        request: SaveAnswersBatchRequest,
-    ): SaveAnswersBatchResultDto = batchAck(request)
-
-    override suspend fun submit(
-        sessionId: String,
-        request: SubmitRequest,
-    ): SubmittedSessionDto = SubmittedSessionDto("SUBMITTED")
-
-    override suspend fun recordSessionEvents(
-        sessionId: String,
-        request: RecordSessionEventsRequest,
-    ): RecordSessionEventsResponse = RecordSessionEventsResponse()
-
-    override suspend fun resumeSession(
-        sessionId: String,
-        request: ResumeSessionRequest,
-    ): ResumedSessionDto =
-        ResumedSessionDto(
-            sessionId = sessionId,
-            status = "IN_PROGRESS",
-            deadline = "",
-            serverTime = "",
-        )
-
-    override suspend fun reportViolations(
-        sessionId: String,
-        request: ViolationReport,
-    ): ViolationCountDto = ViolationCountDto(request.count)
-
-    override suspend fun reportSuspension(
-        sessionId: String,
-        request: id.sch.mts241alikhlash.exam.data.model.SuspensionRequest,
-    ): id.sch.mts241alikhlash.exam.data.model.SuspensionResponseDto = throw UnsupportedOperationException("not used")
 }
 
-private class BlockingQuestionsApi : ExamApiService {
-    override suspend fun sessionHeartbeat(
-        sessionId: String,
-    ): id.sch.mts241alikhlash.exam.data.model.SessionHeartbeatResponse =
-        id.sch.mts241alikhlash.exam.data.model
-            .SessionHeartbeatResponse()
-
+private class BlockingQuestionsApi : StubExamApi() {
     private val never = CompletableDeferred<Unit>()
     var submitCalls = 0
         private set
@@ -666,77 +499,26 @@ private class BlockingQuestionsApi : ExamApiService {
         return paperOf(listOf(question("q1")))
     }
 
-    override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
-
-    override suspend fun saveAnswersBatch(
-        sessionId: String,
-        request: SaveAnswersBatchRequest,
-    ): SaveAnswersBatchResultDto = batchAck(request)
-
     override suspend fun submit(
         sessionId: String,
-        request: SubmitRequest,
-    ): SubmittedSessionDto {
+        request: SubmitSessionRequestDto,
+    ): SubmitSessionResponseDto {
         submitCalls++
-        return SubmittedSessionDto("SUBMITTED")
+        return submitted(SubmitSessionResponseDto.Status.SUBMITTED)
     }
-
-    override suspend fun recordSessionEvents(
-        sessionId: String,
-        request: RecordSessionEventsRequest,
-    ): RecordSessionEventsResponse = RecordSessionEventsResponse()
-
-    override suspend fun resumeSession(
-        sessionId: String,
-        request: ResumeSessionRequest,
-    ): ResumedSessionDto =
-        ResumedSessionDto(
-            sessionId = sessionId,
-            status = "IN_PROGRESS",
-            deadline = "",
-            serverTime = "",
-        )
-
-    override suspend fun reportViolations(
-        sessionId: String,
-        request: ViolationReport,
-    ): ViolationCountDto = ViolationCountDto(request.count)
-
-    override suspend fun reportSuspension(
-        sessionId: String,
-        request: id.sch.mts241alikhlash.exam.data.model.SuspensionRequest,
-    ): id.sch.mts241alikhlash.exam.data.model.SuspensionResponseDto = throw UnsupportedOperationException("not used")
 }
 
 private class ViolationReportingApi(
     private val serverCount: Int = 0,
     private var failFirst: Int = 0,
-) : ExamApiService {
-    override suspend fun sessionHeartbeat(
-        sessionId: String,
-    ): id.sch.mts241alikhlash.exam.data.model.SessionHeartbeatResponse =
-        id.sch.mts241alikhlash.exam.data.model
-            .SessionHeartbeatResponse()
-
+) : StubExamApi() {
     val reported = mutableListOf<Int>()
 
     override suspend fun getQuestions(sessionId: String) = paperOf(listOf(question("q1")))
 
-    override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
-
-    override suspend fun saveAnswersBatch(
-        sessionId: String,
-        request: SaveAnswersBatchRequest,
-    ): SaveAnswersBatchResultDto = batchAck(request)
-
-    override suspend fun submit(
-        sessionId: String,
-        request: SubmitRequest,
-    ): SubmittedSessionDto = SubmittedSessionDto("SUBMITTED")
-
     override suspend fun reportViolations(
         sessionId: String,
-        request: ViolationReport,
+        request: RecordViolationsRequestDto,
     ): ViolationCountDto {
         if (failFirst > 0) {
             failFirst--
@@ -745,34 +527,13 @@ private class ViolationReportingApi(
         if (request.count > 0) reported += request.count
         return ViolationCountDto(maxOf(serverCount, request.count))
     }
-
-    override suspend fun reportSuspension(
-        sessionId: String,
-        request: id.sch.mts241alikhlash.exam.data.model.SuspensionRequest,
-    ): id.sch.mts241alikhlash.exam.data.model.SuspensionResponseDto = throw UnsupportedOperationException("not used")
-
-    override suspend fun recordSessionEvents(
-        sessionId: String,
-        request: RecordSessionEventsRequest,
-    ): RecordSessionEventsResponse = RecordSessionEventsResponse()
-
-    override suspend fun resumeSession(
-        sessionId: String,
-        request: ResumeSessionRequest,
-    ): ResumedSessionDto =
-        ResumedSessionDto(
-            sessionId = sessionId,
-            status = "IN_PROGRESS",
-            deadline = "",
-            serverTime = "",
-        )
 }
 
 private fun question(id: String) =
     PaperQuestionDto(
         id = id,
         number = 1,
-        type = "MULTIPLE_CHOICE",
+        type = PaperQuestionDto.Type.MULTIPLE_CHOICE,
         bodyHtml = "<p>Soal $id</p>",
         points = 1.0,
         choices = choices("A", "B"),

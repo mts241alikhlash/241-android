@@ -1,6 +1,7 @@
 package id.sch.mts241alikhlash.exam.ui.screens
 
-import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
+import id.sch.mts241alikhlash.exam.api.exam.models.MyExamDto
+import id.sch.mts241alikhlash.exam.myExam
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -10,14 +11,14 @@ class SidebarStatusTest {
         title: String,
         status: String,
         startsAt: String = "2026-10-30T01:00:00.000Z",
-    ) = ExamSummaryDto(
+    ) = myExam(
         id = title,
         title = title,
         subjectId = "s",
         startsAt = startsAt,
         endsAt = "2026-10-30T03:00:00.000Z",
         durationMinutes = 90,
-        status = status,
+        status = MyExamDto.Status.valueOf(status),
     )
 
     @Test

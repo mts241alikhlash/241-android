@@ -4,11 +4,11 @@ import id.sch.mts241alikhlash.exam.EmptyQuestionDao
 import id.sch.mts241alikhlash.exam.InMemoryAnswerDao
 import id.sch.mts241alikhlash.exam.MainDispatcherRule
 import id.sch.mts241alikhlash.exam.StubExamApi
+import id.sch.mts241alikhlash.exam.api.exam.models.PaperQuestionDto
 import id.sch.mts241alikhlash.exam.choices
 import id.sch.mts241alikhlash.exam.data.local.AnswerSyncState
 import id.sch.mts241alikhlash.exam.data.local.CachedAnswerEntity
 import id.sch.mts241alikhlash.exam.data.model.AnswerPayload
-import id.sch.mts241alikhlash.exam.data.model.PaperQuestionDto
 import id.sch.mts241alikhlash.exam.data.repository.ExamRepository
 import id.sch.mts241alikhlash.exam.paperOf
 import id.sch.mts241alikhlash.exam.testClock
@@ -33,8 +33,8 @@ class ExamAnswerInputTest {
         override suspend fun getQuestions(sessionId: String) =
             paperOf(
                 listOf(
-                    PaperQuestionDto("q1", 1, "MULTIPLE_CHOICE", "x", 1.0, choices("a", "b", "c")),
-                    PaperQuestionDto("q2", 2, "ESSAY", "y", 5.0, null),
+                    PaperQuestionDto("q1", 1, PaperQuestionDto.Type.MULTIPLE_CHOICE, "x", 1.0, choices("a", "b", "c")),
+                    PaperQuestionDto("q2", 2, PaperQuestionDto.Type.ESSAY, "y", 5.0, null),
                 ),
             )
     }
