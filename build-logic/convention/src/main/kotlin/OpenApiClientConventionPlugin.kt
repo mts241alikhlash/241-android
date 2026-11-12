@@ -5,6 +5,7 @@ import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.register
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
+import java.io.File
 
 private data class OpenApiServiceSpec(
     val service: String,
@@ -100,6 +101,7 @@ class OpenApiClientConventionPlugin : Plugin<Project> {
                     configOptions.set(
                         mapOf(
                             "library" to "jvm-retrofit2",
+                            "dateLibrary" to "string",
                             "serializationLibrary" to "kotlinx_serialization",
                             "useCoroutines" to "true",
                             "omitGradleWrapper" to "true",
@@ -115,6 +117,18 @@ class OpenApiClientConventionPlugin : Plugin<Project> {
                             target.fileTree(outDir.map { it.dir("src/main/kotlin/$pkgPath/models") }) {
                                 include("HealthControllerCheck*.kt")
                             },
+                        )
+                        val infraDir = outDir.get().dir("src/main/kotlin/$pkgPath/infrastructure").asFile
+                        val javaTimeAdapters = listOf("LocalDate", "LocalDateTime", "OffsetDateTime")
+                        javaTimeAdapters.forEach { File(infraDir, "${it}Adapter.kt").delete() }
+                        val serializer = File(infraDir, "Serializer.kt")
+                        serializer.writeText(
+                            serializer
+                                .readLines()
+                                .filterNot { line ->
+                                    line.startsWith("import java.time.") ||
+                                        javaTimeAdapters.any { line.contains("contextual($it::class, ${it}Adapter)") }
+                                }.joinToString("\n", postfix = "\n"),
                         )
                         val modelsDir = outDir.get().dir("src/main/kotlin/$pkgPath/models").asFile
                         modelsDir.walkTopDown().filter { it.isFile && it.extension == "kt" }.forEach { file ->
@@ -167,15 +181,6 @@ class OpenApiClientConventionPlugin : Plugin<Project> {
                                 }
                             }
                             file.writeText(text)
-                        }
-                        val infraDir = outDir.get().dir("src/main/kotlin/$pkgPath/infrastructure").asFile
-                        if (infraDir.exists()) {
-                            infraDir.walkTopDown().filter { it.isFile && it.extension == "kt" }.forEach { file ->
-                                val text = file.readText()
-                                if (!text.startsWith("@file:Suppress(\"NewApi\")")) {
-                                    file.writeText("@file:Suppress(\"NewApi\")\n\n$text")
-                                }
-                            }
                         }
                     }
                 }
