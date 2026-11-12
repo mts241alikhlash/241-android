@@ -1,7 +1,7 @@
 package id.sch.mts241alikhlash.exam.ui
 
 import id.sch.mts241alikhlash.exam.data.auth.AuthUser
-import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
+import id.sch.mts241alikhlash.exam.myExam
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -10,7 +10,7 @@ import org.junit.Test
 
 class AppRootStateTest {
     private val user = AuthUser("u1", "Ahmad", setOf("STUDENT"))
-    private val exam = ExamSummaryDto("e1", "UTS", "Matematika", "a", "b", 90, "OPEN")
+    private val exam = myExam(id = "e1", title = "UTS", subjectId = "Matematika", startsAt = "a", endsAt = "b")
 
     private fun states() =
         listOf(

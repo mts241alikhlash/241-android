@@ -72,9 +72,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.sch.mts241alikhlash.exam.R
+import id.sch.mts241alikhlash.exam.api.exam.models.MyExamDto
+import id.sch.mts241alikhlash.exam.api.exam.models.PaperQuestionDto
 import id.sch.mts241alikhlash.exam.data.model.AnswerPayload
-import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
-import id.sch.mts241alikhlash.exam.data.model.PaperQuestionDto
 import id.sch.mts241alikhlash.exam.kiosk.ViolationPolicy
 import id.sch.mts241alikhlash.exam.proctor.ProctorController
 import id.sch.mts241alikhlash.exam.proctor.rememberProctorPermission
@@ -110,7 +110,7 @@ import kotlinx.coroutines.launch
 fun ExamScreen(
     viewModel: ExamViewModel,
     sessionId: String,
-    exam: ExamSummaryDto? = null,
+    exam: MyExamDto? = null,
     baseUrl: String,
     imageLoader: coil3.ImageLoader?,
     onFinish: () -> Unit,
@@ -273,7 +273,7 @@ fun ExamContent(
     onSupervisorExit: () -> Unit = {},
     onSessionLost: (String) -> Unit = {},
     sessionId: String = "",
-    exam: ExamSummaryDto? = null,
+    exam: MyExamDto? = null,
     baseUrl: String = "",
     imageLoader: coil3.ImageLoader? = null,
 ) {
@@ -903,7 +903,7 @@ private fun QuestionListDialog(
     fun answered(q: PaperQuestionDto) = state.answers[q.id].isFilled() || !state.drafts[q.id].isNullOrBlank()
     val answeredCount = state.questions.count(::answered)
     val doubtCount = state.questions.count { state.doubtfuls.contains(it.id) }
-    val groups = state.questions.withIndex().groupBy { it.value.type }
+    val groups = state.questions.withIndex().groupBy { it.value.type.value }
 
     AppDialog(
         title = "Daftar Soal",
@@ -1023,7 +1023,7 @@ private fun LegendDot(
 @Composable
 private fun QuestionDetailCard(
     state: ExamUiState,
-    exam: ExamSummaryDto?,
+    exam: MyExamDto?,
     onOpenList: () -> Unit,
 ) {
     val shape = RoundedCornerShape(10.dp)

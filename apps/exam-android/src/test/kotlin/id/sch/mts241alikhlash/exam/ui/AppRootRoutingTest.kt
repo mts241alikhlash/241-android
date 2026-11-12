@@ -6,7 +6,7 @@ import androidx.compose.runtime.setValue
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import id.sch.mts241alikhlash.exam.data.auth.AuthUser
-import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
+import id.sch.mts241alikhlash.exam.myExam
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Rule
@@ -21,7 +21,7 @@ class AppRootRoutingTest {
         )
 
     private val user = AuthUser("u1", "Ahmad", setOf("STUDENT"))
-    private val exam = ExamSummaryDto("e1", "UTS", "Matematika", "a", "b", 90, "OPEN")
+    private val exam = myExam(id = "e1", title = "UTS", subjectId = "Matematika", startsAt = "a", endsAt = "b")
 
     private fun screenFor(state: AppRootState): String {
         var shown = ""

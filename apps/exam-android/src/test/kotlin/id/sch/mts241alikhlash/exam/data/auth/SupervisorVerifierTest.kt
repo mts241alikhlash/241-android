@@ -1,9 +1,12 @@
 package id.sch.mts241alikhlash.exam.data.auth
 
-import id.sch.mts241alikhlash.exam.data.remote.ApiEnvelope
+import id.sch.mts241alikhlash.exam.api.identity.apis.NativeAuthenticationApi
+import id.sch.mts241alikhlash.exam.api.identity.models.NativeAuthControllerLogin200Response
+import id.sch.mts241alikhlash.exam.api.identity.models.NativeLoginDto
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import retrofit2.Response
 import java.io.IOException
 
 class SupervisorVerifierTest {
@@ -38,8 +41,8 @@ class SupervisorVerifierTest {
     fun verify_offline_on_network_error() =
         runTest {
             val offline =
-                object : AuthApiService by api {
-                    override suspend fun login(request: LoginRequest): ApiEnvelope<AuthResponseDto> = throw IOException("offline")
+                object : NativeAuthenticationApi by api {
+                    override suspend fun nativeAuthControllerLogin(nativeLoginDto: NativeLoginDto): Response<NativeAuthControllerLogin200Response> = throw IOException("offline")
                 }
 
             assertEquals(

@@ -31,6 +31,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import id.sch.mts241alikhlash.exam.api.exam.models.MyExamDto
 import id.sch.mts241alikhlash.exam.data.auth.SupervisorResult
 import id.sch.mts241alikhlash.exam.data.local.ExamDatabase
 import id.sch.mts241alikhlash.exam.data.remote.ApiErrorCode
@@ -53,7 +54,6 @@ import id.sch.mts241alikhlash.exam.kiosk.ViolationStore
 import id.sch.mts241alikhlash.exam.kiosk.blocksExamKey
 import id.sch.mts241alikhlash.exam.proctor.ProctorController
 import id.sch.mts241alikhlash.exam.proctor.ProctorFlags
-import id.sch.mts241alikhlash.exam.proctor.ProctorSnapshotApi
 import id.sch.mts241alikhlash.exam.ui.AppRootState
 import id.sch.mts241alikhlash.exam.ui.AssessmentAppRoot
 import id.sch.mts241alikhlash.exam.ui.ExamInputLockdown
@@ -179,7 +179,7 @@ class MainActivity : ComponentActivity() {
                             isSessionFinished = { id ->
                                 app.catalogRepository
                                     .listExams()
-                                    .any { it.sessionId == id && it.status == "FINISHED" }
+                                    .any { it.sessionId == id && it.status == MyExamDto.Status.FINISHED }
                             },
                             requiresTokenReentry = { id ->
                                 val upload =
@@ -595,7 +595,8 @@ class MainActivity : ComponentActivity() {
                                 ProctorController.camera(
                                     intervalMs = ExamRuntimePolicy.current.snapshotIntervalMs,
                                     context = applicationContext,
-                                    api = app.retrofit.create(ProctorSnapshotApi::class.java),
+                                    api = app.examApi,
+                                    deviceId = app::deviceId,
                                     isAnswerSyncBusy = { app.repository.isSyncingOrSubmitting },
                                 )
                             }

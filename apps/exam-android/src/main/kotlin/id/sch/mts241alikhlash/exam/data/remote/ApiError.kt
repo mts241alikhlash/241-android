@@ -1,13 +1,13 @@
 package id.sch.mts241alikhlash.exam.data.remote
 
 import kotlinx.coroutines.CancellationException
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import retrofit2.HttpException
+import retrofit2.Response
 import java.io.IOException
 
 const val GENERIC_ERROR_MESSAGE = "Terjadi kesalahan. Coba lagi."
@@ -22,14 +22,6 @@ object ApiErrorCode {
     const val SESSION_LOCKED_BY_VIOLATION = "SESSION_LOCKED_BY_VIOLATION"
     const val WINDOW_CLOSED = "WINDOW_CLOSED"
 }
-
-@Serializable
-data class ApiEnvelope<T>(
-    val statusCode: Int,
-    val message: String = "",
-    val data: T? = null,
-    val code: String? = null,
-)
 
 fun Throwable.userMessage(): String {
     val api = this as? ApiException ?: return GENERIC_ERROR_MESSAGE
@@ -76,9 +68,30 @@ class ApiException(
     val code: String? = null,
 ) : Exception(message)
 
-fun <T> ApiEnvelope<T>.unwrap(): T = data ?: throw ApiException(statusCode, message.ifBlank { GENERIC_ERROR_MESSAGE }, code)
+fun <R, T> Response<R>.unwrapData(extract: (R) -> T?): T {
+    if (!isSuccessful) {
+        val body = parseErrorBody(errorBody()?.string().orEmpty())
+        throw ApiException(code(), body?.first ?: GENERIC_ERROR_MESSAGE, body?.second)
+    }
+    val payload = body() ?: throw ApiException(code(), GENERIC_ERROR_MESSAGE)
+    return extract(payload) ?: throw ApiException(code(), GENERIC_ERROR_MESSAGE)
+}
 
-suspend fun <T> apiCall(block: suspend () -> ApiEnvelope<T>): T = guarded { block().unwrap() }
+fun <R, T> Response<R>.unwrapNullableData(extract: (R) -> T?): T? {
+    if (!isSuccessful) {
+        val body = parseErrorBody(errorBody()?.string().orEmpty())
+        throw ApiException(code(), body?.first ?: GENERIC_ERROR_MESSAGE, body?.second)
+    }
+    val payload = body() ?: return null
+    return extract(payload)
+}
+
+fun Response<Unit>.unwrapUnit() {
+    if (!isSuccessful) {
+        val body = parseErrorBody(errorBody()?.string().orEmpty())
+        throw ApiException(code(), body?.first ?: GENERIC_ERROR_MESSAGE, body?.second)
+    }
+}
 
 suspend fun <T> guarded(block: suspend () -> T): T =
     try {
@@ -102,11 +115,12 @@ suspend fun <T> guarded(block: suspend () -> T): T =
 
 private val errorJson = Json { ignoreUnknownKeys = true }
 
-private fun HttpException.serverError(): Pair<String, String?>? =
+private fun parseErrorBody(body: String): Pair<String, String?>? =
     runCatching {
-        val body = response()?.errorBody()?.string().orEmpty()
         val json = errorJson.parseToJsonElement(body).jsonObject
         val message = json["message"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
         val code = json["code"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
         message?.let { it to code }
     }.getOrNull()
+
+private fun HttpException.serverError(): Pair<String, String?>? = parseErrorBody(response()?.errorBody()?.string().orEmpty())

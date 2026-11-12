@@ -26,9 +26,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.ImageLoader
+import id.sch.mts241alikhlash.exam.api.exam.models.PaperChoiceDto
+import id.sch.mts241alikhlash.exam.api.exam.models.PaperQuestionDto
 import id.sch.mts241alikhlash.exam.data.model.AnswerPayload
-import id.sch.mts241alikhlash.exam.data.model.PaperChoiceDto
-import id.sch.mts241alikhlash.exam.data.model.PaperQuestionDto
 import id.sch.mts241alikhlash.exam.ui.components.FloatingTextField
 import id.sch.mts241alikhlash.exam.ui.theme.DMSansFontFamily
 import id.sch.mts241alikhlash.exam.ui.theme.TextMuted
@@ -60,7 +60,7 @@ fun QuestionAnswerInput(
     onTextChange: (String) -> Unit,
 ) {
     val choices = question.choices.orEmpty()
-    when (question.type.uppercase()) {
+    when (question.type.value) {
         "MULTIPLE_CHOICE" ->
             ChoiceInput(
                 choices = choices,
@@ -113,11 +113,11 @@ fun ChoiceInput(
             ChoiceRow(
                 letter = ('A' + index).toString(),
                 html = choice.html,
-                selected = choice.key == selected,
+                selected = choice.key.value == selected,
                 multi = false,
                 enabled = enabled,
                 images = images,
-                onClick = { onSelect(choice.key) },
+                onClick = { onSelect(choice.key.value) },
             )
         }
     }
@@ -143,11 +143,11 @@ fun MultipleResponseInput(
             ChoiceRow(
                 letter = ('A' + index).toString(),
                 html = choice.html,
-                selected = choice.key in selected,
+                selected = choice.key.value in selected,
                 multi = true,
                 enabled = enabled,
                 images = images,
-                onClick = { onToggle(choice.key) },
+                onClick = { onToggle(choice.key.value) },
             )
         }
     }

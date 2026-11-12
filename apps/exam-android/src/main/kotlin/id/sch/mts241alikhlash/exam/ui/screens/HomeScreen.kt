@@ -64,7 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.sch.mts241alikhlash.exam.BuildConfig
 import id.sch.mts241alikhlash.exam.R
-import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
+import id.sch.mts241alikhlash.exam.api.exam.models.MyExamDto
 import id.sch.mts241alikhlash.exam.ui.components.ActionButton
 import id.sch.mts241alikhlash.exam.ui.components.ActionStyle
 import id.sch.mts241alikhlash.exam.ui.components.AppDialog
@@ -91,7 +91,7 @@ fun HomeScreen(
     listViewModel: ExamListViewModel,
     profileViewModel: ProfileViewModel,
     notice: String?,
-    onSelect: (ExamSummaryDto) -> Unit,
+    onSelect: (MyExamDto) -> Unit,
     onLogout: () -> Unit,
 ) {
     var section by rememberSaveable { mutableStateOf(HomeSection.ExamWork) }

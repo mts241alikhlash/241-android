@@ -1,30 +1,33 @@
 package id.sch.mts241alikhlash.exam.data.repository
 
-import id.sch.mts241alikhlash.exam.data.model.MyClassroomDto
-import id.sch.mts241alikhlash.exam.data.model.MyClassroomInfoDto
-import id.sch.mts241alikhlash.exam.data.model.NamedDto
-import id.sch.mts241alikhlash.exam.data.model.SemesterDto
-import id.sch.mts241alikhlash.exam.data.model.StudentGradeDto
-import id.sch.mts241alikhlash.exam.data.model.StudentMeDto
-import id.sch.mts241alikhlash.exam.data.model.StudentPersonDto
-import id.sch.mts241alikhlash.exam.data.model.StudentUserDto
+import id.sch.mts241alikhlash.exam.api.student.models.MyClassroomResponseClassroomAcademicYearDto
+import id.sch.mts241alikhlash.exam.api.student.models.MyClassroomResponseClassroomDto
+import id.sch.mts241alikhlash.exam.api.student.models.MyClassroomResponseDto
+import id.sch.mts241alikhlash.exam.api.student.models.MyClassroomResponseSemesterDto
+import id.sch.mts241alikhlash.exam.api.student.models.StudentResponseDto
+import id.sch.mts241alikhlash.exam.api.student.models.StudentResponseGradeDto
+import id.sch.mts241alikhlash.exam.api.student.models.StudentResponseUserDto
+import id.sch.mts241alikhlash.exam.api.student.models.StudentResponseUserProfileDto
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class StudentProfileTest {
     private val me =
-        StudentMeDto(
+        StudentResponseDto(
             id = "s1",
+            userId = "u1",
             nis = "2024001",
             nisn = "0012345601",
-            status = "ACTIVE",
-            grade = StudentGradeDto(name = "VII", level = 7),
+            status = StudentResponseDto.Status.ACTIVE,
+            grade = StudentResponseGradeDto(id = "g1", name = "VII", level = 7),
             user =
-                StudentUserDto(
+                StudentResponseUserDto(
+                    id = "u1",
                     identifier = "2024001",
+                    isActive = true,
                     profile =
-                        StudentPersonDto(
+                        StudentResponseUserProfileDto(
                             name = "Ahmad Fauzi",
                             gender = "MALE",
                             birthPlace = "Bandung",
@@ -36,14 +39,23 @@ class StudentProfileTest {
         )
 
     private val classroom =
-        MyClassroomDto(
+        MyClassroomResponseDto(
             classroom =
-                MyClassroomInfoDto(
+                MyClassroomResponseClassroomDto(
+                    id = "c1",
+                    academicYearId = "ay1",
+                    capacity = 30,
                     code = "7A",
                     displayName = "7A (VII A)",
-                    academicYear = NamedDto("2026/2027"),
+                    gradeId = "g1",
+                    name = "7A",
+                    academicYear = MyClassroomResponseClassroomAcademicYearDto(id = "ay1", isActive = true, name = "2026/2027"),
                 ),
-            semester = SemesterDto("Ganjil"),
+            semester = MyClassroomResponseSemesterDto(id = "sem1", sequence = 1, isActive = true, name = "Ganjil"),
+            classmates = emptyList(),
+            subjects = emptyList(),
+            structure = null,
+            supervisor = null,
         )
 
     @Test
@@ -74,7 +86,21 @@ class StudentProfileTest {
 
     @Test
     fun `profile falls back to the session name and hides blank fields`() {
-        val bare = StudentMeDto(id = "s2", nis = "2024002", status = "", user = StudentUserDto(profile = StudentPersonDto(name = " ", email = "", phone = "")))
+        val bare =
+            StudentResponseDto(
+                id = "s2",
+                userId = "u2",
+                nis = "2024002",
+                nisn = "",
+                status = StudentResponseDto.Status.ACTIVE,
+                user =
+                    StudentResponseUserDto(
+                        id = "u2",
+                        identifier = "",
+                        isActive = true,
+                        profile = StudentResponseUserProfileDto(name = " ", email = "", phone = ""),
+                    ),
+            )
 
         val profile = studentProfileOf(bare, null, "Siti Aisyah")
 
@@ -82,15 +108,15 @@ class StudentProfileTest {
         assertNull(profile.gender)
         assertNull(profile.email)
         assertNull(profile.phone)
-        assertNull(profile.status)
+        assertEquals("Aktif", profile.status)
         assertNull(profile.username)
     }
 
     @Test
     fun `initials take the first letters of up to two words`() {
         assertEquals("AF", studentProfileOf(me, null, "x").initials)
-        assertEquals("SA", studentProfileOf(me.copy(user = null), null, "siti aisyah rahma").initials)
-        assertEquals("?", studentProfileOf(me.copy(user = null), null, "  ").initials)
+        assertEquals("SA", studentProfileOf(me.copy(user = me.user.copy(profile = null)), null, "siti aisyah rahma").initials)
+        assertEquals("?", studentProfileOf(me.copy(user = me.user.copy(profile = null)), null, "  ").initials)
     }
 
     @Test

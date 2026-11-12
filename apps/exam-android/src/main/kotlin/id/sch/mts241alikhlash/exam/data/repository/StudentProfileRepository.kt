@@ -1,9 +1,11 @@
 package id.sch.mts241alikhlash.exam.data.repository
 
-import id.sch.mts241alikhlash.exam.data.model.MyClassroomDto
-import id.sch.mts241alikhlash.exam.data.model.StudentMeDto
-import id.sch.mts241alikhlash.exam.data.remote.StudentApiService
+import id.sch.mts241alikhlash.exam.api.student.apis.StudentsApi
+import id.sch.mts241alikhlash.exam.api.student.models.MyClassroomResponseDto
+import id.sch.mts241alikhlash.exam.api.student.models.StudentResponseDto
 import id.sch.mts241alikhlash.exam.data.remote.guarded
+import id.sch.mts241alikhlash.exam.data.remote.unwrapData
+import id.sch.mts241alikhlash.exam.data.remote.unwrapNullableData
 import kotlinx.coroutines.CancellationException
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -39,12 +41,13 @@ data class StudentProfile(
 }
 
 fun studentProfileOf(
-    me: StudentMeDto,
-    classroom: MyClassroomDto?,
+    me: StudentResponseDto,
+    classroom: MyClassroomResponseDto?,
     fallbackName: String,
 ): StudentProfile {
-    val person = me.user?.profile
+    val person = me.user.profile
     val info = classroom?.classroom
+    val statusRaw = me.status.value
     return StudentProfile(
         name = person?.name?.takeIf { it.isNotBlank() } ?: fallbackName,
         nis = me.nis,
@@ -63,12 +66,12 @@ fun studentProfileOf(
         classroomName = info?.displayName?.takeIf { it.isNotBlank() },
         academicYear = info?.academicYear?.name?.takeIf { it.isNotBlank() },
         status =
-            when (me.status) {
+            when (statusRaw) {
                 "ACTIVE" -> "Aktif"
                 "" -> null
-                else -> me.status.lowercase().replaceFirstChar { it.uppercase() }
+                else -> statusRaw.lowercase().replaceFirstChar { it.uppercase() }
             },
-        username = me.user?.identifier?.takeIf { it.isNotBlank() },
+        username = me.user.identifier.takeIf { it.isNotBlank() },
         semester = classroom?.semester?.name?.takeIf { it.isNotBlank() },
     )
 }
@@ -85,13 +88,13 @@ fun indonesianDate(iso: String): String? =
     }.getOrNull()
 
 class StudentProfileRepository(
-    private val api: StudentApiService,
+    private val api: StudentsApi,
 ) {
     suspend fun load(fallbackName: String): StudentProfile {
-        val me = guarded { api.me() }
+        val me = guarded { api.studentControllerFindMine().unwrapData { it.data } }
         val classroom =
             try {
-                guarded { api.classroom() }
+                guarded { api.studentControllerFindMyClassroom().unwrapNullableData { it.data } }
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (_: Exception) {

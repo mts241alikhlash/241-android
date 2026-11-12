@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
+import id.sch.mts241alikhlash.exam.api.exam.apis.StudentExamsApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -51,13 +52,14 @@ private class CameraSnapshotSource(
 }
 
 class ProctorController(
-    private val api: ProctorSnapshotApi,
+    private val api: StudentExamsApi,
     private val isAnswerSyncBusy: () -> Boolean,
     private val source: SnapshotSource,
     private val log: (String) -> Unit = {},
     private val intervalMs: Long = SnapshotScheduler.INTERVAL_MS,
+    private val deviceId: () -> String = { "" },
 ) {
-    private val uploader = SnapshotUploader(api, log)
+    private val uploader = SnapshotUploader(api, deviceId, log)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val scheduler = SnapshotScheduler(isAnswerSyncBusy)
     private var loop: Job? = null
@@ -173,14 +175,16 @@ class ProctorController(
 
         fun camera(
             context: Context,
-            api: ProctorSnapshotApi,
+            api: StudentExamsApi,
             isAnswerSyncBusy: () -> Boolean,
             intervalMs: Long = SnapshotScheduler.INTERVAL_MS,
+            deviceId: () -> String = { "" },
         ) = ProctorController(
             api,
             isAnswerSyncBusy,
             CameraSnapshotSource(context),
             intervalMs = intervalMs,
+            deviceId = deviceId,
             log = { message -> android.util.Log.w("ProctorUpload", message) },
         )
     }

@@ -1,6 +1,6 @@
 package id.sch.mts241alikhlash.exam.kiosk
 
-import id.sch.mts241alikhlash.exam.data.model.ExamPolicyDto
+import id.sch.mts241alikhlash.exam.api.exam.models.ExamPolicyDto
 import id.sch.mts241alikhlash.exam.data.session.ExamRuntimePolicy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

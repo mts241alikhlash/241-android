@@ -1,6 +1,7 @@
 package id.sch.mts241alikhlash.exam.ui.screens
 
-import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
+import id.sch.mts241alikhlash.exam.api.exam.models.MyExamDto
+import id.sch.mts241alikhlash.exam.myExam
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -10,14 +11,14 @@ class SidebarStatusTest {
         title: String,
         status: String,
         startsAt: String = "2026-10-30T01:00:00.000Z",
-    ) = ExamSummaryDto(
+    ) = myExam(
         id = title,
         title = title,
         subjectId = "s",
         startsAt = startsAt,
         endsAt = "2026-10-30T03:00:00.000Z",
         durationMinutes = 90,
-        status = status,
+        status = MyExamDto.Status.valueOf(status),
     )
 
     @Test
@@ -30,7 +31,7 @@ class SidebarStatusTest {
     fun `an exam in progress wins over everything else`() {
         val summary =
             examStatusSummary(
-                listOf(exam("UH - IPS", "OPEN"), exam("UTS - IPA", "IN_PROGRESS"), exam("UAS", "UPCOMING")),
+                listOf(exam("Ulangan Harian - IPS", "OPEN"), exam("UTS - IPA", "IN_PROGRESS"), exam("UAS", "UPCOMING")),
             )
 
         assertEquals("Ujian berlangsung · UTS - IPA", summary)
@@ -38,10 +39,10 @@ class SidebarStatusTest {
 
     @Test
     fun `one open exam is named and several are counted`() {
-        assertEquals("Ujian dibuka · UH - IPS", examStatusSummary(listOf(exam("UH - IPS", "OPEN"))))
+        assertEquals("Ujian dibuka · Ulangan Harian - IPS", examStatusSummary(listOf(exam("Ulangan Harian - IPS", "OPEN"))))
         assertEquals(
             "2 ujian sedang dibuka",
-            examStatusSummary(listOf(exam("UH - IPS", "OPEN"), exam("UH - IPA", "OPEN"))),
+            examStatusSummary(listOf(exam("Ulangan Harian - IPS", "OPEN"), exam("Ulangan Harian - IPA", "OPEN"))),
         )
     }
 

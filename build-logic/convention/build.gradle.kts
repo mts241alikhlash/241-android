@@ -20,6 +20,7 @@ dependencies {
     compileOnly(libs.kotlin.gradlePlugin)
     compileOnly(libs.compose.compiler.gradlePlugin)
     implementation(libs.spotless.gradlePlugin)
+    implementation(libs.openapi.generator.gradlePlugin)
 }
 
 gradlePlugin {
@@ -55,6 +56,10 @@ gradlePlugin {
         register("lint") {
             id = "mts241.lint"
             implementationClass = "LintConventionPlugin"
+        }
+        register("openApiClient") {
+            id = "mts241.openapi.client"
+            implementationClass = "OpenApiClientConventionPlugin"
         }
     }
 }

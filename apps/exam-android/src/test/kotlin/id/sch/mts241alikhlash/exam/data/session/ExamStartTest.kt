@@ -1,10 +1,10 @@
 package id.sch.mts241alikhlash.exam.data.session
 
-import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
-import id.sch.mts241alikhlash.exam.data.model.StartSessionRequest
-import id.sch.mts241alikhlash.exam.data.model.StartedSessionDto
+import id.sch.mts241alikhlash.exam.StubExamApi
+import id.sch.mts241alikhlash.exam.api.exam.models.MyExamDto
+import id.sch.mts241alikhlash.exam.api.exam.models.StartSessionDto
+import id.sch.mts241alikhlash.exam.api.exam.models.StartedSessionDto
 import id.sch.mts241alikhlash.exam.data.remote.ApiException
-import id.sch.mts241alikhlash.exam.data.remote.ExamCatalogApiService
 import id.sch.mts241alikhlash.exam.data.repository.ExamCatalogRepository
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -15,12 +15,12 @@ import java.io.IOException
 class ExamStartTest {
     private class Api(
         val result: () -> StartedSessionDto,
-    ) : ExamCatalogApiService {
-        override suspend fun listExams(): List<ExamSummaryDto> = emptyList()
+    ) : StubExamApi() {
+        override suspend fun listExams(): List<MyExamDto> = emptyList()
 
         override suspend fun startSession(
             examId: String,
-            request: StartSessionRequest,
+            request: StartSessionDto,
         ): StartedSessionDto = result()
     }
 

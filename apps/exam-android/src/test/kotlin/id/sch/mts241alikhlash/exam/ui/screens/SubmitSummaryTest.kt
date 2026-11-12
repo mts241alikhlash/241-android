@@ -1,12 +1,12 @@
 package id.sch.mts241alikhlash.exam.ui.screens
 
+import id.sch.mts241alikhlash.exam.api.exam.models.PaperQuestionDto
 import id.sch.mts241alikhlash.exam.data.model.AnswerPayload
-import id.sch.mts241alikhlash.exam.data.model.PaperQuestionDto
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class SubmitSummaryTest {
-    private fun question(id: String) = PaperQuestionDto(id, id.removePrefix("q").toInt(), "MULTIPLE_CHOICE", "x", 1.0, null)
+    private fun question(id: String) = PaperQuestionDto(id, id.removePrefix("q").toInt(), PaperQuestionDto.Type.MULTIPLE_CHOICE, "x", 1.0, null)
 
     @Test
     fun `counts answered doubtful unanswered and pending sync`() {

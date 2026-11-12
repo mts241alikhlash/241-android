@@ -2,22 +2,26 @@ package id.sch.mts241alikhlash.exam.data.repository
 
 import id.sch.mts241alikhlash.exam.EmptyQuestionDao
 import id.sch.mts241alikhlash.exam.InMemoryAnswerDao
+import id.sch.mts241alikhlash.exam.StubExamApi
+import id.sch.mts241alikhlash.exam.api.exam.apis.StudentExamsApi
+import id.sch.mts241alikhlash.exam.api.exam.models.RecordSessionEventsRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.RecordSessionEventsResponseDto
+import id.sch.mts241alikhlash.exam.api.exam.models.RecordViolationsRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.ResumeSessionRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.ResumeSessionResponseDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SaveAnswersBatchDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SaveAnswersBatchResultDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SavedAnswerDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SubmitSessionRequestDto
+import id.sch.mts241alikhlash.exam.api.exam.models.SubmitSessionResponseDto
+import id.sch.mts241alikhlash.exam.api.exam.models.ViolationCountDto
 import id.sch.mts241alikhlash.exam.data.local.CachedSessionEventEntity
 import id.sch.mts241alikhlash.exam.data.local.SessionEventDao
-import id.sch.mts241alikhlash.exam.data.model.RecordSessionEventsRequest
-import id.sch.mts241alikhlash.exam.data.model.RecordSessionEventsResponse
-import id.sch.mts241alikhlash.exam.data.model.ResumeSessionRequest
-import id.sch.mts241alikhlash.exam.data.model.ResumedSessionDto
-import id.sch.mts241alikhlash.exam.data.model.SaveAnswersBatchRequest
-import id.sch.mts241alikhlash.exam.data.model.SaveAnswersBatchResultDto
-import id.sch.mts241alikhlash.exam.data.model.SavedAnswerDto
-import id.sch.mts241alikhlash.exam.data.model.SubmitRequest
-import id.sch.mts241alikhlash.exam.data.model.SubmittedSessionDto
-import id.sch.mts241alikhlash.exam.data.model.ViolationCountDto
-import id.sch.mts241alikhlash.exam.data.model.ViolationReport
 import id.sch.mts241alikhlash.exam.data.remote.ApiException
-import id.sch.mts241alikhlash.exam.data.remote.ExamApiService
+import id.sch.mts241alikhlash.exam.eventsResponse
+import id.sch.mts241alikhlash.exam.heartbeatOf
 import id.sch.mts241alikhlash.exam.paperOf
+import id.sch.mts241alikhlash.exam.submitted
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -26,7 +30,7 @@ import java.io.IOException
 
 class SessionEventUploadTest {
     private fun repo(
-        api: ExamApiService,
+        api: StudentExamsApi,
         events: InMemorySessionEventDao,
     ) = ExamRepository(
         api = api,
@@ -159,7 +163,7 @@ class SessionEventUploadTest {
             assertEquals("IN_PROGRESS", resumed.status)
             assertEquals(1_793_496_600_000L, resumed.deadlineMillis)
             assertEquals(false, resumed.requiresTokenReentry)
-            assertEquals(ResumeSessionRequest("ABC123", "tablet-1"), api.resume)
+            assertEquals(ResumeSessionRequestDto("ABC123", "tablet-1"), api.resume)
         }
 
     @Test
@@ -221,47 +225,45 @@ private class EventsApi(
     private val resumeError: ApiException? = null,
     private val lockedByViolation: Boolean = false,
     private val requiresTokenReentry: Boolean = false,
-) : ExamApiService {
+) : StubExamApi() {
     override suspend fun sessionHeartbeat(
         sessionId: String,
-    ): id.sch.mts241alikhlash.exam.data.model.SessionHeartbeatResponse =
-        id.sch.mts241alikhlash.exam.data.model
-            .SessionHeartbeatResponse()
+    ): id.sch.mts241alikhlash.exam.api.exam.models.SessionHeartbeatDto = heartbeatOf()
 
-    val requests = mutableListOf<RecordSessionEventsRequest>()
-    var resume: ResumeSessionRequest? = null
+    val requests = mutableListOf<RecordSessionEventsRequestDto>()
+    var resume: ResumeSessionRequestDto? = null
 
-    override suspend fun getQuestions(sessionId: String): id.sch.mts241alikhlash.exam.data.model.SessionPaperDto = paperOf()
+    override suspend fun getQuestions(sessionId: String): id.sch.mts241alikhlash.exam.api.exam.models.SessionPaperDto = paperOf()
 
     override suspend fun getAnswers(sessionId: String): List<SavedAnswerDto> = emptyList()
 
     override suspend fun saveAnswersBatch(
         sessionId: String,
-        request: SaveAnswersBatchRequest,
+        request: SaveAnswersBatchDto,
     ): SaveAnswersBatchResultDto = throw UnsupportedOperationException()
 
     override suspend fun submit(
         sessionId: String,
-        request: SubmitRequest,
-    ): SubmittedSessionDto = SubmittedSessionDto("SUBMITTED")
+        request: SubmitSessionRequestDto,
+    ): SubmitSessionResponseDto = submitted(SubmitSessionResponseDto.Status.SUBMITTED)
 
     override suspend fun reportViolations(
         sessionId: String,
-        request: ViolationReport,
+        request: RecordViolationsRequestDto,
     ): ViolationCountDto = ViolationCountDto(request.count)
 
     override suspend fun reportSuspension(
         sessionId: String,
-        request: id.sch.mts241alikhlash.exam.data.model.SuspensionRequest,
-    ): id.sch.mts241alikhlash.exam.data.model.SuspensionResponseDto = throw UnsupportedOperationException("not used")
+        request: id.sch.mts241alikhlash.exam.api.exam.models.SessionSuspensionRequestDto,
+    ): id.sch.mts241alikhlash.exam.api.exam.models.SessionSuspensionDto = throw UnsupportedOperationException("not used")
 
     override suspend fun recordSessionEvents(
         sessionId: String,
-        request: RecordSessionEventsRequest,
-    ): RecordSessionEventsResponse {
+        request: RecordSessionEventsRequestDto,
+    ): RecordSessionEventsResponseDto {
         if (offline) throw IOException("offline")
         requests += request
-        return RecordSessionEventsResponse(
+        return eventsResponse(
             violationCount = request.events.count { it.isViolation },
             requiresTokenReentry = requiresTokenReentry,
             lockedByViolation = lockedByViolation,
@@ -271,13 +273,13 @@ private class EventsApi(
 
     override suspend fun resumeSession(
         sessionId: String,
-        request: ResumeSessionRequest,
-    ): ResumedSessionDto {
+        request: ResumeSessionRequestDto,
+    ): ResumeSessionResponseDto {
         resumeError?.let { throw it }
         resume = request
-        return ResumedSessionDto(
+        return ResumeSessionResponseDto(
             sessionId = sessionId,
-            status = "IN_PROGRESS",
+            status = ResumeSessionResponseDto.Status.IN_PROGRESS,
             deadline = "2026-11-01T01:30:00.000Z",
             serverTime = "2026-11-01T01:00:00.000Z",
             requiresTokenReentry = false,

@@ -1,10 +1,11 @@
 package id.sch.mts241alikhlash.exam.data.repository
 
-import id.sch.mts241alikhlash.exam.data.model.ExamPolicyDto
-import id.sch.mts241alikhlash.exam.data.model.ExamSummaryDto
-import id.sch.mts241alikhlash.exam.data.model.StartSessionRequest
-import id.sch.mts241alikhlash.exam.data.remote.ExamCatalogApiService
+import id.sch.mts241alikhlash.exam.api.exam.apis.StudentExamsApi
+import id.sch.mts241alikhlash.exam.api.exam.models.ExamPolicyDto
+import id.sch.mts241alikhlash.exam.api.exam.models.MyExamDto
+import id.sch.mts241alikhlash.exam.api.exam.models.StartSessionDto
 import id.sch.mts241alikhlash.exam.data.remote.guarded
+import id.sch.mts241alikhlash.exam.data.remote.unwrapData
 import id.sch.mts241alikhlash.exam.data.session.ServerClock
 
 data class StartedSession(
@@ -14,11 +15,14 @@ data class StartedSession(
 )
 
 class ExamCatalogRepository(
-    private val api: ExamCatalogApiService,
+    private val api: StudentExamsApi,
     private val deviceId: () -> String,
     private val clock: ServerClock = ServerClock(),
 ) {
-    suspend fun listExams(): List<ExamSummaryDto> = guarded { api.listExams() }
+    suspend fun listExams(): List<MyExamDto> =
+        guarded {
+            api.studentExamControllerFindMine().unwrapData { it.data }
+        }
 
     suspend fun startSession(
         examId: String,
@@ -26,7 +30,11 @@ class ExamCatalogRepository(
     ): StartedSession {
         val started =
             guarded {
-                api.startSession(examId, StartSessionRequest(accessCode.trim(), deviceId()))
+                api
+                    .studentExamControllerStart(
+                        examId,
+                        StartSessionDto(accessCode.trim(), deviceId()),
+                    ).unwrapData { it.data }
             }
         clock.syncEpochMillis(started.serverTime)
         return StartedSession(
