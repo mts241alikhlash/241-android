@@ -75,8 +75,8 @@ android {
 
     defaultConfig {
         applicationId = "id.sch.mts241alikhlash.istiqra"
-        versionCode = 9
-        versionName = "0.1.8"
+        versionCode = 10
+        versionName = "0.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField(

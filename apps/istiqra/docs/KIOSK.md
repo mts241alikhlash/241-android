@@ -37,24 +37,6 @@ server. Perangkat harus online; tanpa koneksi kunci tidak bisa dilepas lewat apl
 yang ditolak dicatat sebagai `supervisor_exit_denied`, yang berhasil sebagai `supervisor_exit`.
 PIN statis `SUPERVISOR_PIN` sudah dihapus dari build.
 
-## Kamera ujian
-
-Build `proctor` menyalakan kamera depan selama sesi ujian berjalan. Uji coba memakai HP siswa
-sendiri, yang bukan Device Owner. Akibatnya:
-
-- status bar tetap bisa terlihat pada beberapa perangkat, jadi notifikasi "Kamera ujian aktif"
-  bisa dibaca siswa;
-- Android 13 ke atas mengizinkan siswa menghentikan aplikasi dari notifikasi itu — kamera mati,
-  dan kursi di layar pengawas memerah dalam 60 detik;
-- HP yang di-reboot tidak menyalakan kamera lagi sampai aplikasi dibuka.
-
-Yang **tetap** berlaku di HP biasa: menekan Home, membuka aplikasi lain, atau mematikan layar
-tidak menghentikan kamera. Android 11 hanya melarang *memulai* foreground service kamera dari
-background, bukan menjalankan yang sudah aktif.
-
-Kamera hanya hidup selama sesi ujian; tidak ada perekaman, dan tidak ada kamera di luar ujian.
-Lihat `TRIAL-CAMERA.md` untuk prosedur uji coba.
-
 ## Batasan tanpa Device Owner
 
 Karena tidak ada Device Owner, siswa masih dapat melepas pin dengan gestur sistem. Kejadian itu
