@@ -47,9 +47,6 @@ class IstiqraApplication : Application() {
     lateinit var imageLoader: coil3.ImageLoader
         private set
 
-    lateinit var examApi: StudentExamsApi
-        private set
-
     @Volatile
     var examActive: Boolean = false
 
@@ -128,7 +125,6 @@ class IstiqraApplication : Application() {
                 .build()
 
         val api = retrofit.create(StudentExamsApi::class.java)
-        examApi = api
         catalogRepository =
             ExamCatalogRepository(
                 api = api,
