@@ -36,7 +36,7 @@ import id.sch.mts241alikhlash.exam.ui.theme.WebTokens
 
 val BrandCardOverlap = 40.dp
 val BrandEmblemSize = 72.dp
-private val AppLogo = R.drawable.logo
+private val AppLogo = R.drawable.istiqra_symbol
 
 @Composable
 fun BrandHero(
@@ -133,8 +133,8 @@ fun BrandEmblem() {
     ) {
         Image(
             painter = painterResource(id = AppLogo),
-            contentDescription = "Logo 241-exam",
-            modifier = Modifier.height(44.dp),
+            contentDescription = "Logo Istiqra",
+            modifier = Modifier.width(48.dp),
             contentScale = ContentScale.Fit,
         )
     }

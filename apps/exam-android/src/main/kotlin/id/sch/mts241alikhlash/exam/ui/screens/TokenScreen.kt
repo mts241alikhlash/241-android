@@ -324,7 +324,7 @@ fun TokenScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = "241-exam · MTs 241 Al-Ikhlash",
+                    text = "Istiqra · MTs Persis 241 Al-Ikhlash",
                     fontSize = 11.sp,
                     fontFamily = DMSansFontFamily,
                     color = WebTokens.MutedForeground,
