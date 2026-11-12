@@ -11,7 +11,7 @@ on:
       api_base_url:
         description: 'API base URL baked into the APK (defaults to the app module default)'
       tag:
-        description: 'Release tag (e.g. exam-android@0.1.0). Required for workflow_dispatch.'
+        description: 'Release tag (e.g. istiqra@0.2.0). Required for workflow_dispatch.'
         required: true
       flavor:
         description: 'Product flavor: standard (no camera permission) or proctor (snapshot proctoring)'

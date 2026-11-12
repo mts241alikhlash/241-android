@@ -70,7 +70,7 @@ class OpenApiClientConventionPlugin : Plugin<Project> {
                     library.set("jvm-retrofit2")
                     inputSpec.set("${target.projectDir}/contracts/${spec.service}.openapi.json")
                     outputDir.set(outDir)
-                    val basePkg = "id.sch.mts241alikhlash.exam.api.${spec.service}"
+                    val basePkg = "id.sch.mts241alikhlash.istiqra.api.${spec.service}"
                     packageName.set(basePkg)
                     apiPackage.set("$basePkg.apis")
                     modelPackage.set("$basePkg.models")

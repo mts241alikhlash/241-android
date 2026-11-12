@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "241-android"
-include(":apps:exam-android")
+include(":apps:istiqra")

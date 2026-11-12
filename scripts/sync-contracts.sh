@@ -18,7 +18,7 @@ for svc in "${SERVICES[@]}"; do
 done
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DEST_DIR="${REPO_ROOT}/apps/exam-android/contracts"
+DEST_DIR="${REPO_ROOT}/apps/istiqra/contracts"
 mkdir -p "${DEST_DIR}"
 
 for svc in "${SERVICES[@]}"; do
