@@ -49,6 +49,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -384,6 +385,15 @@ fun ExamContent(
                         Modifier.weight(1f),
                     )
                 }
+                if (summary.unanswered > 0) {
+                    Text(
+                        text = "Masih ada ${summary.unanswered} soal belum dijawab. Soal kosong bernilai 0.",
+                        fontFamily = DMSansFontFamily,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = StatusError,
+                    )
+                }
                 Text(
                     text = "Jawaban tidak dapat diubah setelah dikumpulkan.",
                     fontFamily = DMSansFontFamily,
@@ -684,16 +694,18 @@ fun ExamContent(
                                                         }
                                                     },
                                         ) {
-                                            QuestionAnswerInput(
-                                                question = currentQ,
-                                                answer = state.answers[currentQ.id],
-                                                draft = state.drafts[currentQ.id],
-                                                enabled = state.canAnswer,
-                                                images = ImageContext(sessionId, baseUrl, imageLoader),
-                                                onAnswer = { onAnswer(currentQ.id, it) },
-                                                onToggleKey = { onToggleKey(currentQ.id, it) },
-                                                onTextChange = { onTextChange(currentQ.id, it) },
-                                            )
+                                            key(currentQ.id) {
+                                                QuestionAnswerInput(
+                                                    question = currentQ,
+                                                    answer = state.answers[currentQ.id],
+                                                    draft = state.drafts[currentQ.id],
+                                                    enabled = state.canAnswer,
+                                                    images = ImageContext(sessionId, baseUrl, imageLoader),
+                                                    onAnswer = { onAnswer(currentQ.id, it) },
+                                                    onToggleKey = { onToggleKey(currentQ.id, it) },
+                                                    onTextChange = { onTextChange(currentQ.id, it) },
+                                                )
+                                            }
                                         }
                                     }
                                 }

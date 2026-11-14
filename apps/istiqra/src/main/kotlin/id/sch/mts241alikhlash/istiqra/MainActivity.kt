@@ -505,9 +505,7 @@ class MainActivity : ComponentActivity() {
                                             runCatching {
                                                 app.repository.uploadSessionEvents(sessionId)
                                             }.getOrNull()
-                                        if (upload?.lockedByViolation == true) {
-                                            app.sessionRepository.markReentryPending(sessionId)
-                                        }
+                                        if (upload?.lockedByViolation == true) requireTokenNow(sessionId)
                                     }
                                 },
                             ).also {
@@ -521,9 +519,7 @@ class MainActivity : ComponentActivity() {
                         while (true) {
                             delay(ExamRuntimePolicy.current.heartbeatIntervalMs)
                             val beat = app.repository.heartbeat(sessionId) ?: continue
-                            if (beat.lockedByViolation) {
-                                app.sessionRepository.markReentryPending(sessionId)
-                            }
+                            if (beat.lockedByViolation || beat.requiresTokenReentry) requireTokenNow(sessionId)
                         }
                     }
                     if (isExamActive && !gateOpen) {
@@ -678,6 +674,11 @@ class MainActivity : ComponentActivity() {
     override fun onProvideAssistContent(outContent: android.app.assist.AssistContent?) = Unit
 
     override fun onProvideAssistData(data: Bundle?) = Unit
+
+    private suspend fun requireTokenNow(sessionId: String) {
+        (application as IstiqraApplication).sessionRepository.markReentryPending(sessionId)
+        reentrySignal.value = sessionId
+    }
 
     private fun checkTokenReentry() {
         if (!isExamActive) return
