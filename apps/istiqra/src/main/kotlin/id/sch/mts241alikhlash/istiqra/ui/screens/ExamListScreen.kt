@@ -56,9 +56,9 @@ internal fun groupExams(exams: List<MyExamDto>): List<ExamGroup> =
         ExamGroup("Bisa Dikerjakan", exams.filter { it.isSelectable() }),
         ExamGroup(
             "Akan Datang",
-            exams.filter { !it.isSelectable() && it.lifecycle == MyExamDto.Lifecycle.UPCOMING },
+            exams.filter { !it.isSelectable() && !it.isFinished() && it.lifecycle == MyExamDto.Lifecycle.UPCOMING },
         ),
-        ExamGroup("Selesai", exams.filter { it.lifecycle == MyExamDto.Lifecycle.FINISHED }),
+        ExamGroup("Selesai", exams.filter { it.isFinished() }),
     ).filter { it.exams.isNotEmpty() }
 
 @Composable

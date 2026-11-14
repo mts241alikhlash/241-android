@@ -43,9 +43,11 @@ fun MyExamDto.displayTitle(): String {
     return if (label != null && subject != null) "$label - $subject" else title
 }
 
-fun MyExamDto.isSelectable(): Boolean = lifecycle == MyExamDto.Lifecycle.OPEN
+fun MyExamDto.isFinished(): Boolean = status == MyExamDto.Status.FINISHED || lifecycle == MyExamDto.Lifecycle.FINISHED
 
-fun MyExamDto.isExpandable(): Boolean = lifecycle != MyExamDto.Lifecycle.FINISHED
+fun MyExamDto.isSelectable(): Boolean = !isFinished() && lifecycle == MyExamDto.Lifecycle.OPEN
+
+fun MyExamDto.isExpandable(): Boolean = !isFinished()
 
 fun examMenuExams(
     exams: List<MyExamDto>,

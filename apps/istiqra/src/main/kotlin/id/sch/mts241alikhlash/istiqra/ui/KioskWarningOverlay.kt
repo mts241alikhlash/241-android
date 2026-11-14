@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -32,6 +33,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import id.sch.mts241alikhlash.istiqra.ui.components.ActionButton
+import id.sch.mts241alikhlash.istiqra.ui.components.ActionStyle
 import id.sch.mts241alikhlash.istiqra.ui.components.BrandWatermark
 import id.sch.mts241alikhlash.istiqra.ui.components.PrimaryButton
 import id.sch.mts241alikhlash.istiqra.ui.components.SectionHeader
@@ -44,6 +47,7 @@ fun KioskWarningOverlay(
     onRetry: () -> Unit,
     onSupervisorAccess: () -> Unit = {},
     onOpenPinSettings: () -> Unit = {},
+    onAllowUnpinned: () -> Unit = {},
 ) {
     Box(modifier = Modifier.fillMaxSize().background(WebTokens.Background)) {
         BrandWatermark(
@@ -102,6 +106,13 @@ fun KioskWarningOverlay(
             PrimaryButton(text = "Kunci Layar", onClick = onRetry)
             Spacer(Modifier.height(10.dp))
             PrimaryButton(text = "Buka Pengaturan Sematkan Layar", onClick = onOpenPinSettings)
+            Spacer(Modifier.height(10.dp))
+            ActionButton(
+                text = "HP tidak bisa disematkan? Izin pengawas",
+                style = ActionStyle.Outline,
+                onClick = onAllowUnpinned,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

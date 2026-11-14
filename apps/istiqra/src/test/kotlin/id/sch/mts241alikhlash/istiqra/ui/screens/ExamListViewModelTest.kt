@@ -116,11 +116,19 @@ class ExamListViewModelTest {
     }
 
     @Test
-    fun lifecycle_open_makes_a_finished_looking_status_startable() {
-        val open = exam("a", "FINISHED").copy(lifecycle = MyExamDto.Lifecycle.OPEN)
+    fun a_handed_in_exam_is_finished_while_its_window_is_still_open() {
+        val handedIn = exam("a", "FINISHED").copy(lifecycle = MyExamDto.Lifecycle.OPEN)
+
+        assertFalse(handedIn.isSelectable())
+        assertFalse(handedIn.isExpandable())
+        assertEquals(listOf("Selesai"), groupExams(listOf(handedIn)).map { it.title })
+    }
+
+    @Test
+    fun an_open_window_still_lets_a_student_start_an_exam_not_yet_taken() {
+        val open = exam("a", "UPCOMING").copy(lifecycle = MyExamDto.Lifecycle.OPEN)
 
         assertTrue(open.isSelectable())
-        assertTrue(open.isExpandable())
         assertEquals(listOf("Bisa Dikerjakan"), groupExams(listOf(open)).map { it.title })
     }
 
