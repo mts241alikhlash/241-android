@@ -73,6 +73,27 @@ class ExamViewModelTextDraftTest {
             assertEquals(listOf("Fotosintesis"), shown.distinct())
         }
 
+    @Test
+    fun `a pasted block of text is refused while typing word by word is kept`() =
+        runTest {
+            val vm =
+                ExamViewModel(
+                    repository = ExamRepository(EssayApi(), SlowAnswerDao(), NoQuestions(), now = { 5_000L }),
+                    sessionId = "s1",
+                    deadline = null,
+                    clock = testClock(testScheduler),
+                )
+            testScheduler.advanceTimeBy(EMIT_LAG_MS * 2)
+            runCurrent()
+
+            vm.updateText("e1", "Fotosintesis ")
+            vm.updateText("e1", "Fotosintesis adalah ")
+            vm.updateText("e1", "Fotosintesis adalah proses tumbuhan membuat makanan dengan bantuan cahaya matahari")
+            runCurrent()
+
+            assertEquals("Fotosintesis adalah ", vm.uiState.value.shownText("e1"))
+        }
+
     private companion object {
         const val EMIT_LAG_MS = 200L
     }

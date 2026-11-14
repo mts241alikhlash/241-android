@@ -49,6 +49,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import id.sch.mts241alikhlash.istiqra.kiosk.DeviceReadinessState
 import id.sch.mts241alikhlash.istiqra.kiosk.DndController
 import id.sch.mts241alikhlash.istiqra.kiosk.InternalIntentGuard
+import id.sch.mts241alikhlash.istiqra.kiosk.isCurrentKeyboardTrusted
+import id.sch.mts241alikhlash.istiqra.kiosk.showKeyboardPicker
 import id.sch.mts241alikhlash.istiqra.ui.components.ActionButton
 import id.sch.mts241alikhlash.istiqra.ui.components.ActionStyle
 import id.sch.mts241alikhlash.istiqra.ui.components.CardHeader
@@ -81,6 +83,7 @@ fun DeviceReadinessScreen(
             DeviceReadinessState(
                 dndGranted = dnd.isAccessGranted(),
                 audioClear = isAudioClear(context),
+                keyboardTrusted = isCurrentKeyboardTrusted(context),
             )
     }
     val currentRefresh by rememberUpdatedState(refresh)
@@ -118,7 +121,7 @@ fun DeviceReadinessScreen(
                 .padding(horizontal = 20.dp, vertical = 20.dp),
     ) {
         val readyCount =
-            listOf(state.dndGranted, state.audioClear, state.online)
+            listOf(state.dndGranted, state.audioClear, state.online, state.keyboardTrusted)
                 .count { it }
         Column(
             modifier =
@@ -148,18 +151,18 @@ fun DeviceReadinessScreen(
                     Box(
                         modifier =
                             Modifier
-                                .fillMaxWidth(readyCount / 3f)
+                                .fillMaxWidth(readyCount / READINESS_CHECKS)
                                 .height(3.dp)
-                                .background(if (readyCount == 3) StatusSuccess else DoubtfulOrange),
+                                .background(if (readyCount == READINESS_CHECKS.toInt()) StatusSuccess else DoubtfulOrange),
                     )
                 }
                 Spacer(Modifier.width(12.dp))
                 Text(
-                    text = "$readyCount/3",
+                    text = "$readyCount/${READINESS_CHECKS.toInt()}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = DMSansFontFamily,
-                    color = if (readyCount == 3) StatusSuccess else DoubtfulOrange,
+                    color = if (readyCount == READINESS_CHECKS.toInt()) StatusSuccess else DoubtfulOrange,
                 )
             }
             ReadinessRow(
@@ -174,6 +177,13 @@ fun DeviceReadinessScreen(
                 ok = state.audioClear,
                 actionLabel = if (state.audioClear) null else "Periksa Ulang",
                 onAction = refresh,
+            )
+            RowDivider()
+            ReadinessRow(
+                title = "Keyboard Bawaan HP",
+                ok = state.keyboardTrusted,
+                actionLabel = if (state.keyboardTrusted) null else "Ganti Keyboard",
+                onAction = { showKeyboardPicker(context) },
             )
             RowDivider()
             ReadinessRow(
@@ -288,3 +298,5 @@ private fun openDndSettings(
         }
     }
 }
+
+private const val READINESS_CHECKS = 4f

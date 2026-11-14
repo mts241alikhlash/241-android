@@ -44,4 +44,19 @@ class DeviceReadinessTest {
         assertFalse(state.allReady)
         assertEquals(listOf(ReadinessBlocker.DND, ReadinessBlocker.OFFLINE), state.blockingReasons())
     }
+
+    @Test
+    fun `a keyboard from outside the system blocks the student`() {
+        val state = DeviceReadinessState(dndGranted = true, audioClear = true, online = true, keyboardTrusted = false)
+
+        assertFalse(state.allReady)
+        assertEquals(listOf(ReadinessBlocker.KEYBOARD), state.blockingReasons())
+    }
+
+    @Test
+    fun `a keyboard is trusted only when it ships with the system`() {
+        assertTrue(isTrustedKeyboard(systemApp = true, updatedSystemApp = false))
+        assertTrue(isTrustedKeyboard(systemApp = false, updatedSystemApp = true))
+        assertFalse(isTrustedKeyboard(systemApp = false, updatedSystemApp = false))
+    }
 }

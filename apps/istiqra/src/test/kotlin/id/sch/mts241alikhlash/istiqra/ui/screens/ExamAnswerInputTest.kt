@@ -167,7 +167,13 @@ class ExamAnswerInputTest {
             val vm = newViewModel()
             runCurrent()
 
-            vm.updateText("q2", "x".repeat(25_000))
+            var typed = ""
+            while (typed.length < 25_000) {
+                typed += "x".repeat(ExamViewModel.MAX_TEXT_INSERT)
+                vm.updateText("q2", typed)
+                typed = vm.uiState.value.drafts["q2"] ?: typed
+                if (typed.length >= ExamViewModel.MAX_TEXT_LENGTH) break
+            }
 
             assertEquals(
                 ExamViewModel.MAX_TEXT_LENGTH,

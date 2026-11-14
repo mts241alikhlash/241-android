@@ -51,6 +51,7 @@ import id.sch.mts241alikhlash.istiqra.kiosk.SessionEventTracker
 import id.sch.mts241alikhlash.istiqra.kiosk.ViolationPolicy
 import id.sch.mts241alikhlash.istiqra.kiosk.ViolationStore
 import id.sch.mts241alikhlash.istiqra.kiosk.blocksExamKey
+import id.sch.mts241alikhlash.istiqra.kiosk.clearExamClipboard
 import id.sch.mts241alikhlash.istiqra.ui.AppRootState
 import id.sch.mts241alikhlash.istiqra.ui.AssessmentAppRoot
 import id.sch.mts241alikhlash.istiqra.ui.ExamInputLockdown
@@ -764,6 +765,7 @@ class MainActivity : ComponentActivity() {
 
     private fun startKioskMode() {
         applyExamWindowFlags()
+        clearExamClipboard(this)
         kioskGateOpen.value = pinPolicy.gateOpen
         mainHandler.removeCallbacks(pinWatch)
         mainHandler.post(pinWatch)
@@ -857,6 +859,7 @@ class MainActivity : ComponentActivity() {
         guard.consumeOnResume()
         if (isExamActive) {
             applyExamWindowFlags()
+            clearExamClipboard(this)
             runCatching { startLockTask() }
             dnd.enableExamDnd()
             verifyPinState()

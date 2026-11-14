@@ -405,6 +405,8 @@ class ExamViewModel(
         text: String,
     ) {
         if (!_uiState.value.canAnswer) return
+        val shown = _uiState.value.drafts[questionId] ?: (currentAnswer(questionId) as? AnswerPayload.Text)?.text.orEmpty()
+        if (text.length - shown.length > MAX_TEXT_INSERT) return
         val clamped = text.take(MAX_TEXT_LENGTH)
         _uiState.value = _uiState.value.copy(drafts = _uiState.value.drafts + (questionId to clamped))
         textJobs[questionId]?.cancel()
@@ -517,6 +519,7 @@ class ExamViewModel(
         const val ANSWERS_NOT_STORED_MESSAGE =
             "Ujian sudah berakhir di server. Jawaban terakhir belum tersimpan."
         const val TEXT_DEBOUNCE_MS = 600L
+        const val MAX_TEXT_INSERT = 30
         const val MAX_TEXT_LENGTH = 20_000
         const val AUTO_SUBMIT_RETRY_MS = 5_000L
         const val AUTO_SUBMIT_MAX_ATTEMPTS = 120

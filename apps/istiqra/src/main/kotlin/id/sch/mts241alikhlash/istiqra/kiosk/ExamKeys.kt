@@ -14,3 +14,17 @@ fun blocksExamKey(
     isExamActive: Boolean,
     keyCode: Int,
 ): Boolean = isExamActive && keyCode in EXAM_BLOCKED_KEYS
+
+val EXAM_BLOCKED_EDIT_KEYS =
+    setOf(
+        KeyEvent.KEYCODE_PASTE,
+        KeyEvent.KEYCODE_COPY,
+        KeyEvent.KEYCODE_CUT,
+    )
+
+fun blocksExamShortcut(
+    isExamActive: Boolean,
+    keyCode: Int,
+    ctrl: Boolean,
+    meta: Boolean,
+): Boolean = isExamActive && (ctrl || meta || keyCode in EXAM_BLOCKED_EDIT_KEYS)
