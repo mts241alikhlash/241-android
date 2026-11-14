@@ -269,8 +269,6 @@ fun ExamContent(
 ) {
     var showConfirmDialog by remember { mutableStateOf(false) }
     var showQuestionList by remember { mutableStateOf(false) }
-    // Opening the confirmation from inside the list dialog needs the touch sequence to end first,
-    // otherwise its scrim swallows the same tap.
     val dialogScope = rememberCoroutineScope()
     var resumeNoticeDismissed by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.isResumed) {

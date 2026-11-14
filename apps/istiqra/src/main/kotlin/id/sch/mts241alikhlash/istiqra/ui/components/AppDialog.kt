@@ -118,7 +118,6 @@ fun AppDialog(
 
         val shape = RoundedCornerShape(WebTokens.Radius)
         val maxHeight = LocalConfiguration.current.screenHeightDp.dp - 32.dp
-        // Only a footer that carries buttons needs more breathing room than a plain caption row.
         val footerHasButtons = footerStart != null || footerEnd != null
         val footerMinHeight = if (footerHasButtons) 56.dp else 40.dp
         val footerVertical = if (footerHasButtons) 8.dp else 2.dp

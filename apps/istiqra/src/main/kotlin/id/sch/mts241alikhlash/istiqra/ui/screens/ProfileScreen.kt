@@ -35,9 +35,7 @@ import id.sch.mts241alikhlash.istiqra.ui.components.PrimaryButton
 import id.sch.mts241alikhlash.istiqra.ui.theme.DMSansFontFamily
 import id.sch.mts241alikhlash.istiqra.ui.theme.WebTokens
 
-fun profileCardExam(exams: List<MyExamDto>): MyExamDto? =
-    // shortcut: ISO-8601 UTC strings sort lexicographically, parse if the formats ever vary
-    exams.filter { it.isSelectable() }.minByOrNull { it.startsAt }
+fun profileCardExam(exams: List<MyExamDto>): MyExamDto? = exams.filter { it.isSelectable() }.minByOrNull { it.startsAt }
 
 fun profileExamRows(exam: MyExamDto?): List<Pair<String, String>> {
     if (exam?.lifecycle != MyExamDto.Lifecycle.OPEN) return emptyList()
