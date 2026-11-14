@@ -4,7 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
@@ -27,6 +27,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.semantics
@@ -77,13 +78,12 @@ fun FloatingTextField(
             modifier
                 .padding(top = WebTokens.LabelZone)
                 .alpha(if (enabled) 1f else 0.5f)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    enabled = enabled,
-                ) {
-                    focusRequester.requestFocus()
-                    keyboard?.show()
+                .pointerInput(enabled) {
+                    if (!enabled) return@pointerInput
+                    detectTapGestures {
+                        focusRequester.requestFocus()
+                        keyboard?.show()
+                    }
                 }.semantics(mergeDescendants = true) {},
     ) {
         Box(

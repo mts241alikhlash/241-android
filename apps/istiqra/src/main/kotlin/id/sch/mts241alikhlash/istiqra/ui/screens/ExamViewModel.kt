@@ -176,9 +176,14 @@ class ExamViewModel(
                     list.filter {
                         it.answer.isNotBlank() && AnswerPayload.decode(it.answer) != null
                     }
+                val settledDrafts =
+                    _uiState.value.drafts.filterNot { (questionId, text) ->
+                        (answerMap[questionId] as? AnswerPayload.Text)?.text == text
+                    }
                 _uiState.value =
                     _uiState.value.copy(
                         answers = answerMap,
+                        drafts = settledDrafts,
                         doubtfuls = doubtSet,
                         sync =
                             AnswerSyncSummary(
@@ -426,9 +431,6 @@ class ExamViewModel(
         val doubt = isDoubtful(questionId)
         repository.recordAnswer(questionId, sessionId, payload.encode(), doubt)
         scheduleSync()
-        if (_uiState.value.drafts[questionId] == text) {
-            _uiState.value = _uiState.value.copy(drafts = _uiState.value.drafts - questionId)
-        }
     }
 
     private suspend fun flushDrafts() {
