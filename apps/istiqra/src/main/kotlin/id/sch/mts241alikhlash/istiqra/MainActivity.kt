@@ -870,7 +870,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        // Leaving the pinned app (swipe+hold) must not leave the device on Do Not Disturb.
         if (!isChangingConfigurations && !KioskPolicy.isLocked(this)) dnd.restorePreviousDnd()
         if (!isExamActive) return
         val interactive = getSystemService(android.os.PowerManager::class.java)?.isInteractive ?: true
