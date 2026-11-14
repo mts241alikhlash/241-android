@@ -37,7 +37,7 @@ import id.sch.mts241alikhlash.istiqra.ui.theme.WebTokens
 
 fun profileCardExam(exams: List<MyExamDto>): MyExamDto? =
     // shortcut: ISO-8601 UTC strings sort lexicographically, parse if the formats ever vary
-    exams.filter { it.lifecycle == MyExamDto.Lifecycle.OPEN }.minByOrNull { it.startsAt }
+    exams.filter { it.isSelectable() }.minByOrNull { it.startsAt }
 
 fun profileExamRows(exam: MyExamDto?): List<Pair<String, String>> {
     if (exam?.lifecycle != MyExamDto.Lifecycle.OPEN) return emptyList()
