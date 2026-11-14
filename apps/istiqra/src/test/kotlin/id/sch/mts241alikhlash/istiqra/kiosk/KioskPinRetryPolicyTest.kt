@@ -69,4 +69,29 @@ class KioskPinRetryPolicyTest {
         assertEquals(0, policy.pinAttempts)
         assertFalse(policy.gateOpen)
     }
+
+    @Test
+    fun `a supervisor allowance opens the gate on a phone that cannot pin`() {
+        val policy = KioskPinRetryPolicy()
+        policy.onRetryAttempt(locked = false)
+
+        policy.allowUnpinned()
+        policy.onStateRefresh(locked = false)
+        policy.onRetryAttempt(locked = false)
+
+        assertTrue(policy.gateOpen)
+        assertEquals(KioskPinRetryPolicy.MODE_UNPINNED, policy.kioskMode)
+    }
+
+    @Test
+    fun `the supervisor allowance ends with the session`() {
+        val policy = KioskPinRetryPolicy()
+        policy.allowUnpinned()
+
+        policy.reset()
+        policy.onStateRefresh(locked = false)
+
+        assertFalse(policy.gateOpen)
+        assertEquals(KioskPinRetryPolicy.MODE_PINNED, policy.kioskMode)
+    }
 }

@@ -25,7 +25,16 @@ class KioskPinRetryPolicy {
     var gateOpen: Boolean = false
         private set
 
+    fun allowUnpinned() {
+        kioskMode = MODE_UNPINNED
+        gateOpen = true
+    }
+
     fun onRetryAttempt(locked: Boolean): Boolean {
+        if (kioskMode == MODE_UNPINNED) {
+            gateOpen = true
+            return true
+        }
         if (locked) {
             pinAttempts = 0
             gateOpen = true
@@ -40,7 +49,7 @@ class KioskPinRetryPolicy {
         if (locked) {
             pinAttempts = 0
         }
-        gateOpen = locked
+        gateOpen = locked || kioskMode == MODE_UNPINNED
     }
 
     fun reset() {
@@ -51,5 +60,6 @@ class KioskPinRetryPolicy {
 
     companion object {
         const val MODE_PINNED = "PINNED"
+        const val MODE_UNPINNED = "UNPINNED"
     }
 }

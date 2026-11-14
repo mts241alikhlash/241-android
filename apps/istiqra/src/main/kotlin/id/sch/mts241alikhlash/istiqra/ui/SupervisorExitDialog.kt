@@ -29,6 +29,9 @@ fun SupervisorExitDialog(
     onDismiss: () -> Unit,
     onVerify: suspend (identifier: String, password: String) -> SupervisorResult,
     onConfirm: () -> Unit,
+    title: String = "Keluar darurat",
+    confirmText: String = "Keluar",
+    description: String = "Masuk dengan akun guru untuk melepas kunci perangkat.",
 ) {
     var identifier by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -37,7 +40,7 @@ fun SupervisorExitDialog(
     val scope = rememberCoroutineScope()
 
     AppDialog(
-        title = "Keluar darurat",
+        title = title,
         onDismiss = { if (!checking) onDismiss() },
         dismissible = !checking,
         footerStart = {
@@ -45,7 +48,7 @@ fun SupervisorExitDialog(
         },
         footerEnd = {
             ActionButton(
-                text = "Keluar",
+                text = confirmText,
                 style = ActionStyle.Destructive,
                 loading = checking,
                 onClick = {
@@ -64,7 +67,7 @@ fun SupervisorExitDialog(
         },
     ) {
         Text(
-            text = "Masuk dengan akun guru untuk melepas kunci perangkat.",
+            text = description,
             fontFamily = DMSansFontFamily,
             fontSize = 13.sp,
             color = WebTokens.MutedForeground,

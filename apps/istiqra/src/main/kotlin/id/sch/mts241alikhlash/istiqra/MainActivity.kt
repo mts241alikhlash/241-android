@@ -93,6 +93,7 @@ class MainActivity : ComponentActivity() {
     private val countedViolations = kotlinx.coroutines.flow.MutableStateFlow(0)
     private val activeInterference = kotlinx.coroutines.flow.MutableStateFlow(InterferenceState())
     private var showSupervisorExit by mutableStateOf(false)
+    private var supervisorAllowsUnpinned by mutableStateOf(false)
     private var resumeCount by mutableIntStateOf(0)
     private var sessionRestored: Boolean? = null
     private var appState by mutableStateOf(AppRootState())
@@ -530,6 +531,10 @@ class MainActivity : ComponentActivity() {
                                 mainHandler.postDelayed(pinRetryRecheck, 400)
                             },
                             onSupervisorAccess = { showSupervisorExit = true },
+                            onAllowUnpinned = {
+                                supervisorAllowsUnpinned = true
+                                showSupervisorExit = true
+                            },
                             onOpenPinSettings = {
                                 guard.markLaunchingInternalDialog()
                                 runCatching {
@@ -661,11 +666,27 @@ class MainActivity : ComponentActivity() {
                             if (it != SupervisorResult.Approved) violations.record("supervisor_exit_denied")
                         }
                     },
-                    onDismiss = { showSupervisorExit = false },
+                    onDismiss = {
+                        showSupervisorExit = false
+                        supervisorAllowsUnpinned = false
+                    },
                     onConfirm = {
                         showSupervisorExit = false
-                        emergencyExit()
+                        if (supervisorAllowsUnpinned) {
+                            supervisorAllowsUnpinned = false
+                            allowUnpinned()
+                        } else {
+                            emergencyExit()
+                        }
                     },
+                    title = if (supervisorAllowsUnpinned) "Izinkan tanpa sematan" else "Keluar darurat",
+                    confirmText = if (supervisorAllowsUnpinned) "Izinkan" else "Keluar",
+                    description =
+                        if (supervisorAllowsUnpinned) {
+                            "Untuk HP yang tidak bisa menyematkan layar. Masuk dengan akun guru. Keluar dari aplikasi tetap dihitung pelanggaran."
+                        } else {
+                            "Masuk dengan akun guru untuk melepas kunci perangkat."
+                        },
                 )
             }
         }
@@ -879,6 +900,12 @@ class MainActivity : ComponentActivity() {
         mainHandler.removeCallbacks(pinWatch)
         mainHandler.removeCallbacks(pinRecheck)
         mainHandler.removeCallbacks(pinRetryRecheck)
+    }
+
+    private fun allowUnpinned() {
+        pinPolicy.allowUnpinned()
+        violations.record("unpinned_allowed")
+        kioskGateOpen.value = pinPolicy.gateOpen
     }
 
     private fun checkPinRetry() {
