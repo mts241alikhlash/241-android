@@ -82,7 +82,7 @@ fun ReloginDialog(
                 message = null
             },
             label = "Kata sandi",
-            enabled = !checking,
+            readOnly = checking,
             password = true,
             error = message,
             labelBackground = WebTokens.Background,

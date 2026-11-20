@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import id.sch.mts241alikhlash.istiqra.ui.theme.DMSansFontFamily
@@ -36,7 +38,8 @@ fun PrimaryButton(
                 .alpha(if (enabled) 1f else 0.5f)
                 .clip(RoundedCornerShape(WebTokens.Radius))
                 .background(WebTokens.Primary)
-                .clickable(enabled = enabled && !loading, role = Role.Button, onClick = onClick),
+                .semantics { if (!enabled || loading) disabled() }
+                .clickable(role = Role.Button) { if (enabled && !loading) onClick() },
         contentAlignment = Alignment.Center,
     ) {
         if (loading) {

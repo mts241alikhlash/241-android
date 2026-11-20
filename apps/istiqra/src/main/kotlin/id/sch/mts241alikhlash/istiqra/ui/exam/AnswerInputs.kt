@@ -177,7 +177,7 @@ fun TextAnswerInput(
             value = value,
             onValueChange = onChange,
             label = if (multiline) "Jawaban Anda" else "Jawaban singkat",
-            enabled = enabled,
+            readOnly = !enabled,
             singleLine = !multiline,
             minHeight = if (multiline) 160.dp else WebTokens.ControlHeight,
             labelBackground = WebTokens.Card,
