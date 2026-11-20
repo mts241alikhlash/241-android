@@ -175,6 +175,11 @@ class OpenApiClientConventionPlugin : Plugin<Project> {
                                             .replace("val gapTokenMs: kotlin.Int", "val gapTokenMs: kotlin.Long = 300_000L")
                                             .replace("val gapViolationFrom: kotlin.Int", "val gapViolationFrom: kotlin.Int = 2")
                                             .replace("val tokenSlotSeconds: kotlin.Int", "val tokenSlotSeconds: kotlin.Int = 600")
+                                            .replace("val lateToleranceMinutes: kotlin.Int", "val lateToleranceMinutes: kotlin.Int = 15")
+                                            .replace("val minSubmitMinutes: kotlin.Int", "val minSubmitMinutes: kotlin.Int = 0")
+                                            .replace("val shuffleQuestions: kotlin.Boolean", "val shuffleQuestions: kotlin.Boolean = true")
+                                            .replace("val shuffleChoices: kotlin.Boolean", "val shuffleChoices: kotlin.Boolean = true")
+                                            .replace("val allowWeb: kotlin.Boolean", "val allowWeb: kotlin.Boolean = true")
                                 }
                                 "NativeAuthResponseDto.kt" -> {
                                     text = text.replace("val expiresIn: kotlin.Int", "val expiresIn: kotlin.Long")
