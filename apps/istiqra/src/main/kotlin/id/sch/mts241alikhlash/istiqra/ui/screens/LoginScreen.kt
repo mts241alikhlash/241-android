@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -40,6 +41,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
@@ -85,7 +87,7 @@ fun LoginScreen(viewModel: LoginViewModel) {
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .then(if (imeVisible) Modifier.verticalScroll(scrollState) else Modifier)
+                    .verticalScroll(scrollState)
                     .heightIn(min = screenHeight),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween,
@@ -207,25 +209,28 @@ private fun LoginCard(
                 value = identifier,
                 onValueChange = onIdentifier,
                 label = "NIS",
-                enabled = !loading,
+                readOnly = loading,
                 error = identifierError,
                 modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
             )
             Spacer(modifier = Modifier.height(4.dp))
             FloatingTextField(
                 value = password,
                 onValueChange = onPassword,
                 label = "Kata sandi",
-                enabled = !loading,
+                readOnly = loading,
                 password = true,
                 error = passwordError,
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions =
                     KeyboardOptions(
+                        capitalization = KeyboardCapitalization.None,
+                        autoCorrectEnabled = false,
                         keyboardType = KeyboardType.Password,
                         imeAction = ImeAction.Go,
                     ),
+                keyboardActions = KeyboardActions(onGo = { onSubmit() }),
             )
             error?.let { message ->
                 Spacer(modifier = Modifier.height(8.dp))

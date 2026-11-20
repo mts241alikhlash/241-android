@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -69,7 +70,8 @@ fun ActionButton(
                 .clip(shape)
                 .background(container)
                 .then(if (style == ActionStyle.Outline) Modifier.border(1.dp, WebTokens.Border, shape) else Modifier)
-                .clickable(enabled = enabled && !loading, role = Role.Button, onClick = onClick)
+                .semantics { if (!enabled || loading) disabled() }
+                .clickable(role = Role.Button) { if (enabled && !loading) onClick() }
                 .padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center,
     ) {

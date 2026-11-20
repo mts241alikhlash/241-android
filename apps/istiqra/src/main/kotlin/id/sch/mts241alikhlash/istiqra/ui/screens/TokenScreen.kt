@@ -195,7 +195,7 @@ fun TokenScreen(
                             .union(WindowInsets.displayCutout)
                             .union(WindowInsets.navigationBars)
                             .union(WindowInsets.ime),
-                    ).then(if (imeVisible) Modifier.verticalScroll(scrollState) else Modifier)
+                    ).verticalScroll(scrollState)
                     .heightIn(min = screenHeight),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween,
@@ -260,7 +260,7 @@ fun TokenScreen(
                                 },
                                 label = "Token ujian",
                                 error = errorMessage ?: error,
-                                enabled = !loading,
+                                readOnly = loading,
                                 modifier = Modifier.fillMaxWidth(),
                                 keyboardOptions =
                                     KeyboardOptions(
@@ -292,7 +292,7 @@ fun TokenScreen(
                             color = if (loading) WebTokens.MutedForeground else WebTokens.Primary,
                             modifier =
                                 Modifier
-                                    .clickable(enabled = !loading, onClick = onBack)
+                                    .clickable { if (!loading) onBack() }
                                     .padding(horizontal = 12.dp, vertical = 8.dp),
                         )
                     }
