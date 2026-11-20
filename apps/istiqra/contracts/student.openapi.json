@@ -1498,6 +1498,58 @@
         ]
       }
     },
+    "/students/participant-numbers/lookup": {
+      "post": {
+        "description": "exam-service projects the numbers into a whole exam roster. Students without a number in the semester are absent from the response.",
+        "operationId": "StudentInternalController_listNumbers",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LookupParticipantNumbersDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ParticipantNumberEntryDto"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid provisioning token"
+          }
+        },
+        "summary": "Participant numbers of many students in one semester",
+        "tags": [
+          "Students"
+        ]
+      }
+    },
     "/students/by-user/{userId}": {
       "get": {
         "operationId": "StudentInternalController_byUser",
@@ -3763,7 +3815,7 @@
   "info": {
     "title": "Student Service API",
     "description": "Student Service",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "contact": {}
   },
   "tags": [],
@@ -4833,6 +4885,58 @@
         "required": [
           "issued",
           "skipped"
+        ]
+      },
+      "LookupParticipantNumbersDto": {
+        "type": "object",
+        "properties": {
+          "semesterId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "studentIds": {
+            "minItems": 1,
+            "maxItems": 500,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "semesterId",
+          "studentIds"
+        ]
+      },
+      "ParticipantNumberEntryDto": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "studentId",
+          "number"
+        ]
+      },
+      "ListParticipantNumbersResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParticipantNumberEntryDto"
+            }
+          }
+        },
+        "required": [
+          "data"
         ]
       },
       "StudentIdByUserDataDto": {

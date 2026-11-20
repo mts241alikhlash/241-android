@@ -301,6 +301,66 @@
         ]
       }
     },
+    "/exam-activities/{id}/package": {
+      "post": {
+        "operationId": "ExamActivityController_attach",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachActivityPackageRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ExamActivityDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Attach an approved package and create the classroom schedules",
+        "tags": [
+          "Exam Activities"
+        ]
+      }
+    },
     "/exam-activities/{id}/policy": {
       "patch": {
         "operationId": "ExamActivityController_policy",
@@ -627,7 +687,7 @@
           {
             "name": "X-Client-Platform",
             "in": "header",
-            "description": "Send 'web' from a browser; the Android app omits it",
+            "description": "Kirim 'web' dari browser (dengan Origin atau Sec-Fetch-Site); aplikasi Android tidak mengirimnya.",
             "required": false,
             "schema": {
               "type": "string"
@@ -695,7 +755,7 @@
           {
             "name": "X-Client-Platform",
             "in": "header",
-            "description": "Send 'web' from a browser; the Android app omits it",
+            "description": "Kirim 'web' dari browser (dengan Origin atau Sec-Fetch-Site); aplikasi Android tidak mengirimnya.",
             "required": false,
             "schema": {
               "type": "string"
@@ -764,7 +824,7 @@
           {
             "name": "X-Client-Platform",
             "in": "header",
-            "description": "Send 'web' from a browser; the Android app omits it",
+            "description": "Kirim 'web' dari browser (dengan Origin atau Sec-Fetch-Site); aplikasi Android tidak mengirimnya.",
             "required": false,
             "schema": {
               "type": "string"
@@ -842,7 +902,7 @@
           {
             "name": "X-Client-Platform",
             "in": "header",
-            "description": "Send 'web' from a browser; the Android app omits it",
+            "description": "Kirim 'web' dari browser (dengan Origin atau Sec-Fetch-Site); aplikasi Android tidak mengirimnya.",
             "required": false,
             "schema": {
               "type": "string"
@@ -920,7 +980,7 @@
           {
             "name": "X-Client-Platform",
             "in": "header",
-            "description": "Send 'web' from a browser; the Android app omits it",
+            "description": "Kirim 'web' dari browser (dengan Origin atau Sec-Fetch-Site); aplikasi Android tidak mengirimnya.",
             "required": false,
             "schema": {
               "type": "string"
@@ -998,7 +1058,7 @@
           {
             "name": "X-Client-Platform",
             "in": "header",
-            "description": "Send 'web' from a browser; the Android app omits it",
+            "description": "Kirim 'web' dari browser (dengan Origin atau Sec-Fetch-Site); aplikasi Android tidak mengirimnya.",
             "required": false,
             "schema": {
               "type": "string"
@@ -1076,7 +1136,7 @@
           {
             "name": "X-Client-Platform",
             "in": "header",
-            "description": "Send 'web' from a browser; the Android app omits it",
+            "description": "Kirim 'web' dari browser (dengan Origin atau Sec-Fetch-Site); aplikasi Android tidak mengirimnya.",
             "required": false,
             "schema": {
               "type": "string"
@@ -1144,7 +1204,7 @@
           {
             "name": "X-Client-Platform",
             "in": "header",
-            "description": "Send 'web' from a browser; the Android app omits it",
+            "description": "Kirim 'web' dari browser (dengan Origin atau Sec-Fetch-Site); aplikasi Android tidak mengirimnya.",
             "required": false,
             "schema": {
               "type": "string"
@@ -1222,7 +1282,7 @@
           {
             "name": "X-Client-Platform",
             "in": "header",
-            "description": "Send 'web' from a browser; the Android app omits it",
+            "description": "Kirim 'web' dari browser (dengan Origin atau Sec-Fetch-Site); aplikasi Android tidak mengirimnya.",
             "required": false,
             "schema": {
               "type": "string"
@@ -1300,7 +1360,7 @@
           {
             "name": "X-Client-Platform",
             "in": "header",
-            "description": "Send 'web' from a browser; the Android app omits it",
+            "description": "Kirim 'web' dari browser (dengan Origin atau Sec-Fetch-Site); aplikasi Android tidak mengirimnya.",
             "required": false,
             "schema": {
               "type": "string"
@@ -1378,7 +1438,7 @@
           {
             "name": "X-Client-Platform",
             "in": "header",
-            "description": "Send 'web' from a browser; the Android app omits it",
+            "description": "Kirim 'web' dari browser (dengan Origin atau Sec-Fetch-Site); aplikasi Android tidak mengirimnya.",
             "required": false,
             "schema": {
               "type": "string"
@@ -3621,6 +3681,436 @@
         ]
       }
     },
+    "/exam-events/{id}/print-pack": {
+      "get": {
+        "operationId": "ExamEventController_getPrintPack",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "roomId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PrintPackDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The print pack of an exam event",
+        "tags": [
+          "Exam Events"
+        ]
+      }
+    },
+    "/exam-events/{id}/credentials/reset": {
+      "post": {
+        "operationId": "ExamEventController_resetPasswords",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "roomId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetCredentialsBodyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ResetCredentialsDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Give every seated student of an event a new login password, shown once",
+        "tags": [
+          "Exam Events"
+        ]
+      }
+    },
+    "/exam-events/{id}/seats/generate": {
+      "post": {
+        "operationId": "ExamEventController_generateSeats",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateSeatsBodyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/GenerateSeatsResponseDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Plan the seats of an exam event; with mode apply, write them in place of the existing seats",
+        "tags": [
+          "Exam Events"
+        ]
+      }
+    },
+    "/exam-events/{id}/supervisor-slots/generate": {
+      "post": {
+        "operationId": "ExamEventController_generateSupervisorSlots",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/GenerateRoomSlotsResponseDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create one empty supervisor slot per room and timetable window of an exam event",
+        "tags": [
+          "Exam Events"
+        ]
+      }
+    },
+    "/exam-events/{id}/attendance-files": {
+      "put": {
+        "operationId": "ExamAttendanceFileController_upload",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/AttendanceUploadBodyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AttendanceFileDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Upload or replace a signed attendance sheet scan (PDF, JPG or PNG, 10 MB)",
+        "tags": [
+          "Exam Attendance Files"
+        ]
+      },
+      "get": {
+        "operationId": "ExamAttendanceFileController_list",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "STUDENT",
+                "SUPERVISOR",
+                "TECHNICIAN"
+              ]
+            }
+          },
+          {
+            "name": "day",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-11-18",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AttendanceFileDto"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The uploaded attendance sheets of an event",
+        "tags": [
+          "Exam Attendance Files"
+        ]
+      }
+    },
+    "/exam-events/{id}/attendance-files/{fileId}": {
+      "get": {
+        "operationId": "ExamAttendanceFileController_download",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The file bytes, always as an attachment",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download an uploaded attendance sheet",
+        "tags": [
+          "Exam Attendance Files"
+        ]
+      }
+    },
     "/exam-rooms/{roomId}/monitor": {
       "get": {
         "operationId": "ExamRoomController_roomMonitor",
@@ -4027,6 +4517,25 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "",
@@ -4057,7 +4566,130 @@
             "bearer": []
           }
         ],
-        "summary": "Hand the Berita Acara in and lock it",
+        "summary": "Hand the signed, scanned Berita Acara in (PDF, JPG or PNG, 10 MB) and lock it",
+        "tags": [
+          "Exam Rooms"
+        ]
+      }
+    },
+    "/exam-rooms/{roomId}/reports/{slotId}/file": {
+      "put": {
+        "operationId": "ExamRoomController_replaceRoomReportFile",
+        "parameters": [
+          {
+            "name": "roomId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "slotId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/RoomReportDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replace the file of a submitted Berita Acara",
+        "tags": [
+          "Exam Rooms"
+        ]
+      },
+      "get": {
+        "operationId": "ExamRoomController_downloadRoomReportFile",
+        "parameters": [
+          {
+            "name": "roomId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "slotId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The file bytes, always as an attachment",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download the file of a submitted Berita Acara",
         "tags": [
           "Exam Rooms"
         ]
@@ -4325,7 +4957,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/ExamRoomSeatDto"
+                        "$ref": "#/components/schemas/ExamRoomSeatResponseDto"
                       }
                     }
                   }
@@ -4386,7 +5018,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/ExamRoomSeatDto"
+                        "$ref": "#/components/schemas/ExamRoomSeatResponseDto"
                       }
                     }
                   }
@@ -4639,75 +5271,6 @@
         ]
       }
     },
-    "/exam-rooms/{roomId}/seats/{studentId}/allow-web": {
-      "post": {
-        "operationId": "ExamRoomController_allowWebClient",
-        "parameters": [
-          {
-            "name": "roomId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "studentId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecoveryReasonDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "statusCode": {
-                      "type": "integer",
-                      "example": 200
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Success"
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/SeatFlagDto"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Let one student take the exam from a browser for this room",
-        "tags": [
-          "Exam Rooms"
-        ]
-      }
-    },
     "/exam-rooms/{roomId}/seats/{studentId}/allow-late": {
       "post": {
         "operationId": "ExamRoomController_allowLateEntry",
@@ -4893,6 +5456,159 @@
         ]
       }
     },
+    "/exam-rooms/reports": {
+      "get": {
+        "operationId": "ExamRoomOverviewController_roomReports",
+        "parameters": [
+          {
+            "name": "eventId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RoomReportSummaryDto"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every Berita Acara the caller may see, one row per supervisor slot",
+        "tags": [
+          "Exam Rooms"
+        ]
+      }
+    },
+    "/exam-participant-numbers/issue": {
+      "post": {
+        "operationId": "ExamParticipantNumberController_issue",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueSemesterNumbersBodyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/IssueSemesterNumbersResponseDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Issue the missing participant numbers of a semester",
+        "tags": [
+          "Exam Participant Numbers"
+        ]
+      }
+    },
+    "/exam-participant-numbers/lookup": {
+      "post": {
+        "operationId": "ExamParticipantNumberController_lookup",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LookupParticipantNumbersBodyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/LookupParticipantNumbersResponseDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Participant numbers of many students in one semester",
+        "tags": [
+          "Exam Participant Numbers"
+        ]
+      }
+    },
     "/exam-files": {
       "post": {
         "operationId": "ExamFileController_upload",
@@ -4987,6 +5703,371 @@
         "summary": "Stream a question image",
         "tags": [
           "Exam Files"
+        ]
+      }
+    },
+    "/seb-configs": {
+      "get": {
+        "operationId": "SebConfigController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SebConfigDto"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List Safe Exam Browser configurations",
+        "tags": [
+          "Safe Exam Browser"
+        ]
+      },
+      "post": {
+        "operationId": "SebConfigController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSebConfigDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SebConfigDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Store a Safe Exam Browser configuration (.seb, 1 MB)",
+        "tags": [
+          "Safe Exam Browser"
+        ]
+      }
+    },
+    "/seb-configs/active": {
+      "get": {
+        "operationId": "SebConfigController_listActive",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ActiveSebConfigDto"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List active configurations for the student client",
+        "tags": [
+          "Safe Exam Browser"
+        ]
+      }
+    },
+    "/seb-configs/check": {
+      "post": {
+        "operationId": "SebConfigController_check",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckSebRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CheckSebResponseDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Check a Safe Exam Browser config key hash",
+        "tags": [
+          "Safe Exam Browser"
+        ]
+      }
+    },
+    "/seb-configs/generate": {
+      "post": {
+        "operationId": "SebConfigController_generate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateSebConfigDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SebConfigDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Build a .seb that starts on the student exam list of the calling app and register its Config Key",
+        "tags": [
+          "Safe Exam Browser"
+        ]
+      }
+    },
+    "/seb-configs/{id}": {
+      "patch": {
+        "operationId": "SebConfigController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSebConfigDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SebConfigDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rename or activate/deactivate a configuration",
+        "tags": [
+          "Safe Exam Browser"
+        ]
+      },
+      "delete": {
+        "operationId": "SebConfigController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Configuration deleted"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a configuration and its file",
+        "tags": [
+          "Safe Exam Browser"
+        ]
+      }
+    },
+    "/public/seb-configs/{id}/file": {
+      "get": {
+        "operationId": "SebConfigFileController_download",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The .seb file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Download an active .seb configuration file",
+        "tags": [
+          "Safe Exam Browser"
         ]
       }
     },
@@ -5570,6 +6651,73 @@
                 "docx"
               ]
             }
+          },
+          {
+            "name": "layout",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "table",
+                "vertical"
+              ]
+            }
+          },
+          {
+            "name": "pg",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pgKompleks",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "maximum": 100,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "benarSalah",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "maximum": 100,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "isian",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "maximum": 100,
+              "default": 0,
+              "type": "number"
+            }
+          },
+          {
+            "name": "uraian",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "maximum": 100,
+              "default": 5,
+              "type": "number"
+            }
           }
         ],
         "responses": {
@@ -5619,9 +6767,8 @@
                     "type": "string",
                     "format": "uuid"
                   },
-                  "authorEmployeeId": {
-                    "type": "string",
-                    "format": "uuid"
+                  "confirmDuplicates": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -5658,7 +6805,71 @@
             "bearer": []
           }
         ],
-        "summary": "Import questions from an Excel or Word file",
+        "summary": "Import questions from the version 2 table template (xlsx or docx)",
+        "tags": [
+          "Exam Imports"
+        ]
+      }
+    },
+    "/exam-imports/preview": {
+      "post": {
+        "operationId": "QuestionImportController_preview",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file",
+                  "packageId"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "packageId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ImportPreviewDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Preview a version 2 table template file without saving anything",
         "tags": [
           "Exam Imports"
         ]
@@ -5918,7 +7129,7 @@
   "info": {
     "title": "Exam Service API",
     "description": "Exam Service",
-    "version": "0.3.0",
+    "version": "0.8.3",
     "contact": {}
   },
   "tags": [],
@@ -6010,6 +7221,21 @@
           },
           "tokenSlotSeconds": {
             "type": "number"
+          },
+          "lateToleranceMinutes": {
+            "type": "number"
+          },
+          "minSubmitMinutes": {
+            "type": "number"
+          },
+          "shuffleQuestions": {
+            "type": "boolean"
+          },
+          "shuffleChoices": {
+            "type": "boolean"
+          },
+          "allowWeb": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -6019,7 +7245,12 @@
           "gapRecordedMs",
           "gapTokenMs",
           "gapViolationFrom",
-          "tokenSlotSeconds"
+          "tokenSlotSeconds",
+          "lateToleranceMinutes",
+          "minSubmitMinutes",
+          "shuffleQuestions",
+          "shuffleChoices",
+          "allowWeb"
         ]
       },
       "ExamActivityDto": {
@@ -6048,6 +7279,7 @@
           },
           "packageId": {
             "type": "string",
+            "nullable": true,
             "format": "uuid"
           },
           "type": {
@@ -6067,6 +7299,10 @@
             "type": "string"
           },
           "tokenMode": {
+            "enum": [
+              "ROTATING",
+              "STATIC"
+            ],
             "type": "string"
           },
           "tokenRotation": {
@@ -6087,7 +7323,21 @@
             "type": "number"
           },
           "status": {
+            "enum": [
+              "DRAFT",
+              "SCHEDULED",
+              "ACTIVE",
+              "CLOSED"
+            ],
             "type": "string"
+          },
+          "subjectName": {
+            "type": "string",
+            "nullable": true
+          },
+          "gradeName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [
@@ -6105,7 +7355,9 @@
           "startsAt",
           "endsAt",
           "durationMinutes",
-          "status"
+          "status",
+          "subjectName",
+          "gradeName"
         ]
       },
       "ExamActivityScheduleDto": {
@@ -6166,6 +7418,7 @@
           },
           "packageId": {
             "type": "string",
+            "nullable": true,
             "format": "uuid"
           },
           "type": {
@@ -6185,6 +7438,10 @@
             "type": "string"
           },
           "tokenMode": {
+            "enum": [
+              "ROTATING",
+              "STATIC"
+            ],
             "type": "string"
           },
           "tokenRotation": {
@@ -6205,7 +7462,21 @@
             "type": "number"
           },
           "status": {
+            "enum": [
+              "DRAFT",
+              "SCHEDULED",
+              "ACTIVE",
+              "CLOSED"
+            ],
             "type": "string"
+          },
+          "subjectName": {
+            "type": "string",
+            "nullable": true
+          },
+          "gradeName": {
+            "type": "string",
+            "nullable": true
           },
           "schedules": {
             "type": "array",
@@ -6230,6 +7501,8 @@
           "endsAt",
           "durationMinutes",
           "status",
+          "subjectName",
+          "gradeName",
           "schedules"
         ]
       },
@@ -6283,6 +7556,7 @@
           },
           "packageId": {
             "type": "string",
+            "nullable": true,
             "format": "uuid"
           },
           "type": {
@@ -6295,7 +7569,6 @@
             "type": "string"
           },
           "classroomIds": {
-            "minItems": 1,
             "type": "array",
             "items": {
               "type": "string",
@@ -6336,13 +7609,32 @@
           "semesterId",
           "gradeId",
           "subjectId",
-          "packageId",
           "type",
-          "classroomIds",
           "tokenMode",
           "startsAt",
           "endsAt",
           "durationMinutes"
+        ]
+      },
+      "AttachActivityPackageRequestDto": {
+        "type": "object",
+        "properties": {
+          "packageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "classroomIds": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "packageId",
+          "classroomIds"
         ]
       },
       "UpdateActivityPolicyRequestDto": {
@@ -6382,6 +7674,25 @@
             "type": "number",
             "minimum": 300,
             "maximum": 3600
+          },
+          "lateToleranceMinutes": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 120
+          },
+          "minSubmitMinutes": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 180
+          },
+          "shuffleQuestions": {
+            "type": "boolean"
+          },
+          "shuffleChoices": {
+            "type": "boolean"
+          },
+          "allowWeb": {
+            "type": "boolean"
           }
         }
       },
@@ -6560,6 +7871,26 @@
           "makeup"
         ]
       },
+      "SebProofDto": {
+        "type": "object",
+        "properties": {
+          "configKeyHash": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64,
+            "pattern": "^[0-9a-fA-F]{64}$",
+            "description": "64 hex characters, SHA-256 of page URL and config key"
+          },
+          "pageUrl": {
+            "type": "string",
+            "maxLength": 2048
+          }
+        },
+        "required": [
+          "configKeyHash",
+          "pageUrl"
+        ]
+      },
       "StartSessionDto": {
         "type": "object",
         "properties": {
@@ -6574,6 +7905,9 @@
             "minLength": 1,
             "maxLength": 100,
             "description": "Identifier of the tablet starting the exam"
+          },
+          "seb": {
+            "$ref": "#/components/schemas/SebProofDto"
           }
         },
         "required": [
@@ -6699,6 +8033,67 @@
           "startedAt",
           "minSubmitMinutes",
           "serverTime"
+        ]
+      },
+      "KeyAnswerPayloadDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D",
+              "E"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "key"
+        ]
+      },
+      "KeysAnswerPayloadDto": {
+        "type": "object",
+        "properties": {
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E"
+              ]
+            }
+          }
+        },
+        "required": [
+          "keys"
+        ]
+      },
+      "ValueAnswerPayloadDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "value"
+        ]
+      },
+      "TextAnswerPayloadDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
         ]
       },
       "SavedAnswerDto": {
@@ -7156,6 +8551,9 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 100
+          },
+          "seb": {
+            "$ref": "#/components/schemas/SebProofDto"
           }
         },
         "required": [
@@ -7287,6 +8685,13 @@
             ],
             "type": "string"
           },
+          "client": {
+            "enum": [
+              "ISTIQRA",
+              "SEB"
+            ],
+            "type": "string"
+          },
           "startedAt": {
             "type": "string",
             "format": "date-time"
@@ -7319,6 +8724,7 @@
           "studentName",
           "studentNis",
           "status",
+          "client",
           "startedAt",
           "submittedAt",
           "rawScore",
@@ -7385,7 +8791,10 @@
               "SUBMIT_ROOM_REPORT",
               "VERIFY_ROOM_REPORT",
               "REOPEN_ROOM_REPORT",
-              "CLOSED_BY_ADMIN"
+              "CLOSED_BY_ADMIN",
+              "RESET_CREDENTIALS",
+              "REPLACE_ROOM_REPORT_FILE",
+              "UPLOAD_ATTENDANCE_FILE"
             ]
           },
           "actorId": {
@@ -7525,9 +8934,6 @@
           "extraMinutes": {
             "type": "number"
           },
-          "allowWebClient": {
-            "type": "boolean"
-          },
           "allowLateEntry": {
             "type": "boolean"
           },
@@ -7559,7 +8965,6 @@
           "lockedByViolation",
           "requiresTokenReentry",
           "extraMinutes",
-          "allowWebClient",
           "allowLateEntry",
           "deadline",
           "finalizeAt",
@@ -7974,6 +9379,170 @@
           "title"
         ]
       },
+      "ChoiceDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D",
+              "E"
+            ],
+            "type": "string"
+          },
+          "html": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "html"
+        ]
+      },
+      "SingleKeyAnswerDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D",
+              "E"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "key"
+        ]
+      },
+      "MultipleChoiceContentDto": {
+        "type": "object",
+        "properties": {
+          "choices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChoiceDto"
+            }
+          },
+          "answer": {
+            "$ref": "#/components/schemas/SingleKeyAnswerDto"
+          }
+        },
+        "required": [
+          "choices",
+          "answer"
+        ]
+      },
+      "MultiKeyAnswerDto": {
+        "type": "object",
+        "properties": {
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E"
+              ]
+            }
+          }
+        },
+        "required": [
+          "keys"
+        ]
+      },
+      "MultipleResponseContentDto": {
+        "type": "object",
+        "properties": {
+          "choices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChoiceDto"
+            }
+          },
+          "answer": {
+            "$ref": "#/components/schemas/MultiKeyAnswerDto"
+          }
+        },
+        "required": [
+          "choices",
+          "answer"
+        ]
+      },
+      "BooleanAnswerDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "value"
+        ]
+      },
+      "TrueFalseContentDto": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "$ref": "#/components/schemas/BooleanAnswerDto"
+          }
+        },
+        "required": [
+          "answer"
+        ]
+      },
+      "ShortAnswerAnswerDto": {
+        "type": "object",
+        "properties": {
+          "accepted": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ignoreCase": {
+            "type": "boolean"
+          },
+          "ignoreHarakat": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accepted",
+          "ignoreCase",
+          "ignoreHarakat"
+        ]
+      },
+      "ShortAnswerContentDto": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "$ref": "#/components/schemas/ShortAnswerAnswerDto"
+          }
+        },
+        "required": [
+          "answer"
+        ]
+      },
+      "EssayContentDto": {
+        "type": "object",
+        "properties": {
+          "guideHtml": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "guideHtml"
+        ]
+      },
       "QuestionVersionDto": {
         "type": "object",
         "properties": {
@@ -8255,6 +9824,7 @@
           },
           "overrideContent": {
             "type": "object",
+            "additionalProperties": true,
             "description": "The replacement answer key; required for KEY_OVERRIDE, ignored otherwise"
           },
           "reason": {
@@ -8470,8 +10040,7 @@
           "minSubmitMinutes": {
             "type": "number",
             "minimum": 0,
-            "maximum": 1440,
-            "default": 0
+            "maximum": 1440
           },
           "type": {
             "enum": [
@@ -8484,8 +10053,9 @@
           },
           "eventId": {
             "type": "string",
+            "nullable": true,
             "format": "uuid",
-            "description": "The exam event this schedule belongs to; seats come from it"
+            "description": "The exam event this schedule belongs to; seats come from it. Null detaches it"
           },
           "packageId": {
             "type": "string",
@@ -8524,8 +10094,7 @@
           "minSubmitMinutes": {
             "type": "number",
             "minimum": 0,
-            "maximum": 1440,
-            "default": 0
+            "maximum": 1440
           },
           "type": {
             "enum": [
@@ -8538,8 +10107,9 @@
           },
           "eventId": {
             "type": "string",
+            "nullable": true,
             "format": "uuid",
-            "description": "The exam event this schedule belongs to; seats come from it"
+            "description": "The exam event this schedule belongs to; seats come from it. Null detaches it"
           }
         },
         "required": [
@@ -8618,9 +10188,6 @@
           "minSubmitMinutes": {
             "type": "number"
           },
-          "requireAndroidApp": {
-            "type": "boolean"
-          },
           "status": {
             "type": "string",
             "enum": [
@@ -8640,7 +10207,6 @@
           "endsAt",
           "lateToleranceMinutes",
           "minSubmitMinutes",
-          "requireAndroidApp",
           "status"
         ]
       },
@@ -8706,9 +10272,6 @@
           "minSubmitMinutes": {
             "type": "number",
             "minimum": 0
-          },
-          "requireAndroidApp": {
-            "type": "boolean"
           }
         },
         "required": [
@@ -8751,9 +10314,6 @@
           "minSubmitMinutes": {
             "type": "number",
             "minimum": 0
-          },
-          "requireAndroidApp": {
-            "type": "boolean"
           },
           "status": {
             "enum": [
@@ -8843,6 +10403,628 @@
           "capacity"
         ]
       },
+      "PrintPackEventDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "startsAt",
+          "endsAt"
+        ]
+      },
+      "PrintPackTechnicianDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "PrintPackSupervisorDto": {
+        "type": "object",
+        "properties": {
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "startsAt",
+          "endsAt",
+          "name"
+        ]
+      },
+      "PrintPackStudentDto": {
+        "type": "object",
+        "properties": {
+          "seatNumber": {
+            "type": "number"
+          },
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "nis": {
+            "type": "string",
+            "nullable": true
+          },
+          "classroomName": {
+            "type": "string",
+            "nullable": true
+          },
+          "participantNumber": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "seatNumber",
+          "studentId",
+          "name",
+          "nis",
+          "classroomName",
+          "participantNumber"
+        ]
+      },
+      "PrintPackRoomDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "building": {
+            "type": "string",
+            "nullable": true
+          },
+          "technician": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PrintPackTechnicianDto"
+              }
+            ]
+          },
+          "supervisors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrintPackSupervisorDto"
+            }
+          },
+          "students": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrintPackStudentDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "building",
+          "technician",
+          "supervisors",
+          "students"
+        ]
+      },
+      "PrintPackDto": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/PrintPackEventDto"
+          },
+          "rooms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrintPackRoomDto"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "event",
+          "rooms",
+          "warnings"
+        ]
+      },
+      "ResetCredentialsBodyDto": {
+        "type": "object",
+        "properties": {
+          "confirm": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "description": "Must be true: the old passwords stop working at once"
+          }
+        },
+        "required": [
+          "confirm"
+        ]
+      },
+      "ResetCredentialsItemDto": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "identifier": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "description": "Shown once; never stored"
+          }
+        },
+        "required": [
+          "studentId",
+          "identifier",
+          "password"
+        ]
+      },
+      "ResetCredentialsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResetCredentialsItemDto"
+            }
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "items",
+          "skipped"
+        ]
+      },
+      "GenerateSeatStudentDto": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "classroomId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "studentId",
+          "classroomId"
+        ]
+      },
+      "GenerateSeatRulesDto": {
+        "type": "object",
+        "properties": {
+          "order": {
+            "enum": [
+              "alphabetical",
+              "random"
+            ],
+            "type": "string"
+          },
+          "separateGender": {
+            "type": "boolean"
+          },
+          "spreadGrades": {
+            "type": "boolean"
+          },
+          "spreadClassrooms": {
+            "type": "boolean"
+          },
+          "lanesPerSide": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "seed": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        }
+      },
+      "GenerateSeatsBodyDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "enum": [
+              "preview",
+              "apply"
+            ],
+            "type": "string"
+          },
+          "replaceExisting": {
+            "type": "boolean"
+          },
+          "students": {
+            "maxItems": 1000,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GenerateSeatStudentDto"
+            }
+          },
+          "roomIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "rules": {
+            "$ref": "#/components/schemas/GenerateSeatRulesDto"
+          }
+        },
+        "required": [
+          "mode",
+          "students"
+        ]
+      },
+      "SeatLayoutDto": {
+        "type": "object",
+        "properties": {
+          "lanes": {
+            "type": "number"
+          },
+          "rows": {
+            "type": "number"
+          },
+          "left": {
+            "type": "number"
+          },
+          "right": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "lanes",
+          "rows",
+          "left",
+          "right"
+        ]
+      },
+      "GenerateSeatsRoomDto": {
+        "type": "object",
+        "properties": {
+          "roomId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "number"
+          },
+          "layout": {
+            "$ref": "#/components/schemas/SeatLayoutDto"
+          }
+        },
+        "required": [
+          "roomId",
+          "code",
+          "capacity",
+          "layout"
+        ]
+      },
+      "SeatPlanSeatDto": {
+        "type": "object",
+        "properties": {
+          "roomId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "desk": {
+            "type": "number"
+          },
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "classroomId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "gradeLevel": {
+            "type": "number"
+          },
+          "gender": {
+            "nullable": true,
+            "enum": [
+              "MALE",
+              "FEMALE"
+            ],
+            "type": "string"
+          },
+          "side": {
+            "enum": [
+              "LEFT",
+              "RIGHT"
+            ],
+            "type": "string"
+          },
+          "row": {
+            "type": "number"
+          },
+          "lane": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "roomId",
+          "desk",
+          "studentId",
+          "classroomId",
+          "gradeLevel",
+          "gender",
+          "side",
+          "row",
+          "lane"
+        ]
+      },
+      "SeatPlanStudentDto": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "classroomId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "gradeLevel": {
+            "type": "number"
+          },
+          "gender": {
+            "nullable": true,
+            "enum": [
+              "MALE",
+              "FEMALE"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "studentId",
+          "classroomId",
+          "gradeLevel",
+          "gender",
+          "name"
+        ]
+      },
+      "GenerateSeatsResponseDto": {
+        "type": "object",
+        "properties": {
+          "applied": {
+            "type": "boolean"
+          },
+          "rooms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GenerateSeatsRoomDto"
+            }
+          },
+          "seats": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeatPlanSeatDto"
+            }
+          },
+          "unseated": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeatPlanStudentDto"
+            }
+          },
+          "unknownGender": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeatPlanStudentDto"
+            }
+          },
+          "adjacentSameGrade": {
+            "type": "number"
+          },
+          "adjacentSameClassroom": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "applied",
+          "rooms",
+          "seats",
+          "unseated",
+          "unknownGender",
+          "adjacentSameGrade",
+          "adjacentSameClassroom"
+        ]
+      },
+      "GenerateRoomSlotsResponseDto": {
+        "type": "object",
+        "properties": {
+          "created": {
+            "type": "number"
+          },
+          "skipped": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "created",
+          "skipped"
+        ]
+      },
+      "AttendanceUploadBodyDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": [
+              "STUDENT",
+              "SUPERVISOR",
+              "TECHNICIAN"
+            ],
+            "type": "string"
+          },
+          "day": {
+            "type": "string",
+            "example": "2026-11-18",
+            "description": "WIB calendar day"
+          },
+          "roomId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "file": {
+            "type": "string",
+            "format": "binary"
+          }
+        },
+        "required": [
+          "kind",
+          "day",
+          "file"
+        ]
+      },
+      "AttendanceFileDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "enum": [
+              "STUDENT",
+              "SUPERVISOR",
+              "TECHNICIAN"
+            ],
+            "type": "string"
+          },
+          "day": {
+            "type": "string",
+            "example": "2026-11-18"
+          },
+          "roomId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "slotId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "originalName": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "number"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "uploadedById": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "day",
+          "roomId",
+          "slotId",
+          "originalName",
+          "sizeBytes",
+          "uploadedAt",
+          "uploadedById"
+        ]
+      },
+      "RoomMonitorLastEventDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "type",
+          "occurredAt",
+          "detail"
+        ]
+      },
       "RoomMonitorSessionDto": {
         "type": "object",
         "properties": {
@@ -8864,6 +11046,10 @@
             "format": "date-time"
           },
           "deadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "scheduleEndsAt": {
             "type": "string",
             "format": "date-time"
           },
@@ -8912,8 +11098,12 @@
           "kioskMode": {
             "type": "string"
           },
-          "allowWebClient": {
-            "type": "boolean"
+          "client": {
+            "type": "string",
+            "enum": [
+              "ISTIQRA",
+              "SEB"
+            ]
           },
           "violationCount": {
             "type": "number"
@@ -8925,8 +11115,13 @@
             "type": "boolean"
           },
           "lastEvent": {
+            "nullable": true,
             "type": "object",
-            "nullable": true
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RoomMonitorLastEventDto"
+              }
+            ]
           }
         },
         "required": [
@@ -8934,6 +11129,7 @@
           "status",
           "startedAt",
           "deadline",
+          "scheduleEndsAt",
           "submittedAt",
           "extraMinutes",
           "answeredCount",
@@ -8946,7 +11142,7 @@
           "lockTaskActive",
           "batteryUnrestricted",
           "kioskMode",
-          "allowWebClient",
+          "client",
           "violationCount",
           "lockedByViolation",
           "requiresTokenReentry",
@@ -8984,6 +11180,10 @@
           "studentId": {
             "type": "string",
             "format": "uuid"
+          },
+          "participantNumber": {
+            "type": "string",
+            "nullable": true
           },
           "studentName": {
             "type": "string",
@@ -9033,6 +11233,7 @@
         "required": [
           "seatNumber",
           "studentId",
+          "participantNumber",
           "studentName",
           "nis",
           "classroomName",
@@ -9224,10 +11425,22 @@
         "properties": {
           "scheduleId": {
             "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "activityId": {
+            "type": "string",
+            "nullable": true,
             "format": "uuid"
           },
           "packageTitle": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
+          },
+          "gradeId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
           },
           "subjectName": {
             "type": "string",
@@ -9260,7 +11473,9 @@
         },
         "required": [
           "scheduleId",
+          "activityId",
           "packageTitle",
+          "gradeId",
           "subjectName",
           "classroomName",
           "startsAt",
@@ -9450,6 +11665,13 @@
             "nullable": true,
             "format": "date-time"
           },
+          "hasAttachment": {
+            "type": "boolean"
+          },
+          "attachmentName": {
+            "type": "string",
+            "nullable": true
+          },
           "slot": {
             "$ref": "#/components/schemas/RoomReportSlotDto"
           },
@@ -9487,6 +11709,8 @@
           "incidentNotes",
           "submittedAt",
           "verifiedAt",
+          "hasAttachment",
+          "attachmentName",
           "slot",
           "schedules",
           "absences",
@@ -9625,6 +11849,28 @@
           }
         }
       },
+      "ExamRoomSeatResponseDto": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "classroomId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "seatNumber": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "studentId",
+          "classroomId",
+          "seatNumber"
+        ]
+      },
       "ExamRoomSeatDto": {
         "type": "object",
         "properties": {
@@ -9685,10 +11931,12 @@
           },
           "scheduledUserId": {
             "type": "string",
+            "nullable": true,
             "format": "uuid"
           },
           "actualUserId": {
             "type": "string",
+            "nullable": true,
             "format": "uuid"
           },
           "startsAt": {
@@ -9732,7 +11980,6 @@
         },
         "required": [
           "reason",
-          "scheduledUserId",
           "startsAt",
           "endsAt"
         ]
@@ -9762,16 +12009,12 @@
             "type": "string",
             "format": "uuid"
           },
-          "allowWebClient": {
-            "type": "boolean"
-          },
           "allowLateEntry": {
             "type": "boolean"
           }
         },
         "required": [
           "studentId",
-          "allowWebClient",
           "allowLateEntry"
         ]
       },
@@ -9864,6 +12107,164 @@
           "isActiveNow"
         ]
       },
+      "RoomReportSummaryDto": {
+        "type": "object",
+        "properties": {
+          "roomId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roomCode": {
+            "type": "string"
+          },
+          "roomName": {
+            "type": "string"
+          },
+          "slotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "SUBMITTED",
+              "VERIFIED"
+            ]
+          },
+          "registeredCount": {
+            "type": "number"
+          },
+          "reportId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "hasAttachment": {
+            "type": "boolean"
+          },
+          "attachmentName": {
+            "type": "string",
+            "nullable": true
+          },
+          "subjectNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "supervisorName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "roomId",
+          "roomCode",
+          "roomName",
+          "slotId",
+          "startsAt",
+          "endsAt",
+          "status",
+          "registeredCount",
+          "reportId",
+          "hasAttachment",
+          "attachmentName",
+          "subjectNames",
+          "supervisorName"
+        ]
+      },
+      "IssueSemesterNumbersBodyDto": {
+        "type": "object",
+        "properties": {
+          "semesterId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "semesterId"
+        ]
+      },
+      "IssueSemesterNumbersResponseDto": {
+        "type": "object",
+        "properties": {
+          "issued": {
+            "type": "number",
+            "description": "How many numbers this call created"
+          },
+          "skipped": {
+            "description": "Students without a grade level, so they got no number",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "issued",
+          "skipped"
+        ]
+      },
+      "LookupParticipantNumbersBodyDto": {
+        "type": "object",
+        "properties": {
+          "semesterId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "studentIds": {
+            "maxItems": 1000,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "semesterId",
+          "studentIds"
+        ]
+      },
+      "ParticipantNumberItemDto": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "studentId",
+          "number"
+        ]
+      },
+      "LookupParticipantNumbersResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParticipantNumberItemDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
       "ExamFileDto": {
         "type": "object",
         "properties": {
@@ -9883,6 +12284,133 @@
           "mimeType",
           "sizeBytes"
         ]
+      },
+      "SebConfigDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "configKey": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "configKey",
+          "active",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ActiveSebConfigDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "CheckSebRequestDto": {
+        "type": "object",
+        "properties": {
+          "seb": {
+            "$ref": "#/components/schemas/SebProofDto"
+          }
+        }
+      },
+      "CheckSebResponseDto": {
+        "type": "object",
+        "properties": {
+          "matched": {
+            "type": "boolean"
+          },
+          "configName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "matched",
+          "configName"
+        ]
+      },
+      "CreateSebConfigDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "configKey": {
+            "type": "string",
+            "description": "64 hex characters from the SEB configuration"
+          },
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "description": "The .seb configuration file, 1 MB maximum"
+          }
+        },
+        "required": [
+          "name",
+          "configKey",
+          "file"
+        ]
+      },
+      "GenerateSebConfigDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "quitPassword": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 100,
+            "description": "Password a proctor types to quit SEB; stored only as its hash"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateSebConfigDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
       },
       "AbsenteeDto": {
         "type": "object",
@@ -10472,6 +13000,119 @@
           "created",
           "questionIds",
           "errors"
+        ]
+      },
+      "SheetIdentityDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "nullable": true
+          },
+          "teacherName": {
+            "type": "string"
+          },
+          "nik": {
+            "type": "string"
+          },
+          "subjectName": {
+            "type": "string"
+          },
+          "gradeLevel": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "version",
+          "teacherName",
+          "nik",
+          "subjectName",
+          "gradeLevel"
+        ]
+      },
+      "ImportCountsDto": {
+        "type": "object",
+        "properties": {
+          "MULTIPLE_CHOICE": {
+            "type": "number"
+          },
+          "MULTIPLE_RESPONSE": {
+            "type": "number"
+          },
+          "TRUE_FALSE": {
+            "type": "number"
+          },
+          "SHORT_ANSWER": {
+            "type": "number"
+          },
+          "ESSAY": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "MULTIPLE_CHOICE",
+          "MULTIPLE_RESPONSE",
+          "TRUE_FALSE",
+          "SHORT_ANSWER",
+          "ESSAY"
+        ]
+      },
+      "ImportPreviewDto": {
+        "type": "object",
+        "properties": {
+          "identity": {
+            "$ref": "#/components/schemas/SheetIdentityDto"
+          },
+          "authorName": {
+            "type": "string",
+            "nullable": true
+          },
+          "counts": {
+            "$ref": "#/components/schemas/ImportCountsDto"
+          },
+          "points": {
+            "$ref": "#/components/schemas/ImportCountsDto"
+          },
+          "totalPoints": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportErrorDto"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "duplicateRows": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "canSave": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "identity",
+          "authorName",
+          "counts",
+          "points",
+          "totalPoints",
+          "total",
+          "errors",
+          "warnings",
+          "duplicateRows",
+          "canSave"
         ]
       }
     }

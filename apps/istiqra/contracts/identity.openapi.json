@@ -1354,6 +1354,57 @@
         ]
       }
     },
+    "/accounts/passwords/reset": {
+      "post": {
+        "operationId": "AccountsController_resetPasswords",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ResetPasswordEntryDto"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid provisioning token"
+          }
+        },
+        "summary": "Give new random passwords to a batch of accounts",
+        "tags": [
+          "Accounts"
+        ]
+      }
+    },
     "/accounts/lookup": {
       "get": {
         "operationId": "AccountsController_lookup",
@@ -1747,6 +1798,213 @@
         "summary": "Resolve the profile behind a batch of user ids",
         "tags": [
           "Profiles"
+        ]
+      }
+    },
+    "/audit-logs/summary": {
+      "get": {
+        "operationId": "AuditLogController_summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AuditLogStatsResponseDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Audit volume for the administration dashboard",
+        "tags": [
+          "Audit Logs"
+        ]
+      }
+    },
+    "/audit-logs": {
+      "get": {
+        "operationId": "AuditLogController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Page number",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of logs per page",
+            "schema": {
+              "minimum": 1,
+              "default": 10,
+              "example": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Keyword to search action, resource, ip, userAgent",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": false,
+            "in": "query",
+            "description": "Filter by User ID",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "required": false,
+            "in": "query",
+            "description": "Filter by action code",
+            "schema": {
+              "example": "student.create",
+              "type": "string"
+            }
+          },
+          {
+            "name": "resource",
+            "required": false,
+            "in": "query",
+            "description": "Filter by resource",
+            "schema": {
+              "example": "students",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AuditLogEntryResponseDto"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "number"
+                        },
+                        "page": {
+                          "type": "number"
+                        },
+                        "limit": {
+                          "type": "number"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List all audit logs (paginated, filterable)",
+        "tags": [
+          "Audit Logs"
+        ]
+      },
+      "post": {
+        "operationId": "AuditLogIngestController_ingest",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestAuditLogDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AuditLogEntryResponseDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid provisioning token"
+          }
+        },
+        "summary": "Record an audit entry on behalf of another service",
+        "tags": [
+          "Audit Logs"
         ]
       }
     },
@@ -3522,213 +3780,6 @@
         ]
       }
     },
-    "/audit-logs/summary": {
-      "get": {
-        "operationId": "AuditLogController_summary",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "statusCode": {
-                      "type": "integer",
-                      "example": 200
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Success"
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/AuditLogStatsResponseDto"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Audit volume for the administration dashboard",
-        "tags": [
-          "Audit Logs"
-        ]
-      }
-    },
-    "/audit-logs": {
-      "get": {
-        "operationId": "AuditLogController_findAll",
-        "parameters": [
-          {
-            "name": "page",
-            "required": false,
-            "in": "query",
-            "description": "Page number",
-            "schema": {
-              "minimum": 1,
-              "default": 1,
-              "example": 1,
-              "type": "number"
-            }
-          },
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "description": "Number of logs per page",
-            "schema": {
-              "minimum": 1,
-              "default": 10,
-              "example": 10,
-              "type": "number"
-            }
-          },
-          {
-            "name": "search",
-            "required": false,
-            "in": "query",
-            "description": "Keyword to search action, resource, ip, userAgent",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "userId",
-            "required": false,
-            "in": "query",
-            "description": "Filter by User ID",
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "action",
-            "required": false,
-            "in": "query",
-            "description": "Filter by action code",
-            "schema": {
-              "example": "student.create",
-              "type": "string"
-            }
-          },
-          {
-            "name": "resource",
-            "required": false,
-            "in": "query",
-            "description": "Filter by resource",
-            "schema": {
-              "example": "students",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "statusCode": {
-                      "type": "integer",
-                      "example": 200
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Success"
-                    },
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/AuditLogEntryResponseDto"
-                      }
-                    },
-                    "meta": {
-                      "type": "object",
-                      "properties": {
-                        "total": {
-                          "type": "number"
-                        },
-                        "page": {
-                          "type": "number"
-                        },
-                        "limit": {
-                          "type": "number"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List all audit logs (paginated, filterable)",
-        "tags": [
-          "Audit Logs"
-        ]
-      },
-      "post": {
-        "operationId": "AuditLogIngestController_ingest",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/IngestAuditLogDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "statusCode": {
-                      "type": "integer",
-                      "example": 200
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Success"
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/AuditLogEntryResponseDto"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid provisioning token"
-          }
-        },
-        "summary": "Record an audit entry on behalf of another service",
-        "tags": [
-          "Audit Logs"
-        ]
-      }
-    },
     "/school-units/letterhead": {
       "get": {
         "operationId": "SchoolUnitController_letterhead",
@@ -5266,7 +5317,7 @@
   "info": {
     "title": "Identity Service API",
     "description": "Identity Service",
-    "version": "0.1.1",
+    "version": "0.3.0",
     "contact": {}
   },
   "tags": [],
@@ -5876,6 +5927,57 @@
           }
         }
       },
+      "ResetPasswordsDto": {
+        "type": "object",
+        "properties": {
+          "userIds": {
+            "maxItems": 500,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "userIds"
+        ]
+      },
+      "ResetPasswordEntryDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "identifier": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "description": "Shown once; never stored"
+          }
+        },
+        "required": [
+          "userId",
+          "identifier",
+          "password"
+        ]
+      },
+      "ResetPasswordsResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResetPasswordEntryDto"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
       "AccountLookupResponseDto": {
         "type": "object",
         "properties": {
@@ -6301,6 +6403,131 @@
         },
         "required": [
           "data"
+        ]
+      },
+      "AuditLogStatsResponseDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "since": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "total",
+          "since"
+        ]
+      },
+      "AuditLogEntryResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string",
+            "nullable": true
+          },
+          "action": {
+            "type": "string"
+          },
+          "resource": {
+            "type": "string"
+          },
+          "resourceId": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true,
+            "description": "Free-form JSON"
+          },
+          "ipAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "userAgent": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "resource",
+          "createdAt"
+        ]
+      },
+      "AuditLogPageResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditLogEntryResponseDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "data",
+          "total",
+          "page",
+          "limit"
+        ]
+      },
+      "IngestAuditLogDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "action": {
+            "type": "string",
+            "example": "daily-record.correct"
+          },
+          "resource": {
+            "type": "string",
+            "example": "daily-records"
+          },
+          "resourceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Arbitrary JSON, e.g. before/after"
+          },
+          "ipAddress": {
+            "type": "string",
+            "example": "127.0.0.1"
+          },
+          "userAgent": {
+            "type": "string",
+            "example": "Mozilla/5.0..."
+          }
+        },
+        "required": [
+          "action",
+          "resource"
         ]
       },
       "BatchAddressLookupDto": {
@@ -7423,131 +7650,6 @@
           "lastUsedAt",
           "createdAt",
           "updatedAt"
-        ]
-      },
-      "AuditLogStatsResponseDto": {
-        "type": "object",
-        "properties": {
-          "total": {
-            "type": "number"
-          },
-          "since": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "total",
-          "since"
-        ]
-      },
-      "AuditLogEntryResponseDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "userId": {
-            "type": "string",
-            "nullable": true
-          },
-          "action": {
-            "type": "string"
-          },
-          "resource": {
-            "type": "string"
-          },
-          "resourceId": {
-            "type": "string",
-            "nullable": true
-          },
-          "metadata": {
-            "type": "object",
-            "additionalProperties": true,
-            "nullable": true,
-            "description": "Free-form JSON"
-          },
-          "ipAddress": {
-            "type": "string",
-            "nullable": true
-          },
-          "userAgent": {
-            "type": "string",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "id",
-          "action",
-          "resource",
-          "createdAt"
-        ]
-      },
-      "AuditLogPageResponseDto": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AuditLogEntryResponseDto"
-            }
-          },
-          "total": {
-            "type": "number"
-          },
-          "page": {
-            "type": "number"
-          },
-          "limit": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "data",
-          "total",
-          "page",
-          "limit"
-        ]
-      },
-      "IngestAuditLogDto": {
-        "type": "object",
-        "properties": {
-          "userId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "action": {
-            "type": "string",
-            "example": "daily-record.correct"
-          },
-          "resource": {
-            "type": "string",
-            "example": "daily-records"
-          },
-          "resourceId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "metadata": {
-            "type": "object",
-            "additionalProperties": true,
-            "description": "Arbitrary JSON, e.g. before/after"
-          },
-          "ipAddress": {
-            "type": "string",
-            "example": "127.0.0.1"
-          },
-          "userAgent": {
-            "type": "string",
-            "example": "Mozilla/5.0..."
-          }
-        },
-        "required": [
-          "action",
-          "resource"
         ]
       },
       "SchoolUnitLetterheadResponseDto": {
