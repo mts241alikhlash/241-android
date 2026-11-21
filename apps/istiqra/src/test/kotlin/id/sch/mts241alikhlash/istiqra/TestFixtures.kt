@@ -179,6 +179,22 @@ open class InMemoryAnswerDao(
             .filter { it.sessionId == sessionId && it.syncState != AnswerSyncState.SERVER_CONFIRMED }
             .sortedBy { it.updatedAtMillis }
 
+    override suspend fun getConfirmedAnswers(sessionId: String) =
+        rows.values.filter {
+            it.sessionId == sessionId && it.syncState == AnswerSyncState.SERVER_CONFIRMED && it.answer.isNotBlank()
+        }
+
+    override suspend fun markUnconfirmed(
+        sessionId: String,
+        questionId: String,
+    ): Int {
+        val row = rows[questionId] ?: return 0
+        if (row.sessionId != sessionId || row.syncState != AnswerSyncState.SERVER_CONFIRMED) return 0
+        rows[questionId] = row.copy(syncState = AnswerSyncState.LOCAL_PENDING, confirmedAtMillis = null)
+        changes.value++
+        return 1
+    }
+
     override suspend fun countPendingAnswers(sessionId: String) = rows.values.count { it.sessionId == sessionId && it.syncState != AnswerSyncState.SERVER_CONFIRMED }
 
     override suspend fun countAnswered(sessionId: String) = rows.values.count { it.sessionId == sessionId && it.answer.isNotBlank() }

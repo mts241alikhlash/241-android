@@ -219,6 +219,9 @@ class ExamRepository(
                     error.statusCode == 409 &&
                         (error.code == ApiErrorCode.SHORTFALL || error.code == ApiErrorCode.REBIND)
                 if (!retryable || attempt++ >= SUBMIT_RETRY_LIMIT) throw error
+                if (error.code == ApiErrorCode.SHORTFALL) {
+                    runCatching { pullServerAnswers(sessionId) }
+                }
                 syncPendingBatch(sessionId)
             }
         }
@@ -523,8 +526,10 @@ class ExamRepository(
     suspend fun pullServerAnswers(sessionId: String): Int {
         val remote = guarded { api.sessionExamControllerAnswers(deviceId(), sessionId).unwrapData { it.data } }
         var imported = 0
+        val onServer = HashSet<String>()
         for (item in remote) {
             val payload = AnswerPayload.fromJson(item.answer) ?: continue
+            onServer += item.questionId
             val at = now()
             val inserted =
                 dao.insertIfAbsent(
@@ -540,6 +545,9 @@ class ExamRepository(
                     ),
                 )
             if (inserted != -1L) imported++
+        }
+        for (row in dao.getConfirmedAnswers(sessionId)) {
+            if (row.questionId !in onServer) dao.markUnconfirmed(sessionId, row.questionId)
         }
         return imported
     }
