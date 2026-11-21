@@ -352,6 +352,13 @@ private class FakeAnswerDao : AnswerDao {
 
     override suspend fun getPendingAnswers(sessionId: String): List<CachedAnswerEntity> = emptyList()
 
+    override suspend fun getConfirmedAnswers(sessionId: String): List<CachedAnswerEntity> = emptyList()
+
+    override suspend fun markUnconfirmed(
+        sessionId: String,
+        questionId: String,
+    ): Int = 0
+
     override suspend fun countPendingAnswers(sessionId: String): Int = 0
 
     override suspend fun countAnswered(sessionId: String): Int = 0

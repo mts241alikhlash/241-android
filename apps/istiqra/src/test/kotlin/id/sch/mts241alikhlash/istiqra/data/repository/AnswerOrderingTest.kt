@@ -173,6 +173,26 @@ class AnswerOrderingTest {
         }
 
     @Test
+    fun `answers the server no longer has are queued to be sent again`() =
+        runTest {
+            val dao =
+                InMemoryAnswerDao(
+                    id.sch.mts241alikhlash.istiqra
+                        .pendingAnswer("q1", answer = AnswerPayload.Choice("A").encode())
+                        .copy(syncState = AnswerSyncState.SERVER_CONFIRMED),
+                    id.sch.mts241alikhlash.istiqra
+                        .pendingAnswer("q2", answer = AnswerPayload.Choice("B").encode())
+                        .copy(syncState = AnswerSyncState.SERVER_CONFIRMED),
+                )
+            val api = OrderApi(remote = listOf(SavedAnswerDto("q2", AnswerPayload.Choice("B").toJson())))
+
+            repo(api, dao).pullServerAnswers("s1")
+
+            assertEquals(AnswerSyncState.LOCAL_PENDING, dao.rows.getValue("q1").syncState)
+            assertEquals(AnswerSyncState.SERVER_CONFIRMED, dao.rows.getValue("q2").syncState)
+        }
+
+    @Test
     fun `the same client id is never produced for another question`() {
         val a = answerClientId("s1", "q1", """{"key":"A"}""", 1_000L)
         val b = answerClientId("s1", "q2", """{"key":"A"}""", 1_000L)

@@ -77,6 +77,8 @@ fun DeviceReadinessScreen(
     val dnd = remember(context) { DndController(context) }
     val online = rememberIsOnline()
     var readiness by remember { mutableStateOf(DeviceReadinessState()) }
+    var dndOpened by remember { mutableStateOf(false) }
+    var dndSkipped by remember { mutableStateOf(false) }
 
     val refresh: () -> Unit = {
         readiness =
@@ -105,7 +107,7 @@ fun DeviceReadinessScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val state = readiness.copy(online = online)
+    val state = readiness.copy(online = online, dndGranted = readiness.dndGranted || dndSkipped)
 
     Column(
         modifier =
@@ -169,8 +171,20 @@ fun DeviceReadinessScreen(
                 title = "Mode Jangan Ganggu",
                 ok = state.dndGranted,
                 actionLabel = if (state.dndGranted) null else "Izinkan",
-                onAction = { openDndSettings(context, dnd) },
+                onAction = {
+                    dndOpened = true
+                    openDndSettings(context, dnd)
+                },
             )
+            if (dndOpened && !state.dndGranted) {
+                RowDivider()
+                ReadinessRow(
+                    title = "Lewati, pengaturan tidak tersedia di HP ini",
+                    ok = false,
+                    actionLabel = "Lewati",
+                    onAction = { dndSkipped = true },
+                )
+            }
             RowDivider()
             ReadinessRow(
                 title = "Bebas Panggilan & Mikrofon",

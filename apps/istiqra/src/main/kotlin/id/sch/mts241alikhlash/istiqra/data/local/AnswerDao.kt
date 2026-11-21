@@ -26,6 +26,21 @@ interface AnswerDao {
     )
     suspend fun getPendingAnswers(sessionId: String): List<CachedAnswerEntity>
 
+    @Query("SELECT * FROM cached_answers WHERE sessionId = :sessionId AND syncState = 'SERVER_CONFIRMED' AND answer != ''")
+    suspend fun getConfirmedAnswers(sessionId: String): List<CachedAnswerEntity>
+
+    @Query(
+        """
+        UPDATE cached_answers
+        SET syncState = 'LOCAL_PENDING', confirmedAtMillis = NULL
+        WHERE sessionId = :sessionId AND questionId = :questionId AND syncState = 'SERVER_CONFIRMED'
+        """,
+    )
+    suspend fun markUnconfirmed(
+        sessionId: String,
+        questionId: String,
+    ): Int
+
     @Query("SELECT COUNT(*) FROM cached_answers WHERE sessionId = :sessionId AND syncState != 'SERVER_CONFIRMED'")
     suspend fun countPendingAnswers(sessionId: String): Int
 
