@@ -184,13 +184,13 @@ open class InMemoryAnswerDao(
             it.sessionId == sessionId && it.syncState == AnswerSyncState.SERVER_CONFIRMED && it.answer.isNotBlank()
         }
 
-    override suspend fun markUnconfirmed(
+    override suspend fun deleteConfirmed(
         sessionId: String,
         questionId: String,
     ): Int {
         val row = rows[questionId] ?: return 0
         if (row.sessionId != sessionId || row.syncState != AnswerSyncState.SERVER_CONFIRMED) return 0
-        rows[questionId] = row.copy(syncState = AnswerSyncState.LOCAL_PENDING, confirmedAtMillis = null)
+        rows.remove(questionId)
         changes.value++
         return 1
     }

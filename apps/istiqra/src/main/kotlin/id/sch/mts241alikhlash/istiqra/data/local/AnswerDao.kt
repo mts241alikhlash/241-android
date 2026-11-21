@@ -31,12 +31,11 @@ interface AnswerDao {
 
     @Query(
         """
-        UPDATE cached_answers
-        SET syncState = 'LOCAL_PENDING', confirmedAtMillis = NULL
+        DELETE FROM cached_answers
         WHERE sessionId = :sessionId AND questionId = :questionId AND syncState = 'SERVER_CONFIRMED'
         """,
     )
-    suspend fun markUnconfirmed(
+    suspend fun deleteConfirmed(
         sessionId: String,
         questionId: String,
     ): Int

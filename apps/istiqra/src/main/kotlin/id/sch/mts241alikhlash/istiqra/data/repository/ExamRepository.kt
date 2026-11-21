@@ -547,7 +547,7 @@ class ExamRepository(
             if (inserted != -1L) imported++
         }
         for (row in dao.getConfirmedAnswers(sessionId)) {
-            if (row.questionId !in onServer) dao.markUnconfirmed(sessionId, row.questionId)
+            if (row.questionId !in onServer) dao.deleteConfirmed(sessionId, row.questionId)
         }
         return imported
     }
