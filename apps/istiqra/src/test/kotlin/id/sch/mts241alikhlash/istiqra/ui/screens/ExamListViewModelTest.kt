@@ -142,6 +142,17 @@ class ExamListViewModelTest {
     }
 
     @Test
+    fun the_exam_opened_to_a_student_is_expanded_first_else_the_soonest_upcoming() {
+        val open = exam("open", "OPEN")
+        val later = exam("later", "UPCOMING").copy(startsAt = "2026-11-03T01:00:00.000Z")
+        val sooner = exam("sooner", "UPCOMING").copy(startsAt = "2026-11-02T01:00:00.000Z")
+
+        assertEquals("open", nearestExamId(groupExams(listOf(later, open, sooner))))
+        assertEquals("sooner", nearestExamId(groupExams(listOf(later, sooner))))
+        assertEquals(null, nearestExamId(groupExams(listOf(exam("done", "FINISHED")))))
+    }
+
+    @Test
     fun an_old_server_without_lifecycle_still_uses_status() {
         assertTrue(exam("a", "OPEN").isSelectable())
         assertEquals(listOf("Selesai"), groupExams(listOf(exam("b", "FINISHED"))).map { it.title })
