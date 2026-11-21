@@ -173,7 +173,7 @@ class AnswerOrderingTest {
         }
 
     @Test
-    fun `answers the server no longer has are queued to be sent again`() =
+    fun `confirmed answers the server no longer has are dropped, as after a reset`() =
         runTest {
             val dao =
                 InMemoryAnswerDao(
@@ -188,7 +188,7 @@ class AnswerOrderingTest {
 
             repo(api, dao).pullServerAnswers("s1")
 
-            assertEquals(AnswerSyncState.LOCAL_PENDING, dao.rows.getValue("q1").syncState)
+            assertEquals(null, dao.rows["q1"])
             assertEquals(AnswerSyncState.SERVER_CONFIRMED, dao.rows.getValue("q2").syncState)
         }
 
