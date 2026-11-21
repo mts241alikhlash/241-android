@@ -989,7 +989,7 @@ private fun QuestionListDialog(
             ActionButton(
                 text = if (state.isSubmitting) "Mengirim…" else "Selesai & Kumpulkan",
                 onClick = onSubmit,
-                style = ActionStyle.Outline,
+                style = ActionStyle.Primary,
                 enabled = state.canSubmit,
                 modifier = Modifier.fillMaxWidth(),
             )

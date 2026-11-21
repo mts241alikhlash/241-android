@@ -51,6 +51,11 @@ internal data class ExamGroup(
     val exams: List<MyExamDto>,
 )
 
+internal fun nearestExamId(groups: List<ExamGroup>): String? {
+    val group = groups.firstOrNull { it.title == "Bisa Dikerjakan" } ?: groups.firstOrNull { it.title == "Akan Datang" }
+    return group?.exams?.minByOrNull { it.startsAt }?.id
+}
+
 internal fun groupExams(exams: List<MyExamDto>): List<ExamGroup> =
     listOf(
         ExamGroup("Bisa Dikerjakan", exams.filter { it.isSelectable() }),
@@ -150,12 +155,14 @@ fun ExamListScreen(
                                 )
                             }
                         }
-                        groupExams(exams).forEach { group ->
+                        val groups = groupExams(exams)
+                        val shownId = expandedId ?: nearestExamId(groups)
+                        groups.forEach { group ->
                             item(key = "group-${group.title}") {
                                 GroupCard(
                                     group = group,
-                                    expandedId = expandedId,
-                                    onToggle = { id -> expandedId = if (expandedId == id) null else id },
+                                    expandedId = shownId,
+                                    onToggle = { id -> expandedId = if (shownId == id) "" else id },
                                     onStart = onSelect,
                                 )
                             }
