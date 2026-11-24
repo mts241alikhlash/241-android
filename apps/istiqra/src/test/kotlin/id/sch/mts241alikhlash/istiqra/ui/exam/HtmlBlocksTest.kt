@@ -117,4 +117,27 @@ class HtmlBlocksTest {
         assertEquals(listOf("L", "I"), blocks.map { if (it is HtmlBlock.Image) "I" else "L" })
         assertEquals(listOf("satu", "dua"), (blocks[0] as HtmlBlock.ListBlock).items.map { it.plain() })
     }
+
+    @Test
+    fun extracts_math_span_without_duplicating_fallback_text() {
+        val paragraph =
+            parseHtml(
+                """<p dir="auto">Faktorisasi dari <span data-latex="x^2 + 5x + 6">x^2 + 5x + 6</span> adalah ....</p>""",
+            ).single() as HtmlBlock.Paragraph
+
+        val mathSpans = paragraph.spans.filterIsInstance<HtmlSpan.Math>()
+        assertEquals(listOf("x^2 + 5x + 6"), mathSpans.map { it.latex })
+        assertEquals("Faktorisasi dari x^2 + 5x + 6 adalah ....", paragraph.spans.plain())
+    }
+
+    @Test
+    fun decodes_entities_inside_data_latex_and_handles_nested_spans() {
+        val paragraph =
+            parseHtml(
+                """<p><span data-latex="1 &lt; 2 &amp;&amp; x^2"><span>ignored</span></span></p>""",
+            ).single() as HtmlBlock.Paragraph
+
+        val math = paragraph.spans.single() as HtmlSpan.Math
+        assertEquals("1 < 2 && x^2", math.latex)
+    }
 }
