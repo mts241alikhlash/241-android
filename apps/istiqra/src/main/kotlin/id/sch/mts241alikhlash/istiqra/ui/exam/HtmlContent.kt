@@ -18,17 +18,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.ImageLoader
@@ -45,26 +48,27 @@ fun examFileUrl(
     fileId: String,
 ): String = "${baseUrl.trimEnd('/')}/student-exams/$sessionId/files/$fileId"
 
+fun HtmlSpan.Text.toSpanStyle(): SpanStyle =
+    SpanStyle(
+        fontWeight = if (bold) FontWeight.Bold else null,
+        fontStyle = if (italic) FontStyle.Italic else null,
+        textDecoration = if (underline) TextDecoration.Underline else null,
+        baselineShift =
+            when {
+                subscript -> BaselineShift.Subscript
+                superscript -> BaselineShift.Superscript
+                else -> null
+            },
+        fontSize = if (subscript || superscript) 11.sp else TextUnit.Unspecified,
+    )
+
 fun List<HtmlSpan>.toAnnotated(): AnnotatedString =
     buildAnnotatedString {
         for (span in this@toAnnotated) {
             when (span) {
                 HtmlSpan.LineBreak -> append('\n')
-                is HtmlSpan.Text ->
-                    withStyle(
-                        SpanStyle(
-                            fontWeight = if (span.bold) FontWeight.Bold else null,
-                            fontStyle = if (span.italic) FontStyle.Italic else null,
-                            textDecoration = if (span.underline) TextDecoration.Underline else null,
-                            baselineShift =
-                                when {
-                                    span.subscript -> BaselineShift.Subscript
-                                    span.superscript -> BaselineShift.Superscript
-                                    else -> null
-                                },
-                            fontSize = if (span.subscript || span.superscript) 11.sp else androidx.compose.ui.unit.TextUnit.Unspecified,
-                        ),
-                    ) { append(span.text) }
+                is HtmlSpan.Text -> withStyle(span.toSpanStyle()) { append(span.text) }
+                is HtmlSpan.Math -> append(parseLatex(span.latex).toPlainText())
             }
         }
     }
@@ -127,16 +131,33 @@ private fun DirectedText(
     justify: Boolean = true,
 ) {
     val direction = if (rtl) LayoutDirection.Rtl else LocalLayoutDirection.current
+    val hasBlock = remember(spans) { hasBlockMath(spans) }
     CompositionLocalProvider(LocalLayoutDirection provides direction) {
-        Text(
-            text = remember(spans) { spans.toAnnotated() },
-            fontFamily = DMSansFontFamily,
-            fontSize = fontSize.sp,
-            lineHeight = (fontSize + 7).sp,
-            color = TextPrimary,
-            textAlign = if (justify) TextAlign.Justify else TextAlign.Start,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        if (hasBlock) {
+            MathFlowParagraph(
+                spans = spans,
+                fontSize = fontSize,
+                color = TextPrimary,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        } else {
+            val textMeasurer = rememberTextMeasurer()
+            val density = LocalDensity.current
+            val rendered =
+                remember(spans, fontSize, density.density, density.fontScale) {
+                    buildRichSpans(spans, fontSize, TextPrimary, textMeasurer, density)
+                }
+            Text(
+                text = rendered.text,
+                inlineContent = rendered.inlineContent,
+                fontFamily = DMSansFontFamily,
+                fontSize = fontSize.sp,
+                lineHeight = (fontSize + 7).sp,
+                color = TextPrimary,
+                textAlign = if (justify) TextAlign.Justify else TextAlign.Start,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 

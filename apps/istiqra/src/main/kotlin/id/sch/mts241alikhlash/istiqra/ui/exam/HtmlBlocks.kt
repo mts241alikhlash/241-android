@@ -10,6 +10,10 @@ sealed interface HtmlSpan {
         val superscript: Boolean = false,
     ) : HtmlSpan
 
+    data class Math(
+        val latex: String,
+    ) : HtmlSpan
+
     data object LineBreak : HtmlSpan
 }
 
@@ -37,6 +41,7 @@ fun List<HtmlSpan>.plain(): String =
     joinToString("") {
         when (it) {
             is HtmlSpan.Text -> it.text
+            is HtmlSpan.Math -> it.latex
             HtmlSpan.LineBreak -> "\n"
         }
     }
@@ -57,6 +62,7 @@ private val BLOCK_TAGS = setOf("p", "div", "h1", "h2", "h3", "h4", "h5", "h6", "
 private class Tag(
     val name: String,
     val closing: Boolean,
+    val selfClosing: Boolean,
     val attributes: Map<String, String>,
 )
 
@@ -70,6 +76,7 @@ private class HtmlParser(
     private var underline = 0
     private var sub = 0
     private var sup = 0
+    private var mathSpanDepth = 0
 
     private var listOrdered: Boolean? = null
     private val listItems = mutableListOf<List<HtmlSpan>>()
@@ -89,17 +96,17 @@ private class HtmlParser(
             val char = html[index]
             if (char == '<' && index + 1 < html.length && (html[index + 1].isLetter() || html[index + 1] == '/' || html[index + 1] == '!')) {
                 if (html.startsWith("<!--", index)) {
-                    pushText(text)
+                    if (mathSpanDepth == 0) pushText(text) else text.clear()
                     val end = html.indexOf("-->", index + 4)
                     index = if (end < 0) html.length else end + 3
                     continue
                 }
                 val end = tagEnd(index)
                 if (end < 0) {
-                    text.append(html, index, html.length)
+                    if (mathSpanDepth == 0) text.append(html, index, html.length)
                     break
                 }
-                pushText(text)
+                if (mathSpanDepth == 0) pushText(text) else text.clear()
                 val tag = readTag(html.substring(index + 1, end))
                 index = end + 1
                 if (tag != null) {
@@ -111,11 +118,11 @@ private class HtmlParser(
                     }
                 }
             } else {
-                text.append(char)
+                if (mathSpanDepth == 0) text.append(char)
                 index++
             }
         }
-        pushText(text)
+        if (mathSpanDepth == 0) pushText(text)
         closeAll()
         return blocks
     }
@@ -140,6 +147,7 @@ private class HtmlParser(
         val closing = body.startsWith("/")
         if (closing) body = body.removePrefix("/").trim()
         if (body.startsWith("!")) return null
+        val selfClosing = body.endsWith("/")
         body = body.removeSuffix("/").trim()
         val name = body.takeWhile { !it.isWhitespace() }.lowercase()
         if (name.isEmpty() || !name[0].isLetter()) return null
@@ -150,7 +158,7 @@ private class HtmlParser(
                 val value = match.groupValues[2].ifEmpty { match.groupValues[3].ifEmpty { match.groupValues[4] } }
                 attributes[match.groupValues[1].lowercase()] = value
             }
-        return Tag(name, closing, attributes)
+        return Tag(name, closing, selfClosing, attributes)
     }
 
     private fun pushText(buffer: StringBuilder) {
@@ -163,6 +171,25 @@ private class HtmlParser(
 
     private fun handle(tag: Tag) {
         val open = !tag.closing
+        if (mathSpanDepth > 0) {
+            if (tag.name == "span") {
+                if (open && !tag.selfClosing) {
+                    mathSpanDepth++
+                } else if (!open) {
+                    mathSpanDepth--
+                }
+            }
+            return
+        }
+        if (open && tag.name == "span") {
+            val rawLatex = tag.attributes["data-latex"]
+            if (rawLatex != null) {
+                val latex = decode(rawLatex).trim()
+                if (latex.isNotEmpty()) spans += HtmlSpan.Math(latex)
+                if (!tag.selfClosing) mathSpanDepth = 1
+                return
+            }
+        }
         when (tag.name) {
             "strong", "b" -> bold = (bold + if (open) 1 else -1).coerceAtLeast(0)
             "em", "i" -> italic = (italic + if (open) 1 else -1).coerceAtLeast(0)
@@ -333,7 +360,7 @@ private fun decode(text: String): String =
                         "gt" -> ">"
                         "quot" -> "\""
                         "apos" -> "'"
-                        "nbsp" -> " "
+                        "nbsp" -> "\u00A0"
                         else -> match.value
                     }
             }
